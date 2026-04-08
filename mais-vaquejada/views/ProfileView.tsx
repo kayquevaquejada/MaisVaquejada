@@ -48,37 +48,48 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
     const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file || !user?.id) return;
 
-        setLoading(true);
+        // Validar tipo de arquivo
+        if (!file.type.startsWith('image/')) {
+            alert('Por favor, selecione uma imagem válida.');
+            return;
+        }
+
+        setUploadingAvatar(true);
         try {
             const fileExt = file.name.split('.').pop();
-            const filePath = `${user.id}/${Math.random()}.${fileExt}`;
+            const fileName = `${user.id}-${Math.random()}.${fileExt}`;
+            const filePath = `avatars/${fileName}`;
 
-            // Upload to Supabase Storage
+            // Upload para o storage do Supabase
             const { error: uploadError } = await supabase.storage
-                .from('avatars')
-                .upload(filePath, file);
+                .from('vaquejadas') // Usando o bucket existente 'vaquejadas' ou 'avatars' se existir
+                .upload(filePath, file, { cacheControl: '3600', upsert: true });
 
             if (uploadError) throw uploadError;
 
-            // Get Public URL
+            // Obter URL pública
             const { data: { publicUrl } } = supabase.storage
-                .from('avatars')
+                .from('vaquejadas')
                 .getPublicUrl(filePath);
 
-            // Update local state and global state
+            // Atualizar os dados do perfil localmente
             setProfileData((prev: any) => prev ? { ...prev, avatar_url: publicUrl } : null);
-            if (onProfileUpdate) onProfileUpdate();
             
-            alert('Foto enviada com sucesso!');
+            // Opcional: Salvar imediatamente no banco de dados se preferir fluxo direto
+            // Mas seguiremos o fluxo do modal (esperar clicar em Concluir)
+            
+            console.log('Foto carregada:', publicUrl);
         } catch (error: any) {
-            console.error('Error uploading avatar:', error);
-            alert(`Erro ao enviar foto: ${error.message}`);
+            console.error('Erro no upload da foto:', error);
+            alert(`Erro ao processar imagem: ${error.message}`);
         } finally {
-            setLoading(false);
+            setUploadingAvatar(false);
         }
     };
 
@@ -697,20 +708,25 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
 
                     <div className="flex-1 overflow-y-auto p-8 flex flex-col items-center">
                         <div 
-                            onClick={() => fileInputRef.current?.click()}
-                            className="relative w-32 h-32 rounded-full border-4 border-[#ECA413] p-1 mb-6 active:scale-95 transition-transform cursor-pointer"
+                            onClick={() => !uploadingAvatar && fileInputRef.current?.click()}
+                            className="relative w-32 h-32 rounded-full border-4 border-[#ECA413] p-1 mb-6 active:scale-95 transition-transform cursor-pointer overflow-hidden"
                         >
                             <img src={profileData.avatar_url || `https://ui-avatars.com/api/?name=${profileData.name}&background=random`} className="w-full h-full rounded-full object-cover" />
-                            <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
-                                <span className="material-icons text-white text-3xl">photo_camera</span>
+                            <div className="absolute inset-0 bg-black/40 rounded-full flex flex-col items-center justify-center">
+                                {uploadingAvatar ? (
+                                    <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                    <span className="material-icons text-white text-3xl">photo_camera</span>
+                                )}
                             </div>
                         </div>
 
                         <button 
-                            onClick={() => fileInputRef.current?.click()}
-                            className="text-[10px] font-black uppercase tracking-[0.2em] text-[#ECA413] mb-12 hover:underline"
+                            onClick={() => !uploadingAvatar && fileInputRef.current?.click()}
+                            className="text-[10px] font-black uppercase tracking-[0.2em] text-[#ECA413] mb-12 hover:underline disabled:opacity-50"
+                            disabled={uploadingAvatar}
                         >
-                            Alterar foto do perfil
+                            {uploadingAvatar ? 'Processando...' : 'Alterar foto do perfil'}
                         </button>
                         
                         {/* Hidden File Input */}
