@@ -364,8 +364,8 @@ const App: React.FC = () => {
         </div>
         <div className="relative z-20 flex flex-col items-center gap-6">
           <div className="w-16 h-16 border-4 border-[#ECA413]/30 border-t-[#ECA413] rounded-full animate-spin" />
-          <p className="text-white font-black text-3xl tracking-tighter italic">
-            +VAQUE<span className="text-[#ECA413]">JADA</span>
+          <p className="font-black tracking-tighter italic leading-none flex items-baseline">
+            <span className="text-[#ECA413]" style={{ fontSize: '2.5rem', lineHeight: 1, marginRight: '-0.1em' }}>+V</span><span className="text-white text-3xl">AQUEJADA</span>
           </p>
           <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Carregando...</p>
         </div>
