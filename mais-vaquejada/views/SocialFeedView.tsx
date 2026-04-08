@@ -193,7 +193,10 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
   const [postComments, setPostComments] = useState<{username: string, text: string, time: string}[]>([]);
   
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(true);
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(() => {
+    const saved = localStorage.getItem('arena_has_unread_notifs');
+    return saved ? saved === 'true' : false; // Default false unless specifically true in storage
+  });
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isPostOptionsOpen, setIsPostOptionsOpen] = useState(false);
