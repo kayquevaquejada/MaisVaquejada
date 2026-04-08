@@ -1,5 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
+import { View } from '../types';
 
 const STATES = [
     'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
@@ -14,8 +15,20 @@ const MOCK_ADVERTISERS = [
     { id: '4', name: 'Vaquejada do Sertão', img: 'https://picsum.photos/seed/haras4/800/200' },
 ];
 
-const MarketView: React.FC = () => {
-    const [showCreateWizard, setShowCreateWizard] = useState(false);
+interface MarketViewProps {
+    forceShowWizard?: boolean;
+    onWizardClose?: () => void;
+    onViewChange?: (view: View) => void;
+}
+
+const MarketView: React.FC<MarketViewProps> = ({ forceShowWizard = false, onWizardClose, onViewChange }) => {
+    const [showCreateWizard, setShowCreateWizard] = useState(forceShowWizard);
+
+    // Sync local wizard state with prop (for global navigation)
+    useEffect(() => {
+        setShowCreateWizard(forceShowWizard);
+    }, [forceShowWizard]);
+
     const [step, setStep] = useState(1);
     const [showConfirm, setShowConfirm] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
@@ -26,6 +39,24 @@ const MarketView: React.FC = () => {
     });
     const [adIndex, setAdIndex] = useState(0);
     const [publishedAds, setPublishedAds] = useState<any[]>([]);
+    const [activeCategoryId, setActiveCategoryId] = useState('all');
+
+    const FILTER_TAGS = [
+        { label: 'TUDO', id: 'all' },
+        { label: 'CAVALOS', id: 'horse' },
+        { label: 'MAQUINAS', id: 'truck' },
+        { label: 'EQUIPAMENTOS', id: 'equip' },
+        { label: 'ACESSÓRIOS', id: 'access' }
+    ];
+
+    const MOCK_MARKET_ITEMS = [
+        { title: 'SELA PROFISSIONAL LUXO', price: 'R$ 1.500', loc: 'CG, PB', img: 'https://picsum.photos/seed/sela/400', isNew: true, category: 'access' },
+        { title: 'CAMINHÃO REBOQUE 2024', price: 'R$ 85.000', loc: 'JP, PB', img: 'https://picsum.photos/seed/truck/400', isNew: true, category: 'truck' },
+        { title: 'CAVALO QUARTO DE MILHA', price: 'A COMBINAR', loc: 'CE, PE', img: 'https://picsum.photos/seed/horse/400', isNew: false, category: 'horse' },
+        { title: 'BOTAS DE COURO LEGÍTIMO', price: 'R$ 350', loc: 'CG, PB', img: 'https://picsum.photos/seed/boots/400', isNew: false, category: 'access' },
+        { title: 'VAN DE TRANSPORTE', price: 'R$ 120.000', loc: 'SP, SP', img: 'https://picsum.photos/seed/van/400', isNew: true, category: 'truck' },
+        { title: 'POTRO QM 2 ANOS', price: 'A COMBINAR', loc: 'BA, MG', img: 'https://picsum.photos/seed/colt/400', isNew: true, category: 'horse' },
+    ];
 
     useEffect(() => {
         localStorage.setItem('arena_market_favorites', JSON.stringify(favorites));
@@ -128,6 +159,23 @@ const MarketView: React.FC = () => {
         setPublishedAds(prev => [newAd, ...prev]);
         setShowConfirm(false);
         setShowSuccess(true);
+    };
+
+    const handleOpenWizard = () => {
+        // Use direct callback if available, otherwise fallback to dispatch
+        if (onViewChange) {
+            onViewChange(View.AD_CREATION);
+        } else {
+            window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'AD_CREATION' } }));
+        }
+    };
+
+    const handleCloseWizard = () => {
+        if (onWizardClose) {
+            onWizardClose();
+        } else {
+            setShowCreateWizard(false);
+        }
     };
 
     if (viewingAd) {
@@ -244,9 +292,9 @@ const MarketView: React.FC = () => {
                 <p className="text-[#1A1108]/60 font-medium mb-10">Seu anúncio já está no ar para toda a comunidade.</p>
 
                 <div className="w-full space-y-4">
-                    <button onClick={() => { setShowSuccess(false); setShowCreateWizard(false); }} className="w-full bg-[#D4AF37] text-white py-4 rounded-xl font-black uppercase tracking-widest shadow-lg shadow-[#D4AF37]/20">Ver Meus Anúncios</button>
-                    <button onClick={() => { setShowSuccess(false); setStep(1); setShowCreateWizard(true); setAdData({ ...adData, photos: [] }) }} className="w-full bg-white border-2 border-[#D4AF37]/20 text-[#D4AF37] py-4 rounded-xl font-black uppercase tracking-widest">Criar Outro Anúncio</button>
-                    <button onClick={() => { setShowSuccess(false); setShowCreateWizard(false); }} className="w-full text-[#1A1108]/40 py-2 font-black uppercase tracking-widest text-xs">Voltar ao Mercado</button>
+                    <button onClick={() => { setShowSuccess(false); handleCloseWizard(); }} className="w-full bg-[#D4AF37] text-white py-4 rounded-xl font-black uppercase tracking-widest shadow-lg shadow-[#D4AF37]/20">Ver Meus Anúncios</button>
+                    <button onClick={() => { setShowSuccess(false); setStep(1); setAdData({ ...adData, photos: [] }); }} className="w-full bg-white border-2 border-[#D4AF37]/20 text-[#D4AF37] py-4 rounded-xl font-black uppercase tracking-widest">Criar Outro Anúncio</button>
+                    <button onClick={() => { setShowSuccess(false); handleCloseWizard(); }} className="w-full text-[#1A1108]/40 py-2 font-black uppercase tracking-widest text-xs">Voltar ao Mercado</button>
                 </div>
             </div>
         );
@@ -321,11 +369,11 @@ const MarketView: React.FC = () => {
 
     if (showCreateWizard) {
         return (
-            <div className="min-h-full bg-[#F5F1E9] flex flex-col">
+            <div className="absolute inset-0 z-[60] bg-[#F5F1E9] flex flex-col">
                 {/* Header */}
                 <header className="px-6 py-6 border-b border-[#1A1108]/5 bg-white flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <button onClick={() => { if (step > 1) setStep(step - 1); else setShowCreateWizard(false); }} className="material-icons text-leather">arrow_back</button>
+                        <button onClick={() => { if (step > 1) setStep(step - 1); else handleCloseWizard(); }} className="material-icons text-leather">arrow_back</button>
                         <h1 className="text-xl font-black uppercase italic tracking-tight">Criar Anúncio</h1>
                     </div>
                     <div className="flex items-baseline gap-1">
@@ -335,7 +383,7 @@ const MarketView: React.FC = () => {
                 </header>
 
                 {/* Step Content */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-8 pb-32">
+                <div className="flex-1 overflow-y-auto p-6 space-y-8">
 
                     {step === 1 && (
                         <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
@@ -369,31 +417,31 @@ const MarketView: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-3">
                                 <div className="space-y-2">
-                                    <label className="text-xs font-black uppercase tracking-widest text-[#1A1108]/40 block">Estado</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-[#1A1108]/40 block pl-1">Estado</label>
                                     <select
                                         value={adData.uf}
-                                        onChange={(e) => setAdData({ ...adData, uf: e.target.value })}
-                                        className="w-full bg-white border-2 border-[#1A1108]/5 rounded-2xl py-5 px-6 font-black text-leather appearance-none outline-none focus:border-[#D4AF37]"
+                                        onChange={(e) => setAdData({ ...adData, uf: e.target.value, city: '' })}
+                                        className="w-full bg-white border-2 border-[#1A1108]/5 rounded-2xl py-4 px-5 font-black text-[#1A1108] appearance-none outline-none focus:border-[#D4AF37]"
                                     >
-                                        <option value="">UF</option>
+                                        <option value="">Selecione o estado</option>
                                         {STATES.map(uf => (
                                             <option key={uf} value={uf}>{uf}</option>
                                         ))}
                                     </select>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-black uppercase tracking-widest text-[#1A1108]/40 block">Cidade</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-[#1A1108]/40 block pl-1">Cidade</label>
                                     <select
                                         disabled={!adData.uf || loadingCities}
                                         value={adData.city}
                                         onChange={(e) => setAdData({ ...adData, city: e.target.value })}
-                                        className="w-full bg-white border-2 border-[#1A1108]/5 rounded-2xl py-5 px-6 font-black text-leather appearance-none outline-none focus:border-[#D4AF37] disabled:opacity-50"
+                                        className="w-full bg-white border-2 border-[#1A1108]/5 rounded-2xl py-4 px-5 font-black text-[#1A1108] appearance-none outline-none focus:border-[#D4AF37] disabled:opacity-40"
                                     >
-                                        <option value="">{loadingCities ? 'CARREGANDO...' : 'SELECIONE'}</option>
+                                        <option value="">{loadingCities ? 'Carregando...' : 'Selecione a cidade'}</option>
                                         {cities.map(city => (
-                                            <option key={city.id} value={city.nome}>{city.nome.toUpperCase()}</option>
+                                            <option key={city.id} value={city.nome}>{city.nome}</option>
                                         ))}
                                     </select>
                                 </div>
@@ -497,11 +545,11 @@ const MarketView: React.FC = () => {
                                 <div className="space-y-4">
                                     <div className="space-y-1">
                                         <label className="text-[10px] font-black text-[#1A1108]/40 uppercase tracking-widest pl-1">Nome no anúncio</label>
-                                        <input className="w-full bg-[#F5F1E9] border-none rounded-xl py-3 px-4 font-bold text-sm" value={adData.contactName} />
+                                        <input className="w-full bg-[#F5F1E9] border-none rounded-xl py-3 px-4 font-bold text-sm text-[#1A1108]" value={adData.contactName} readOnly />
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-[10px] font-black text-[#1A1108]/40 uppercase tracking-widest pl-1">WhatsApp</label>
-                                        <input className="w-full bg-[#F5F1E9] border-none rounded-xl py-3 px-4 font-bold text-sm" value={adData.whatsapp} />
+                                        <input className="w-full bg-[#F5F1E9] border-none rounded-xl py-3 px-4 font-bold text-sm text-[#1A1108]" value={adData.whatsapp} readOnly />
                                     </div>
                                 </div>
                             </div>
@@ -511,7 +559,7 @@ const MarketView: React.FC = () => {
                 </div>
 
                 {/* Footer Navigation */}
-                <div className="absolute bottom-0 left-0 right-0 p-6 pb-10 bg-white border-t border-[#1A1108]/5 flex gap-4 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+                <div className="flex-none p-6 pb-8 bg-white border-t border-[#1A1108]/5 flex gap-4 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
                     {step < 3 ? (
                         <button
                             disabled={step === 1 && !adData.category}
@@ -547,7 +595,7 @@ const MarketView: React.FC = () => {
                     </div>
                     <div className="flex gap-2">
                         <button
-                            onClick={() => setShowCreateWizard(true)}
+                            onClick={handleOpenWizard}
                             className="w-12 h-12 rounded-full bg-[#1A1108] shadow-lg border border-[#D4AF37]/30 flex items-center justify-center text-[#D4AF37] active:scale-95 transition-transform"
                         >
                             <span className="material-icons text-xl">add</span>
@@ -574,9 +622,13 @@ const MarketView: React.FC = () => {
                 </div>
 
                 <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2">
-                    {['TUDO', 'CAVALOS', 'MAQUINAS', 'EQUIPAMENTOS', 'ACESSÓRIOS'].map((tag, idx) => (
-                        <button key={tag} className={`px-5 py-2.5 rounded-full font-black text-[10px] uppercase tracking-widest whitespace-nowrap transition-all ${idx === 0 ? 'bg-[#D4AF37] text-white shadow-lg shadow-[#D4AF37]/20' : 'bg-white text-[#1A1108]/40 border border-[#1A1108]/5'}`}>
-                            {tag}
+                    {FILTER_TAGS.map((tag) => (
+                        <button 
+                            key={tag.id} 
+                            onClick={() => setActiveCategoryId(tag.id)}
+                            className={`px-5 py-2.5 rounded-full font-black text-[10px] uppercase tracking-widest whitespace-nowrap transition-all ${activeCategoryId === tag.id ? 'bg-[#D4AF37] text-white shadow-lg shadow-[#D4AF37]/20' : 'bg-white text-[#1A1108]/40 border border-[#1A1108]/5'}`}
+                        >
+                            {tag.label}
                         </button>
                     ))}
                 </div>
@@ -587,11 +639,11 @@ const MarketView: React.FC = () => {
                     {/* Ad Cards */}
                     {[
                         ...publishedAds,
-                        { title: 'SELA PROFISSIONAL LUXO', price: 'R$ 1.500', loc: 'CG, PB', img: 'https://picsum.photos/seed/sela/400', isNew: true },
-                        { title: 'CAMINHÃO REBOQUE 2024', price: 'R$ 85.000', loc: 'JP, PB', img: 'https://picsum.photos/seed/truck/400', isNew: true },
-                        { title: 'CAVALO QUARTO DE MILHA', price: 'A COMBINAR', loc: 'CE, PE', img: 'https://picsum.photos/seed/horse/400', isNew: false },
-                        { title: 'BOTAS DE COURO LEGÍTIMO', price: 'R$ 350', loc: 'CG, PB', img: 'https://picsum.photos/seed/boots/400', isNew: false },
-                    ].map((item, i) => (
+                        ...MOCK_MARKET_ITEMS
+                    ].filter(item => {
+                        if (activeCategoryId === 'all') return true;
+                        return item.category === activeCategoryId;
+                    }).map((item, i) => (
                         <div onClick={() => setViewingAd(item)} key={i} className="bg-white rounded-[24px] overflow-hidden shadow-xl shadow-black/5 border border-[#1A1108]/5 group active:scale-[0.98] transition-all">
                             <div className="aspect-square relative overflow-hidden bg-neutral-100">
                                 <img src={item.img} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={item.title} />
@@ -610,6 +662,7 @@ const MarketView: React.FC = () => {
                             </div>
                         </div>
                     ))}
+
                 </div>
             </main>
         </div>

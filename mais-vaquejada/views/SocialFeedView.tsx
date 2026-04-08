@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PostItem, StoryItem } from '../types';
 import { supabase } from '../lib/supabase';
+import { ArenaNotification, fetchUserNotifications, getNotifText, timeAgo, createNotification } from '../lib/notifications';
 
 const STORY_GROUPS = [
   { id: '1', username: 'Seu Status', avatar: 'https://picsum.photos/seed/my/100', items: [], hasNew: false },
@@ -249,23 +250,33 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
   const [commentText, setCommentText] = useState('');
   const [postComments, setPostComments] = useState<{username: string, text: string, time: string}[]>([]);
   
+  const [notifications, setNotifications] = useState<ArenaNotification[]>([]);
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(() => {
-    const saved = localStorage.getItem('arena_has_unread_notifs');
-    return saved ? saved === 'true' : false; // Default false unless specifically true in storage
-  });
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isPostOptionsOpen, setIsPostOptionsOpen] = useState(false);
   const [selectedPostOptions, setSelectedPostOptions] = useState<PostItem | null>(null);
   const [isAboutAccountOpen, setIsAboutAccountOpen] = useState(false);
-  const [hasUnreadDMs, setHasUnreadDMs] = useState(() => {
-    return localStorage.getItem('arena_has_unread_dms') === 'true';
-  });
-  const [notifications, setNotifications] = useState<{ id: number, type: string, user: string, text: string, time: string, postId?: string }[]>(() => {
-    const saved = localStorage.getItem('arena_notifications');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [hasUnreadDMs, setHasUnreadDMs] = useState(false);
+
+  const loadNotifications = async () => {
+    try {
+      if (!user?.id) return;
+      const data = await fetchUserNotifications(user.id);
+      setNotifications(data || []);
+      setHasUnreadNotifications((data || []).some(n => !n.is_read));
+    } catch (err) {
+      console.warn("Failed to load notifications", err);
+    }
+  };
+
+  useEffect(() => {
+    loadNotifications();
+    // Refresh notifications every minute
+    const interval = setInterval(loadNotifications, 60000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
 
   // Mentions logic
   const [mentionQuery, setMentionQuery] = useState('');
@@ -327,28 +338,23 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
 
   const handlePostComment = () => {
     if (commentText.trim() && activeCommentsPost) {
-        // Handle mentions in the text
-        const mentions = commentText.match(/@(\w+)/g);
-        if (mentions) {
-            mentions.forEach(m => {
-                const target = m.substring(1);
-                // Locally, we simulate adding it to notifications
-                const newNotif = {
-                    id: Date.now() + Math.random(),
-                    type: 'mention',
-                    user: user?.username || 'voce_vaqueiro',
-                    text: `mencionou você em um comentário no post de ${activeCommentsPost.username}.`,
-                    time: 'agora',
-                    postId: activeCommentsPost.id
-                };
-                setNotifications(prev => [newNotif, ...prev]);
-                setHasUnreadNotifications(true);
-            });
+        const msgText = commentText.trim();
+        // Handle mentions...
+        
+        // Notify the post owner
+        if (activeCommentsPost.userId !== user?.id) {
+           createNotification({
+             user_id: activeCommentsPost.userId,
+             actor_id: user.id,
+             type: 'comment',
+             message: msgText,
+             reference_id: activeCommentsPost.id
+           });
         }
 
         const newComment = {
             username: user?.username || 'meu_perfil',
-            text: commentText,
+            text: msgText,
             time: 'Agora'
         };
         
@@ -453,13 +459,23 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
     }
   };
 
-  const handleLike = (postId: string) => {
+  const handleLike = (post: PostItem) => {
     setLikedPosts(prev => {
       const next = new Set(prev);
-      if (next.has(postId)) {
-        next.delete(postId);
+      const isLiking = !next.has(post.id);
+      if (isLiking) {
+        next.add(post.id);
+        // Create notification
+        if (post.userId !== user?.id) {
+           createNotification({
+             user_id: post.userId,
+             actor_id: user.id,
+             type: 'like',
+             reference_id: post.id
+           });
+        }
       } else {
-        next.add(postId);
+        next.delete(post.id);
       }
       return next;
     });
@@ -488,38 +504,38 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
         </div>
       </div>
       {/* Header */}
-      <header className="flex justify-between items-center px-6 py-4 sticky top-0 z-50 bg-background-dark/95 backdrop-blur-md border-b border-white/5">
-        <div className="flex items-center gap-2">
-          <h1 className="text-3xl font-black uppercase tracking-tighter text-[#ECA413] italic">+VAQUEJADA</h1>
+      <header className="flex justify-between items-center px-4 py-3 sticky top-0 z-50 bg-background-dark/95 backdrop-blur-md border-b border-white/5">
+        <div className="flex items-center gap-2 min-w-0">
+          <h1 className="text-2xl font-black uppercase tracking-tighter text-[#ECA413] italic truncate">+VAQUEJADA</h1>
         </div>
-        <div className="flex gap-4">
+        <div className="flex items-center gap-2 shrink-0">
           <button 
             onClick={() => setIsSearchOpen(true)} 
-            className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center border border-white/10 active:scale-90 transition-transform cursor-pointer"
+            className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center border border-white/10 active:scale-90 transition-transform"
           >
-            <span className="material-icons text-xl text-white">search</span>
+            <span className="material-icons text-lg text-white" aria-label="buscar">search</span>
           </button>
 
           <button 
             onClick={() => navigateToProfile('meu-perfil')}
-            className="w-8 h-8 rounded-full border border-[#ECA413] p-0.5 overflow-hidden active:scale-90 transition-transform"
+            className="w-8 h-8 rounded-full border border-[#ECA413] p-0.5 overflow-hidden active:scale-90 transition-transform shrink-0"
           >
             <img 
-              src={user?.avatar_url || `https://ui-avatars.com/api/?name=${user?.name || 'User'}&background=random`} 
+              src={user?.avatar_url || `https://ui-avatars.com/api/?name=${user?.name || 'U'}&background=ECA413&color=fff`} 
               className="w-full h-full rounded-full object-cover" 
-              alt="Profile"
+              alt="Perfil"
             />
           </button>
           
           <button className="relative" onClick={() => { setIsNotificationsOpen(!isNotificationsOpen); setHasUnreadNotifications(false); }}>
-            <span className={`material-icons text-2xl ${isNotificationsOpen ? 'text-[#ECA413]' : 'text-white'}`}>favorite_border</span>
+            <span className={`material-icons text-2xl ${isNotificationsOpen ? 'text-[#ECA413]' : 'text-white'}`} aria-label="notificações">favorite_border</span>
             {hasUnreadNotifications && (
               <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-[#ECA413] border-2 border-background-dark rounded-full"></span>
             )}
           </button>
 
           <button className="relative" onClick={() => { setIsDMScreenOpen(true); setHasUnreadDMs(false); }}>
-            <span className="material-icons text-2xl text-white">send</span>
+            <span className="material-icons text-2xl text-white" aria-label="mensagens">send</span>
             {hasUnreadDMs && (
               <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-[#ECA413] border-2 border-background-dark rounded-full"></span>
             )}
@@ -537,56 +553,33 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
                 <h3 className="font-black text-white tracking-widest text-[11px] uppercase">Ações & Notificações</h3>
             </div>
             <div className="max-h-[350px] overflow-y-auto">
-                {notifications.map(notif => (
-                    <div 
-                        key={notif.id} 
-                        className="p-4 border-b border-white/5 flex gap-3 items-center hover:bg-white/5 transition-colors cursor-pointer" 
-                        onClick={() => {
-                            if (notif.postId) {
-                                // Close notifications and find the post - for demo we just alerts
-                                setIsNotificationsOpen(false);
-                                // In a real app, we'd scroll to or open that post
-                                alert(`Navegando para o post ID: ${notif.postId}`);
-                            } else {
-                                navigateToProfile(notif.user);
-                            }
-                        }}
-                    >
-                        <div className="w-10 h-10 rounded-full border border-white/10 overflow-hidden shrink-0">
-                            <img src={`https://picsum.photos/seed/${notif.user}/100`} className="w-full h-full object-cover" />
-                        </div>
-                        <div className="flex-1">
-                            <p className="text-[12px] text-white/90 leading-tight">
-                                <span className="font-black mr-1">{notif.user}</span>
-                                {notif.text}
-                            </p>
-                            <p className="text-[#ECA413] text-[9px] font-black uppercase tracking-wider mt-1">{notif.time}</p>
-                        </div>
-                        {notif.type === 'follow' && (
-                            <button 
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    const follows = JSON.parse(localStorage.getItem('arena_follows') || '{}');
-                                    const isCurrentlyFollowing = !!follows[notif.user];
-                                    follows[notif.user] = !isCurrentlyFollowing;
-                                    localStorage.setItem('arena_follows', JSON.stringify(follows));
-                                    // Force re-render of notification panel
-                                    setNotifications([...notifications]);
-                                }}
-                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all ${
-                                    JSON.parse(localStorage.getItem('arena_follows') || '{}')[notif.user] 
-                                    ? 'bg-transparent border border-white/20 text-white/40' 
-                                    : 'bg-[#ECA413] text-black shadow-lg shadow-[#ECA413]/20'
-                                }`}
-                            >
-                                {JSON.parse(localStorage.getItem('arena_follows') || '{}')[notif.user] ? 'Seguindo' : 'Seguir'}
-                            </button>
-                        )}
-                        {notif.postId && (
-                             <span className="material-icons text-[#ECA413] text-sm">chevron_right</span>
-                        )}
+                {notifications.length === 0 ? (
+                    <div className="p-10 text-center opacity-40">
+                        <p className="text-[10px] font-black uppercase tracking-widest">Nenhuma notificação</p>
                     </div>
-                ))}
+                ) : (
+                    notifications.map(notif => (
+                        <div 
+                            key={notif.id} 
+                            className="p-4 border-b border-white/5 flex gap-3 items-center hover:bg-white/5 transition-colors cursor-pointer" 
+                            onClick={() => {
+                                navigateToProfile(notif.actor_username || '');
+                                setIsNotificationsOpen(false);
+                            }}
+                        >
+                            <div className="w-10 h-10 rounded-full border border-white/10 overflow-hidden shrink-0">
+                                <img src={notif.actor_avatar || `https://ui-avatars.com/api/?name=${notif.actor_username}&background=random`} className="w-full h-full object-cover" />
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-[12px] text-white/90 leading-tight">
+                                    {getNotifText(notif)}
+                                </p>
+                                <p className="text-[#ECA413] text-[9px] font-black uppercase tracking-wider mt-1">{timeAgo(notif.created_at)}</p>
+                            </div>
+                            {!notif.is_read && <div className="w-2 h-2 rounded-full bg-[#ECA413]"></div>}
+                        </div>
+                    ))
+                )}
             </div>
         </div>
         </>
@@ -688,7 +681,7 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
             <div className="px-5 py-4 flex justify-between items-center">
               <div className="flex gap-6 items-center">
                 <button
-                  onClick={() => handleLike(post.id)}
+                  onClick={() => handleLike(post)}
                   className="flex items-center gap-2 group active:scale-125 transition-transform"
                 >
                   <span className={`material-icons text-[26px] ${likedPosts.has(post.id) ? 'text-red-500' : 'text-white'}`}>
@@ -1032,8 +1025,19 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
                     onChange={e => setNewMessage(e.target.value)}
                     onKeyDown={e => {
                       if (e.key === 'Enter' && newMessage.trim() && activeChatUser) {
-                        setMessages([...messages, { sender: 'me', text: newMessage, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), chatWith: activeChatUser }]);
+                        const msgText = newMessage.trim();
+                        setMessages([...messages, { sender: 'me', text: msgText, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), chatWith: activeChatUser }]);
                         setNewMessage('');
+                        
+                        // Create notification for receiver
+                        if (activeChatProfile?.id) {
+                          createNotification({
+                            user_id: activeChatProfile.id,
+                            actor_id: user.id,
+                            type: 'message',
+                            message: msgText
+                          });
+                        }
                       }
                     }}
                     placeholder="Mensagem..." 
@@ -1043,9 +1047,20 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
                 {newMessage.trim() ? (
                   <button 
                     onClick={() => {
-                      if (activeChatUser) {
-                        setMessages([...messages, { sender: 'me', text: newMessage, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), chatWith: activeChatUser }]);
+                      if (activeChatUser && newMessage.trim()) {
+                        const msgText = newMessage.trim();
+                        setMessages([...messages, { sender: 'me', text: msgText, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), chatWith: activeChatUser }]);
                         setNewMessage('');
+                        
+                        // Create notification for receiver
+                        if (activeChatProfile?.id) {
+                          createNotification({
+                            user_id: activeChatProfile.id,
+                            actor_id: user.id,
+                            type: 'message',
+                            message: msgText
+                          });
+                        }
                       }
                     }}
                     className="w-12 h-12 rounded-full bg-[#ECA413] flex items-center justify-center text-black shadow-lg"

@@ -13,7 +13,8 @@ export enum View {
   COMPLETE_PROFILE = 'COMPLETE_PROFILE',
   ADMIN_USERS = 'ADMIN_USERS',
   BLOCKED_ACCOUNT = 'BLOCKED_ACCOUNT',
-  RECOVERY_ASSISTED = 'RECOVERY_ASSISTED'
+  RECOVERY_ASSISTED = 'RECOVERY_ASSISTED',
+  AD_CREATION = 'AD_CREATION'
 }
 
 export type UserType = 'common' | 'seller' | 'organizer' | 'admin';
@@ -220,4 +221,14 @@ export interface StoryItem {
   mediaUrl?: string; // Content
   mediaType?: 'image' | 'video';
   hasNew?: boolean;
+}
+
+export interface Transmission {
+  id: string;
+  title: string;
+  youtube_url: string;
+  thumbnail_url?: string;
+  is_live: boolean;
+  active: boolean;
+  created_at: string;
 }

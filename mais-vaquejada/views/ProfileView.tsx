@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User } from '../types';
 import { supabase } from '../lib/supabase';
+import { createNotification } from '../lib/notifications';
 
 interface ProfileViewProps {
     user: User | null;
@@ -148,8 +149,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                 setIsFollowing(true);
                 setStats(prev => ({ ...prev, followers: prev.followers + 1 }));
                 
-                // Optional: Create notification
-                await supabase.from('notifications').insert({
+                // Create notification
+                await createNotification({
                     user_id: profileData.id,
                     actor_id: user.id,
                     type: 'follow'
@@ -597,8 +598,21 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                                     onClick={() => {
                                         setLikedPosts((prev: any) => {
                                             const next = new Set(prev);
-                                            if (next.has(selectedPost.id)) next.delete(selectedPost.id);
-                                            else next.add(selectedPost.id);
+                                            const isLiking = !next.has(selectedPost.id);
+                                            if (isLiking) {
+                                                next.add(selectedPost.id);
+                                                // Create notification for post owner
+                                                if (profileData?.id !== user?.id) {
+                                                    createNotification({
+                                                        user_id: profileData.id,
+                                                        actor_id: user.id,
+                                                        type: 'like',
+                                                        reference_id: selectedPost.id
+                                                    });
+                                                }
+                                            } else {
+                                                next.delete(selectedPost.id);
+                                            }
                                             return next;
                                         });
                                     }}

@@ -95,11 +95,24 @@ const MOCK_ADVERTISERS = [
   { id: '4', name: 'Vaquejada do Sertão', img: 'https://picsum.photos/seed/haras4/800/200' },
 ];
 
-const EventsView: React.FC = () => {
+interface EventsViewProps {
+  publicEventId?: string;
+  onLoginPrompt?: () => void;
+}
+
+const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt }) => {
   const [selectedState, setSelectedState] = useState('TODOS');
   const [selectedCircuit, setSelectedCircuit] = useState('todos');
   const [isCircuitPanelOpen, setIsCircuitPanelOpen] = useState(false);
   const [viewingEvent, setViewingEvent] = useState<EventItem | null>(null);
+
+  // Sync with public event from URL
+  useEffect(() => {
+    if (publicEventId && events.length > 0) {
+      const publicEv = events.find(e => String(e.id) === String(publicEventId));
+      if (publicEv) setViewingEvent(publicEv);
+    }
+  }, [publicEventId, events]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [adIndex, setAdIndex] = useState(0);
@@ -156,9 +169,27 @@ const EventsView: React.FC = () => {
     );
   };
 
-  const handleShare = (event: EventItem, e?: React.MouseEvent) => {
+  const handleShare = async (event: EventItem, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    alert(`Compartilhando link do evento: ${event.title} via WhatsApp!`);
+    
+    const shareUrl = `${window.location.origin}/?event=${event.id}`;
+    const shareText = `🏇 Convite +Vaquejada!\n\nVenha ver o evento: *${event.title.toUpperCase()}*\n📍 No ${event.park}, ${event.location}\n\nConfira todos os detalhes no app:`;
+
+    if (navigator.share) {
+        try {
+            await navigator.share({
+                title: event.title,
+                text: shareText,
+                url: shareUrl,
+            });
+        } catch (err) {
+            console.log('User cancelled share or error:', err);
+        }
+    } else {
+        // Fallback for browsers without Web Share
+        const waUrl = `https://wa.me/?text=${encodeURIComponent(shareText + '\n' + shareUrl)}`;
+        window.open(waUrl, '_blank');
+    }
   };
 
   const handleComment = (comment: string) => {
@@ -188,16 +219,22 @@ const EventsView: React.FC = () => {
 
             {/* Navbar */}
             <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-start z-10">
-              <button onClick={() => setViewingEvent(null)} className="w-10 h-10 rounded-full bg-black/20 backdrop-blur-md border border-white/10 flex items-center justify-center text-white active:scale-95 transition-transform">
+              <button onClick={() => {
+                if (publicEventId) window.history.pushState({}, '', '/');
+                setViewingEvent(null);
+              }} className="w-10 h-10 rounded-full bg-black/20 backdrop-blur-md border border-white/10 flex items-center justify-center text-white active:scale-95 transition-transform">
                 <span className="material-icons">arrow_back</span>
               </button>
               <div className="flex gap-2">
                 <button onClick={() => handleShare(viewingEvent)} className="w-10 h-10 rounded-full bg-black/20 backdrop-blur-md border border-white/10 flex items-center justify-center text-white active:scale-95 transition-transform">
                   <span className="material-icons">share</span>
                 </button>
-                <button onClick={() => toggleFavorite(viewingEvent.id)} className={`w-10 h-10 rounded-full backdrop-blur-md border border-white/10 flex items-center justify-center active:scale-95 transition-transform ${isFav ? 'bg-[#D4AF37] text-black' : 'bg-black/20 text-white'}`}>
-                  <span className="material-icons">{isFav ? 'favorite' : 'favorite_border'}</span>
-                </button>
+                <div className="flex flex-col items-center">
+                  <button onClick={() => toggleFavorite(viewingEvent.id)} className={`w-10 h-10 rounded-full backdrop-blur-md border border-white/10 flex items-center justify-center active:scale-95 transition-transform ${isFav ? 'bg-[#D4AF37] text-black' : 'bg-black/20 text-white'}`}>
+                    <span className="material-icons">{isFav ? 'favorite' : 'favorite_border'}</span>
+                  </button>
+                  <span className="text-[9px] font-black text-white/40 mt-1">{isFav ? '325' : '324'} curtiu</span>
+                </div>
               </div>
             </div>
 
@@ -298,10 +335,20 @@ const EventsView: React.FC = () => {
 
           {/* Sticky Bottom Bar */}
           <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-background-dark via-background-dark to-transparent z-20">
-            <button onClick={() => handleComment("Eu vou!!")} className="w-full bg-[#ECA413] text-background-dark font-black py-4 rounded-xl uppercase tracking-widest shadow-lg shadow-[#ECA413]/20 flex items-center justify-center gap-2 active:scale-95 transition-transform">
-              <span className="material-icons">check_circle</span>
-              Confirmar Presença
-            </button>
+            {onLoginPrompt && !localStorage.getItem('supabase.auth.token') ? (
+              <button onClick={onLoginPrompt} className="w-full bg-[#ECA413] text-background-dark font-black py-4 rounded-xl uppercase tracking-widest shadow-lg shadow-[#ECA413]/20 flex items-center justify-center gap-2 active:scale-95 transition-transform">
+                <span className="material-icons">login</span>
+                Entrar para Confirmar
+              </button>
+            ) : (
+                <button onClick={() => handleComment("Eu vou!!")} className="w-full bg-[#ECA413] text-background-dark font-black py-4 rounded-xl uppercase tracking-widest shadow-lg shadow-[#ECA413]/20 flex items-center justify-center gap-2 active:scale-95 transition-transform">
+                    <span className="material-icons">check_circle</span>
+                    Confirmar Presença
+                </button>
+            )}
+            {!localStorage.getItem('supabase.auth.token') && (
+                <p className="text-[10px] text-white/30 text-center mt-3 font-bold uppercase tracking-widest">Veja mais conteúdos no app oficial</p>
+            )}
           </div>
         </div>
       </div>
@@ -457,12 +504,15 @@ const EventsView: React.FC = () => {
                       <p className="text-xl font-black text-[#D4AF37]">{event.price} <span className="text-xs font-normal text-white/40">/{event.category}</span></p>
                     </div>
                     <div className="flex gap-3">
-                      <button
-                        onClick={(e) => toggleFavorite(event.id, e)}
-                        className={`w-12 h-12 rounded-xl flex items-center justify-center border transition-colors ${isFav ? 'bg-[#D4AF37]/10 border-[#D4AF37] text-[#D4AF37]' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}
-                      >
-                        <span className="material-icons">{isFav ? 'favorite' : 'favorite_border'}</span>
-                      </button>
+                      <div className="flex flex-col items-center">
+                        <button
+                            onClick={(e) => toggleFavorite(event.id, e)}
+                            className={`w-12 h-12 rounded-xl flex items-center justify-center border transition-colors ${isFav ? 'bg-[#D4AF37]/10 border-[#D4AF37] text-[#D4AF37]' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}
+                        >
+                            <span className="material-icons">{isFav ? 'favorite' : 'favorite_border'}</span>
+                        </button>
+                        <span className="text-[8px] font-black text-white/20 mt-1 uppercase tracking-widest">{isFav ? '325' : '324'}</span>
+                      </div>
                       <button
                         onClick={(e) => handleShare(event, e)}
                         className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 text-white/40 hover:text-white transition-colors"

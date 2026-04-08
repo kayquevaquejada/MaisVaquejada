@@ -2,6 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { User, View } from '../types';
 import { supabase } from '../lib/supabase';
 
+// Extrai o ID do vídeo YouTube de uma URL
+function extractYouTubeId(url: string): string | null {
+  if (!url) return null;
+  const patterns = [
+    /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/live\/([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+  ];
+  for (const p of patterns) {
+    const m = url.match(p);
+    if (m) return m[1];
+  }
+  return null;
+}
+
 interface AdminViewProps {
     user: any;
 }
@@ -22,18 +38,20 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
 
     // View States for Events and News
     const [subviewEvents, setSubviewEvents] = useState<'HOME'|'CREATE'|'LIST'>('HOME');
-    const [subviewNews, setSubviewNews] = useState<'HOME'|'CREATE'|'LIST'>('HOME');
+    const [subviewNews, setSubviewNews] = useState<'HOME'|'CREATE'|'LIST'|'TV'>('HOME');
     const [subviewMercado, setSubviewMercado] = useState<'HOME'|'LIST'>('HOME');
     const [subviewSocial, setSubviewSocial] = useState<'HOME'|'LIST'>('HOME');
 
     const [eventsList, setEventsList] = useState<any[]>([]);
     const [newsList, setNewsList] = useState<any[]>([]);
+    const [transmissionsList, setTransmissionsList] = useState<any[]>([]);
     const [marketList, setMarketList] = useState<any[]>([]);
     const [postsList, setPostsList] = useState<any[]>([]);
     const [bannersList, setBannersList] = useState<any[]>([]);
 
     const [eventForm, setEventForm] = useState<any>({});
     const [newsForm, setNewsForm] = useState<any>({ type: 'info' });
+    const [transmissionForm, setTransmissionForm] = useState<any>({});
     const [bannerForm, setBannerForm] = useState<any>({});
 
     const isMaster = user?.isMaster || false;
@@ -45,7 +63,10 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
     useEffect(() => {
         if (isMaster) fetchTotalUsers();
         if (hasEventos) fetchEvents();
-        if (hasNoticias && subviewNews === 'LIST') fetchNews();
+        if (hasNoticias) {
+            if (subviewNews === 'LIST') fetchNews();
+            if (subviewNews === 'TV') fetchTransmissions();
+        }
         if (hasMercado && subviewMercado === 'LIST') fetchMarket();
         if (hasSocial) {
              fetchPosts();
@@ -72,6 +93,13 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         setLoading(false);
     };
 
+    const fetchTransmissions = async () => {
+        setLoading(true);
+        const { data } = await supabase.from('transmissions').select('*').order('created_at', { ascending: false });
+        if (data) setTransmissionsList(data);
+        setLoading(false);
+    };
+
     const fetchMarket = async () => {
         setLoading(true);
         const { data } = await supabase.from('market_items').select('*').order('created_at', { ascending: false });
@@ -81,8 +109,12 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
 
     const fetchPosts = async () => {
         setLoading(true);
-        const { data } = await supabase.from('posts').select(`*, profiles!posts_user_id_fkey(username, avatar_url, full_name)`).order('created_at', { ascending: false });
-        if (data) setPostsList(data);
+        try {
+            const { data } = await supabase.from('posts').select(`*, profiles:user_id(username, avatar_url, name)`).order('created_at', { ascending: false });
+            if (data) setPostsList(data);
+        } catch (err) {
+            console.error("Error fetching posts:", err);
+        }
         setLoading(false);
     };
 
@@ -212,6 +244,49 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         setLoading(true);
         const { error } = await supabase.from('news').update({ is_paused: !current }).eq('id', n_id);
         if (!error) fetchNews();
+        else { alert('Erro: ' + error.message); setLoading(false); }
+    };
+
+    const handleSaveTransmission = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            // Auto-extrai o ID do YouTube e gera thumbnail se não foi fornecida
+            const videoId = extractYouTubeId(transmissionForm.youtube_url || '');
+            const thumbnail = transmissionForm.thumbnail_url || (videoId ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` : '');
+            const payload = {
+                ...transmissionForm,
+                youtube_video_id: videoId || transmissionForm.youtube_video_id,
+                thumbnail_url: thumbnail,
+                channel_name: transmissionForm.channel_name || '+Vaquejada Oficial',
+                active: true,
+            };
+            let error;
+            if (transmissionForm.id) {
+                ({ error } = await supabase.from('transmissions').update(payload).eq('id', transmissionForm.id));
+            } else {
+                ({ error } = await supabase.from('transmissions').insert([payload]));
+            }
+            if (error) throw error;
+            alert(transmissionForm.id ? 'Transmissão atualizada!' : '✅ Transmissão publicada na TV +Vaquejada!');
+            setTransmissionForm({});
+            fetchTransmissions();
+        } catch (err: any) { alert(err.message); }
+        finally { setLoading(false); }
+    };
+
+    const toggleTransmissionStatus = async (id: string, current: boolean) => {
+        setLoading(true);
+        const { error } = await supabase.from('transmissions').update({ active: !current }).eq('id', id);
+        if (!error) fetchTransmissions();
+        else { alert('Erro: ' + error.message); setLoading(false); }
+    };
+
+    const deleteTransmission = async (id: string) => {
+        if (!confirm('Excluir esta transmissão?')) return;
+        setLoading(true);
+        const { error } = await supabase.from('transmissions').delete().eq('id', id);
+        if (!error) fetchTransmissions();
         else { alert('Erro: ' + error.message); setLoading(false); }
     };
 
@@ -1034,10 +1109,202 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
             );
         }
 
+        if (subviewNews === 'TV') {
+            const previewVideoId = extractYouTubeId(transmissionForm.youtube_url || '');
+            const previewThumb = transmissionForm.thumbnail_url || (previewVideoId ? `https://img.youtube.com/vi/${previewVideoId}/hqdefault.jpg` : null);
+
+            return (
+                <div className="absolute inset-0 bg-[#F8F5F2] flex flex-col z-[120]">
+                    <header className="px-6 py-5 border-b border-[#1A1108]/5 flex items-center gap-4 bg-gradient-to-r from-[#1A0A05] to-[#2a0a05] sticky top-0 z-10 w-full">
+                        <button onClick={() => setSubviewNews('HOME')} className="material-icons text-white/60 active:scale-90 transition-transform">arrow_back</button>
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
+                                <span className="material-icons text-white text-lg">live_tv</span>
+                            </div>
+                            <div>
+                                <h2 className="text-lg font-black uppercase italic tracking-tight text-white">TV +VAQUEJADA</h2>
+                                <p className="text-[9px] font-bold uppercase tracking-widest text-white/40">Gerenciar Transmissões</p>
+                            </div>
+                        </div>
+                    </header>
+                    <div className="flex-1 overflow-y-auto p-6 space-y-6 pb-24">
+
+                        {/* INFO INSTRUCIONAL */}
+                        <div className="bg-red-600/10 border border-red-600/20 rounded-2xl p-4 flex gap-3">
+                            <span className="material-icons text-red-500 shrink-0 text-lg mt-0.5">info</span>
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-red-500 mb-1">Como funciona</p>
+                                <p className="text-[11px] text-leather/70 font-medium leading-relaxed">
+                                    Cole o link da live do seu canal YouTube (ou canal autorizado). O app extrai o ID automaticamente, gera a thumbnail e incorpora o player. Ative o badge <span className="font-black text-red-600">AO VIVO</span> para aparecer o indicador piscando no botão.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* FORMULÁRIO */}
+                        <form onSubmit={handleSaveTransmission} className="bg-white p-6 rounded-[32px] border border-[#1A1108]/5 shadow-sm space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-[10px] font-black uppercase tracking-widest text-[#D4AF37]">{
+                                    transmissionForm.id ? 'Editar Transmissão' : '▶ Iniciar Transmissão'
+                                }</h3>
+                                {transmissionForm.id && (
+                                    <span className="text-[9px] font-black text-leather/40 uppercase px-2 py-1 bg-neutral-50 rounded-lg">Modo Edição</span>
+                                )}
+                            </div>
+
+                            {/* Preview da thumbnail */}
+                            {previewThumb && (
+                                <div className="relative aspect-video rounded-2xl overflow-hidden bg-black border border-[#1A1108]/10">
+                                    <img src={previewThumb} className="w-full h-full object-cover" alt="Preview" />
+                                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                                        <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center shadow-xl">
+                                            <span className="material-icons text-white text-2xl translate-x-0.5">play_arrow</span>
+                                        </div>
+                                    </div>
+                                    {previewVideoId && (
+                                        <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded text-[9px] font-black text-white font-mono">
+                                            ID: {previewVideoId}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            <div className="space-y-3">
+                                <input 
+                                    className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-4 text-sm font-bold text-leather outline-none focus:border-[#D4AF37] placeholder:text-leather/30" 
+                                    placeholder="Título da Transmissão (ex: Vaquejada de Serrinha 2025)" 
+                                    value={transmissionForm.title || ''} 
+                                    onChange={(e) => setTransmissionForm({...transmissionForm, title: e.target.value})} 
+                                    required 
+                                />
+                                <div className="relative">
+                                    <input 
+                                        className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-4 pl-10 text-sm font-bold text-leather outline-none focus:border-red-400 placeholder:text-leather/30" 
+                                        placeholder="Link YouTube (youtube.com/watch?v=... ou youtu.be/...)" 
+                                        value={transmissionForm.youtube_url || ''} 
+                                        onChange={(e) => setTransmissionForm({...transmissionForm, youtube_url: e.target.value})} 
+                                        required 
+                                    />
+                                    <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-red-500 text-lg">link</span>
+                                </div>
+                                <input 
+                                    className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-4 text-sm font-bold text-leather outline-none focus:border-[#D4AF37] placeholder:text-leather/30" 
+                                    placeholder="Canal (ex: +Vaquejada Oficial)" 
+                                    value={transmissionForm.channel_name || ''} 
+                                    onChange={(e) => setTransmissionForm({...transmissionForm, channel_name: e.target.value})} 
+                                />
+                                <textarea
+                                    className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-4 text-sm font-bold text-leather outline-none focus:border-[#D4AF37] placeholder:text-leather/30 resize-none" 
+                                    placeholder="Descrição curta (opcional)" 
+                                    rows={2}
+                                    value={transmissionForm.description || ''} 
+                                    onChange={(e) => setTransmissionForm({...transmissionForm, description: e.target.value})} 
+                                />
+                            </div>
+
+                            {/* Toggle AO VIVO */}
+                            <button
+                                type="button"
+                                onClick={() => setTransmissionForm({...transmissionForm, is_live: !transmissionForm.is_live})}
+                                className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                                    transmissionForm.is_live
+                                        ? 'bg-red-600 border-red-600 text-white shadow-lg shadow-red-600/20'
+                                        : 'bg-white border-[#1A1108]/10 text-leather/60'
+                                }`}
+                            >
+                                <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                                    transmissionForm.is_live ? 'bg-white border-white' : 'border-leather/30'
+                                }`}>
+                                    {transmissionForm.is_live && <span className="w-2 h-2 bg-red-600 rounded-full animate-pulse" />}
+                                </span>
+                                <div className="text-left flex-1">
+                                    <p className={`text-xs font-black uppercase tracking-widest ${transmissionForm.is_live ? 'text-white' : 'text-leather/60'}`}>
+                                        {transmissionForm.is_live ? '🔴 AO VIVO — Badge ativo no app' : 'Marcar como AO VIVO agora'}
+                                    </p>
+                                    <p className={`text-[9px] font-medium mt-0.5 ${transmissionForm.is_live ? 'text-white/70' : 'text-leather/40'}`}>
+                                        {transmissionForm.is_live ? 'Badge piscando aparece para todos os usuários' : 'Ative para exibir o indicador de live'}
+                                    </p>
+                                </div>
+                            </button>
+
+                            <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-red-700 to-red-600 text-white p-5 rounded-2xl font-black uppercase text-sm tracking-widest active:scale-95 transition-transform shadow-xl shadow-red-600/20 flex items-center justify-center gap-2 disabled:opacity-50">
+                                 {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <span className="material-icons">live_tv</span>}
+                                 {transmissionForm.id ? 'Atualizar Transmissão' : 'Publicar na TV +Vaquejada'}
+                            </button>
+                            {transmissionForm.id && (
+                                <button type="button" onClick={() => setTransmissionForm({})} className="w-full text-[10px] font-black uppercase tracking-widest text-leather/40 py-2">Cancelar Edição</button>
+                            )}
+                        </form>
+
+                        {/* LISTA DE TRANSMISSÕES */}
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-[10px] font-black uppercase tracking-widest text-leather/40">Transmissões cadastradas</h3>
+                                <span className="text-[9px] font-black text-[#D4AF37]">{transmissionsList.length} total</span>
+                            </div>
+
+                            {transmissionsList.length === 0 ? (
+                                <div className="text-center text-[11px] opacity-40 font-bold py-10 border border-dashed border-leather/10 rounded-2xl">
+                                    <span className="material-icons text-3xl mb-2 opacity-50">videocam_off</span>
+                                    <p>Nenhuma transmissão cadastrada.</p>
+                                </div>
+                            ) : transmissionsList.map((t) => {
+                                const tThumb = t.thumbnail_url || (t.youtube_video_id ? `https://img.youtube.com/vi/${t.youtube_video_id}/hqdefault.jpg` : null);
+                                return (
+                                    <div key={t.id} className={`bg-white border rounded-2xl overflow-hidden shadow-sm transition-all ${
+                                        t.is_live ? 'border-red-400 ring-1 ring-red-400/20' : t.active ? 'border-[#1A1108]/10' : 'border-[#1A1108]/5 opacity-50'
+                                    }`}>
+                                        <div className="flex items-center gap-3 p-3">
+                                            <div className="w-20 h-12 bg-black rounded-xl overflow-hidden flex items-center justify-center relative shrink-0">
+                                                {tThumb ? <img src={tThumb} className="w-full h-full object-cover" alt={t.title} /> : <span className="material-icons text-white/20">live_tv</span>}
+                                                {t.is_live && <div className="absolute inset-0 flex items-end p-1"><span className="text-[8px] font-black bg-red-600 text-white px-1 rounded flex items-center gap-0.5"><span className="w-1 h-1 bg-white rounded-full animate-pulse" />LIVE</span></div>}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[11px] font-black uppercase text-leather leading-tight truncate">{t.title}</p>
+                                                <p className="text-[9px] font-bold text-[#D4AF37] truncate mt-0.5">{t.channel_name || '+Vaquejada'}</p>
+                                                <p className="text-[8px] text-leather/30 truncate font-mono">{t.youtube_url}</p>
+                                            </div>
+                                            <div className="flex flex-col gap-1 shrink-0">
+                                                <button onClick={() => setTransmissionForm(t)} className="w-7 h-7 rounded-lg bg-neutral-50 text-leather flex items-center justify-center hover:bg-[#D4AF37]/10 hover:text-[#D4AF37] transition-all">
+                                                    <span className="material-icons text-sm">edit</span>
+                                                </button>
+                                                <button onClick={() => toggleTransmissionStatus(t.id, t.active)} className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${t.active ? 'bg-green-100 text-green-600' : 'bg-red-50 text-red-400'}`}>
+                                                    <span className="material-icons text-sm">{t.active ? 'visibility' : 'visibility_off'}</span>
+                                                </button>
+                                                <button onClick={() => deleteTransmission(t.id)} className="w-7 h-7 rounded-lg bg-red-50 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all">
+                                                    <span className="material-icons text-sm">delete</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
         return (
             <div className="absolute inset-0 bg-[#F8F5F2] flex flex-col z-[120]">
                 <SubHeader title="Arena Notícias" />
                 <div className="flex-1 overflow-y-auto">
+                    <SectionTitle title="Módulo TV" />
+                    <div className="px-6 mb-8">
+                        <button 
+                            onClick={() => setSubviewNews('TV')}
+                            className="w-full bg-gradient-to-br from-red-600 to-red-800 p-6 rounded-3xl shadow-xl shadow-red-900/20 active:scale-95 transition-all flex items-center gap-4 group"
+                        >
+                            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+                                <span className="material-icons text-white text-2xl group-hover:scale-110 transition-transform">live_tv</span>
+                            </div>
+                            <div className="text-left">
+                                <h4 className="text-white font-black uppercase text-lg italic leading-none tracking-tighter">TV +VAQUEJADA</h4>
+                                <p className="text-white/60 text-[9px] font-bold uppercase tracking-widest mt-1">Gerenciar Transmissões Youtube</p>
+                            </div>
+                            <span className="material-icons text-white/40 ml-auto">settings</span>
+                        </button>
+                    </div>
+
                     <SectionTitle title="Gestão de Notícias" />
                     <div className="px-6 grid grid-cols-2 gap-3 mb-6">
                         <button onClick={()=>{ setNewsForm({ type: 'info' }); setSubviewNews('CREATE'); }} className="bg-[#D4AF37] text-white p-4 rounded-xl font-black uppercase tracking-widest text-[10px] flex flex-col items-center gap-2 active:scale-95 shadow-sm">
