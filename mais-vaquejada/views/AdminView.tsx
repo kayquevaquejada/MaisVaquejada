@@ -64,6 +64,38 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
     const hasEventos = isMaster || user?.admin_eventos;
     const hasNoticias = isMaster || user?.admin_noticias;
 
+    const [loginBgUrl, setLoginBgUrl] = useState('');
+    const [loginBgUploading, setLoginBgUploading] = useState(false);
+
+    useEffect(() => {
+        if (isMaster) {
+            supabase.from('app_settings').select('value').eq('key', 'login_bg_url').single()
+                .then(({ data }) => { if (data?.value?.url) setLoginBgUrl(data.value.url); });
+        }
+    }, [isMaster]);
+
+    const handleLoginBgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setLoginBgUploading(true);
+        try {
+            const ext = file.name.split('.').pop();
+            const fileName = `login_bg_${Date.now()}.${ext}`;
+            const { error: uploadErr } = await supabase.storage.from('vaquejadas').upload(fileName, file, { upsert: true });
+            if (uploadErr) throw uploadErr;
+            const { data: { publicUrl } } = supabase.storage.from('vaquejadas').getPublicUrl(fileName);
+            const { error: settingsErr } = await supabase.from('app_settings')
+                .upsert({ key: 'login_bg_url', value: { url: publicUrl } }, { onConflict: 'key' });
+            if (settingsErr) throw settingsErr;
+            setLoginBgUrl(publicUrl);
+            alert('✅ Fundo de login atualizado! Ative a atualização no app para ver.');
+        } catch (err: any) {
+            alert('Erro no upload: ' + err.message);
+        } finally {
+            setLoginBgUploading(false);
+        }
+    };
+
     useEffect(() => {
         if (isMaster) fetchTotalUsers();
         if (hasEventos) fetchEvents();
@@ -1366,6 +1398,46 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                             badge={totalUsersCount ? totalUsersCount.toLocaleString() : undefined} 
                             onClick={() => setActiveTab('USERS')} 
                         />
+
+                        {/* Trocar Fundo de Login */}
+                        <div className="mx-4 mb-4">
+                            <div className="bg-white border border-[#1A1108]/10 rounded-[28px] overflow-hidden shadow-sm">
+                                <div className="px-5 py-4 border-b border-[#1A1108]/5 flex items-center gap-3">
+                                    <div className="w-9 h-9 bg-[#D4AF37]/10 rounded-xl flex items-center justify-center">
+                                        <span className="material-icons text-[#D4AF37] text-lg">wallpaper</span>
+                                    </div>
+                                    <div>
+                                        <p className="font-black text-sm text-leather leading-tight">Trocar Fundo de Login</p>
+                                        <p className="text-[9px] text-leather/40 uppercase tracking-widest">Imagem de fundo da tela inicial</p>
+                                    </div>
+                                </div>
+                                <div className="p-5 space-y-4">
+                                    {loginBgUrl ? (
+                                        <div className="relative rounded-2xl overflow-hidden aspect-[9/16] w-28 border border-[#1A1108]/10 shadow-md">
+                                            <img src={loginBgUrl} className="w-full h-full object-cover" alt="Fundo atual" />
+                                            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-[#0F0A05]/80" />
+                                            <span className="absolute bottom-2 left-2 text-[7px] font-black text-white/60 uppercase tracking-widest">Atual</span>
+                                        </div>
+                                    ) : (
+                                        <div className="w-28 aspect-[9/16] bg-neutral-100 rounded-2xl border-2 border-dashed border-leather/10 flex items-center justify-center">
+                                            <span className="material-icons text-leather/20 text-3xl">image</span>
+                                        </div>
+                                    )}
+                                    <label className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-black uppercase text-[10px] tracking-widest cursor-pointer transition-all border ${
+                                        loginBgUploading
+                                            ? 'bg-neutral-100 border-neutral-200 text-leather/30'
+                                            : 'bg-[#D4AF37] border-[#D4AF37] text-white active:scale-95 shadow-md shadow-[#D4AF37]/20'
+                                    }`}>
+                                        {loginBgUploading
+                                            ? <><div className="w-4 h-4 border-2 border-leather/20 border-t-leather/60 rounded-full animate-spin" /> Enviando...</>
+                                            : <><span className="material-icons text-base">upload</span> {loginBgUrl ? 'Trocar Imagem' : 'Annexar Imagem'}</>
+                                        }
+                                        <input type="file" className="hidden" accept="image/*" onChange={handleLoginBgUpload} disabled={loginBgUploading} />
+                                    </label>
+                                    <p className="text-[9px] text-leather/30 text-center font-bold uppercase tracking-widest">O efeito escuro é aplicado automaticamente</p>
+                                </div>
+                            </div>
+                        </div>
                     </>
                 )}
 

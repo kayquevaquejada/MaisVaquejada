@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
 interface LoginViewProps {
@@ -12,6 +12,19 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const DEFAULT_BG = 'https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80';
+  const [loginBg, setLoginBg] = useState(DEFAULT_BG);
+
+  useEffect(() => {
+    supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'login_bg_url')
+      .single()
+      .then(({ data }) => {
+        if (data?.value?.url) setLoginBg(data.value.url);
+      });
+  }, []);
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
@@ -37,7 +50,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/40 to-[#0F0A05] z-10" />
         <img
-          src="https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80"
+          src={loginBg}
           className="w-full h-full object-cover scale-110 animate-pulse duration-[10000ms]"
           alt="Vaquejada Background"
         />
@@ -49,8 +62,8 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
           <div className="inline-block px-4 py-1.5 rounded-full bg-[#ECA413]/10 border border-[#ECA413]/20 mb-6">
             <span className="text-[#ECA413] text-[10px] font-black uppercase tracking-[0.3em]">Arena Digital Oficial</span>
           </div>
-          <h1 className="text-6xl font-black italic tracking-tighter leading-none mb-2">
-            <span className="text-[#ECA413]">+V</span><span className="text-white">AQUEJADA</span>
+          <h1 className="font-black italic tracking-tighter leading-none mb-2 flex items-baseline justify-center">
+            <span className="text-[#ECA413]" style={{ fontSize: '7.5rem', lineHeight: 1 }}>+V</span><span className="text-white text-6xl">AQUEJADA</span>
           </h1>
           <p className="text-white/40 text-xs font-bold uppercase tracking-widest italic">A maior paixão do Nordeste em um só lugar</p>
         </div>
