@@ -38,43 +38,29 @@ const App: React.FC = () => {
   useEffect(() => {
     // Consolidated Init Logic
     const initApp = async () => {
-      console.log('DEBUG: Current Browser URL:', window.location.href);
-      console.log('DEBUG: Supabase Client Config:', (supabase as any).supabaseUrl);
-      
-      const { data: { session }, error } = await supabase.auth.getSession();
-      console.log('App Init: Session found:', !!session, 'Error:', error);
-      
-      if (session?.user) {
-        await fetchProfile(session.user.id);
-      } else {
-        /* 
-        // DEV BYPASS: If on localhost, auto-login as Master for debugging
-        if (window.location.hostname === 'localhost') {
-           console.log('DEV BYPASS: Authenticating as Mock Master');
-           setUser({
-             id: '00000000-0000-0000-0000-000000000000',
-             name: 'Vaqueiro Master',
-             email: 'drkayquegusmao@gmail.com',
-             role: 'ADMIN_MASTER',
-             status: 'ACTIVE',
-             profile_completed: true,
-             username: 'master',
-             isMaster: true
-           } as any);
-           setCurrentView(View.SOCIAL);
-           setInitializing(false);
-           return;
+      try {
+        console.log('DEBUG: Current Browser URL:', window.location.href);
+        console.log('DEBUG: Supabase Client Config:', (supabase as any).supabaseUrl);
+        
+        const { data: { session }, error } = await supabase.auth.getSession();
+        console.log('App Init: Session found:', !!session, 'Error:', error);
+        
+        if (session?.user) {
+          await fetchProfile(session.user.id);
+        } else {
+          // Handle Paths if no session
+          const path = window.location.pathname;
+          if (path.startsWith('/perfil/')) {
+              setCurrentView(View.LOGIN); // Must login to see others? Or just go to login
+          } else if (![View.LOGIN, View.SIGNUP, View.FORGOT_PASSWORD, View.RECOVERY_ASSISTED].includes(currentView)) {
+              setCurrentView(View.LOGIN);
+          }
+          setInitializing(false);
         }
-        */
-
-        // Handle Paths if no session
-        const path = window.location.pathname;
-        if (path.startsWith('/perfil/')) {
-            setCurrentView(View.LOGIN); // Must login to see others? Or just go to login
-        } else if (![View.LOGIN, View.SIGNUP, View.FORGOT_PASSWORD, View.RECOVERY_ASSISTED].includes(currentView)) {
-            setCurrentView(View.LOGIN);
-        }
+      } catch (err) {
+        console.error('CRITICAL: Error in initApp:', err);
         setInitializing(false);
+        setCurrentView(View.LOGIN);
       }
     };
 
