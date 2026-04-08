@@ -67,8 +67,11 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, user }) => {
   };
 
   const handleCenterClick = () => {
-    handleNav(View.EVENTS);
-    setIsExpanded(!isExpanded);
+    if (!isExpanded) {
+      setIsExpanded(true); // 1º clique: expande o menu
+    } else {
+      handleNav(View.EVENTS); // 2º clique: vai para o Home (handleNav já fecha o menu)
+    }
   };
 
   return (
