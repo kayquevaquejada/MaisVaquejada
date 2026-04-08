@@ -7,11 +7,13 @@ interface SettingsViewProps {
     user: User | null;
     onBack: () => void;
     onLogout: () => void;
+    onProfileUpdate?: () => void;
 }
 
 type SettingsTab = 'MAIN' | 'EDIT_PROFILE' | 'PRIVACY' | 'SECURITY' | 'NOTIFICATIONS' | 'HELP' | 'ABOUT' | 'ACTIVITY' | 'BLOCKED' | 'LANGUAGE';
 
-const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout }) => {
+const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onProfileUpdate }) => {
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
     const [activeTab, setActiveTab] = useState<SettingsTab>('MAIN');
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState<string | null>(null);
@@ -19,10 +21,11 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout }) =
     // Profile Form
     const [profileData, setProfileData] = useState({
         name: user?.name || '',
-        username: user?.email.split('@')[0] || '',
-        bio: '',
+        username: user?.email?.split('@')[0] || '',
+        bio: user?.bio || '',
         phone: user?.phone || '',
         email: user?.email || '',
+        avatar_url: user?.avatar_url || '',
         isPrivate: false
     });
 
@@ -44,19 +47,63 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout }) =
             const { error } = await supabase
                 .from('profiles')
                 .update({
-                    name: profileData.name,
+                    full_name: profileData.name,
                     whatsapp: profileData.phone,
+                    bio: profileData.bio,
+                    avatar_url: profileData.avatar_url,
                 })
                 .eq('id', user?.id);
 
             if (error) throw error;
             setSuccess('Perfil atualizado!');
+            if (onProfileUpdate) onProfileUpdate();
             setTimeout(() => {
                 setSuccess(null);
                 setActiveTab('MAIN');
             }, 2000);
         } catch (err: any) {
             alert(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !user?.id) return;
+
+        setLoading(true);
+        try {
+            const fileExt = file.name.split('.').pop();
+            const filePath = `${user.id}/${Math.random()}.${fileExt}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('avatars')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('avatars')
+                .getPublicUrl(filePath);
+
+            setProfileData(prev => ({ ...prev, avatar_url: publicUrl }));
+            
+            // Auto-save the avatar URL to profile immediately or wait for "Salvar"?
+            // Usually immediate is better for UX, then user hits save for other fields.
+            const { error: updateError } = await supabase
+                .from('profiles')
+                .update({ avatar_url: publicUrl })
+                .eq('id', user.id);
+            
+            if (updateError) throw updateError;
+
+            if (onProfileUpdate) onProfileUpdate();
+            setSuccess('Foto alterada!');
+            setTimeout(() => setSuccess(null), 2000);
+        } catch (error: any) {
+            console.error('Error uploading avatar:', error);
+            alert(`Erro ao enviar foto: ${error.message}`);
         } finally {
             setLoading(false);
         }
@@ -109,10 +156,20 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout }) =
             </header>
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 <div className="flex flex-col items-center gap-3">
-                    <div className="w-20 h-20 rounded-full bg-leather/10 border-2 border-[#D4AF37] overflow-hidden">
-                        <img src={user?.avatar_url || `https://picsum.photos/seed/${user?.id}/100`} className="w-full h-full object-cover" alt="Profile" />
+                    <div 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-20 h-20 rounded-full bg-leather/10 border-2 border-[#D4AF37] overflow-hidden cursor-pointer active:scale-95 transition-transform"
+                    >
+                        <img src={profileData.avatar_url || `https://ui-avatars.com/api/?name=${profileData.name}&background=random`} className="w-full h-full object-cover" alt="Profile" />
                     </div>
-                    <button className="text-[10px] font-black text-[#D4AF37] uppercase tracking-widest">Alterar foto</button>
+                    <button onClick={() => fileInputRef.current?.click()} className="text-[10px] font-black text-[#D4AF37] uppercase tracking-widest">Alterar foto</button>
+                    <input 
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleAvatarUpload}
+                        accept="image/*"
+                        className="hidden"
+                    />
                 </div>
                 <div className="space-y-4">
                     <div className="space-y-1">

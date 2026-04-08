@@ -369,6 +369,7 @@ const App: React.FC = () => {
             user={user}
             onBack={() => setCurrentView(View.PROFILE)}
             onLogout={handleLogout}
+            onProfileUpdate={() => user && fetchProfile(user.id)}
           />
         );
       case View.FORGOT_PASSWORD:

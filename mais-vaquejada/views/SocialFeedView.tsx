@@ -60,6 +60,7 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
             isVerified: p.profiles?.role?.includes('ADMIN'),
             location: p.location || 'Brasil',
             imageUrl: p.media_url,
+            avatarUrl: p.profiles?.avatar_url,
             likes: '0',
             comments: 0,
             caption: p.caption || '',
@@ -83,7 +84,7 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
 
       const { data: storiesData } = await storyQuery;
 
-      if (storiesData && storiesData.length > 0) {
+      if (storiesData) {
           // Group stories by user
           const grouped = storiesData.reduce((acc: any, s: any) => {
               const username = s.profiles?.username || 'vaqueiro';
@@ -91,7 +92,7 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
                   acc[username] = {
                       id: s.user_id,
                       username: `@${username}`,
-                      avatar: s.profiles?.avatar_url || `https://picsum.photos/seed/${username}/100`,
+                      avatar: s.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${username}&background=random`,
                       items: [],
                       hasNew: true
                   };
@@ -99,25 +100,41 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
               acc[username].items.push({
                   id: s.id,
                   url: s.media_url,
-                  type: s.media_type
+                  type: s.type || 'image',
+                  duration: 5000,
+                  created_at: s.created_at
               });
               return acc;
           }, {});
 
-          const storyArray: any[] = Object.values(grouped);
-          // Prepend "My Status" if not present
-          const myStory = storyArray.find(s => s.id === user?.id);
-          const others = storyArray.filter(s => s.id !== user?.id);
-          
+          const myStories = storiesData.filter(s => s.user_id === user?.id).map(s => ({
+              id: s.id,
+              url: s.media_url,
+              type: s.type || 'image',
+              duration: 5000,
+              created_at: s.created_at
+          }));
+
+          const storyList = [
+            { 
+              id: '1', 
+              username: 'Seu Status', 
+              avatar: user?.avatar_url || `https://ui-avatars.com/api/?name=${user?.name || 'User'}&background=random`, 
+              items: myStories, 
+              hasNew: false 
+            },
+            ...Object.values(grouped).filter((g: any) => g.id !== user?.id)
+          ];
+          setStories(storyList);
+      } else {
           setStories([
-              { 
-                  id: 'me', 
-                  username: 'Seu Status', 
-                  avatar: user?.avatar_url || 'https://picsum.photos/seed/my/100', 
-                  items: myStory ? myStory.items : [], 
-                  hasNew: false 
-              },
-              ...others
+            { 
+              id: '1', 
+              username: 'Seu Status', 
+              avatar: user?.avatar_url || `https://ui-avatars.com/api/?name=${user?.name || 'User'}&background=random`, 
+              items: [], 
+              hasNew: false 
+            }
           ]);
       }
     } catch (err: any) {
@@ -618,9 +635,9 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
               <div className="flex items-center gap-3">
                 <div 
                    onClick={() => navigateToProfile(post.username)}
-                   className="w-10 h-10 rounded-full border border-[#ECA413]/30 p-0.5 cursor-pointer active:scale-95 transition-transform"
+                   className="w-10 h-10 rounded-full border border-[#ECA413]/30 p-0.5 cursor-pointer active:scale-95 transition-transform bg-neutral-800"
                 >
-                  <img className="w-full h-full object-cover rounded-full bg-neutral-800" src={`https://picsum.photos/seed/${post.username}/100`} alt={post.username} />
+                  <img className="w-full h-full object-cover rounded-full" src={post.avatarUrl || `https://ui-avatars.com/api/?name=${post.username}&background=random`} alt={post.username} />
                 </div>
                 <div>
                   <div className="flex items-center gap-1 cursor-pointer hover:underline" onClick={() => navigateToProfile(post.username)}>
