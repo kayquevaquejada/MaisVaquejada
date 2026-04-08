@@ -43,14 +43,14 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
         />
       </div>
 
-      <div className="relative z-20 flex-1 flex flex-col px-8 py-12 justify-center">
+      <div className="relative z-20 flex-1 flex flex-col px-8 justify-center" style={{ paddingTop: 'max(3rem, env(safe-area-inset-top, 3rem))', paddingBottom: '3rem' }}>
         {/* Header Wow Factor */}
         <div className="mb-12 text-center animate-in fade-in slide-in-from-top-10 duration-1000">
           <div className="inline-block px-4 py-1.5 rounded-full bg-[#ECA413]/10 border border-[#ECA413]/20 mb-6">
             <span className="text-[#ECA413] text-[10px] font-black uppercase tracking-[0.3em]">Arena Digital Oficial</span>
           </div>
-          <h1 className="text-6xl font-black text-white italic tracking-tighter leading-none mb-2">
-            +VAQUE<span className="text-[#ECA413]">JADA</span>
+          <h1 className="text-6xl font-black italic tracking-tighter leading-none mb-2">
+            <span className="text-[#ECA413]">+V</span><span className="text-white">AQUEJADA</span>
           </h1>
           <p className="text-white/40 text-xs font-bold uppercase tracking-widest italic">A maior paixão do Nordeste em um só lugar</p>
         </div>
