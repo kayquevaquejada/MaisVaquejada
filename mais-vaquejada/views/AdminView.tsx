@@ -81,11 +81,49 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         setLoading(false);
     };
 
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, index: number | 'cover') => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setLoading(true);
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+            const filePath = `${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('vaquejadas')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('vaquejadas')
+                .getPublicUrl(filePath);
+
+            if (index === 'cover') {
+                setEventForm({ ...eventForm, image_url: publicUrl });
+            } else {
+                const currentGallery = Array.isArray(eventForm.gallery) ? [...eventForm.gallery] : [];
+                // Fill with empty strings until the index if needed, though we usually work with 4 fixed slots
+                const newGallery = [...currentGallery];
+                newGallery[index] = publicUrl;
+                setEventForm({ ...eventForm, gallery: newGallery });
+            }
+        } catch (error: any) {
+            alert('Erro no upload: ' + error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleSaveEvent = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         try {
-            const payload = { ...eventForm, created_by: user.id };
+            // Clean empty strings from gallery before saving
+            const cleanGallery = (eventForm.gallery || []).filter((url: string) => url && url.trim() !== '');
+            const payload = { ...eventForm, gallery: cleanGallery, created_by: user.id };
             let error;
             if (eventForm.id) {
                  ({ error } = await supabase.from('events').update(payload).eq('id', eventForm.id));
@@ -105,6 +143,38 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         const { error } = await supabase.from('events').update({ is_paused: !current }).eq('id', e_id);
         if (!error) fetchEvents();
         else { alert('Erro: ' + error.message); setLoading(false); }
+    };
+
+    const handleNewsFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'pdf') => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setLoading(true);
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Date.now()}_news_${Math.random().toString(36).substring(7)}.${fileExt}`;
+            const filePath = `${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('vaquejadas')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('vaquejadas')
+                .getPublicUrl(filePath);
+
+            if (type === 'image') {
+                setNewsForm({ ...newsForm, image_url: publicUrl });
+            } else {
+                setNewsForm({ ...newsForm, pdf_url: publicUrl });
+            }
+        } catch (error: any) {
+            alert('Erro no upload: ' + error.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleSaveNews = async (e: React.FormEvent) => {
@@ -558,22 +628,102 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                     </header>
                     <div className="flex-1 overflow-y-auto p-6">
                         <form onSubmit={handleSaveEvent} className="space-y-4">
-                            <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-3 text-sm text-leather focus:border-[#D4AF37] outline-none" placeholder="Nome da Vaquejada" required value={eventForm.title || ''} onChange={(e)=>setEventForm({...eventForm, title: e.target.value})} />
-                            <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-3 text-sm text-leather focus:border-[#D4AF37] outline-none" placeholder="Parque" value={eventForm.park || ''} onChange={(e)=>setEventForm({...eventForm, park: e.target.value})} />
-                            <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-3 text-sm text-leather focus:border-[#D4AF37] outline-none" placeholder="Cidade / UF" value={eventForm.location || ''} onChange={(e)=>setEventForm({...eventForm, location: e.target.value})} />
-                             <div className="grid grid-cols-2 gap-3">
-                                <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-3 text-sm text-leather focus:border-[#D4AF37] outline-none" placeholder="Mês (ex: Set)" value={eventForm.date_month || ''} onChange={(e)=>setEventForm({...eventForm, date_month: e.target.value})} />
-                                <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-3 text-sm text-leather focus:border-[#D4AF37] outline-none" placeholder="Dia (ex: 15..17)" value={eventForm.date_day || ''} onChange={(e)=>setEventForm({...eventForm, date_day: e.target.value})} />
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-leather/40 uppercase tracking-widest ml-1">Informações Básicas</label>
+                                <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Nome da Vaquejada" required value={eventForm.title || ''} onChange={(e)=>setEventForm({...eventForm, title: e.target.value})} />
                             </div>
-                            <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-3 text-sm text-leather focus:border-[#D4AF37] outline-none" placeholder="URL da Imagem de Capa" required value={eventForm.image_url || ''} onChange={(e)=>setEventForm({...eventForm, image_url: e.target.value})} />
-                            <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-3 text-sm text-leather focus:border-[#D4AF37] outline-none" placeholder="Premiação (ex: R$ 50.000)" value={eventForm.prizes || ''} onChange={(e)=>setEventForm({...eventForm, prizes: e.target.value})} />
-                            <textarea className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-3 text-sm text-leather focus:border-[#D4AF37] outline-none" placeholder="Descrição opcional..." rows={3} value={eventForm.description || ''} onChange={(e)=>setEventForm({...eventForm, description: e.target.value})} />
-                            <div className="flex items-center gap-2">
-                                <input type="checkbox" id="hl_event" checked={eventForm.is_highlight || false} onChange={(e)=>setEventForm({...eventForm, is_highlight: e.target.checked})} className="w-5 h-5 accent-[#D4AF37] bg-white border-[#1A1108]/10 rounded" />
-                                <label htmlFor="hl_event" className="text-xs font-bold text-leather block cursor-pointer select-none">Destacar no Carrossel Inicial</label>
+                            
+                            <div className="grid grid-cols-2 gap-3">
+                                <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Parque" value={eventForm.park || ''} onChange={(e)=>setEventForm({...eventForm, park: e.target.value})} />
+                                <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Cidade / UF" value={eventForm.location || ''} onChange={(e)=>setEventForm({...eventForm, location: e.target.value})} />
                             </div>
-                            <button type="submit" className="w-full bg-[#D4AF37] text-white p-4 rounded-xl font-black uppercase text-xs mt-4 active:scale-95 transition-transform">Salvar Vaquejada</button>
-                            <button type="button" onClick={()=>setSubviewEvents('HOME')} className="w-full bg-transparent text-leather p-4 rounded-xl font-bold uppercase text-xs">Cancelar</button>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Mês (ex: Set)" value={eventForm.date_month || ''} onChange={(e)=>setEventForm({...eventForm, date_month: e.target.value})} />
+                                <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Dia (ex: 15..17)" value={eventForm.date_day || ''} onChange={(e)=>setEventForm({...eventForm, date_day: e.target.value})} />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-leather/40 uppercase tracking-widest ml-1">Imagem de Capa (Principal)</label>
+                                <div className="relative aspect-video bg-white border-2 border-dashed border-[#1A1108]/10 rounded-2xl overflow-hidden group">
+                                    {eventForm.image_url ? (
+                                        <>
+                                            <img src={eventForm.image_url} className="w-full h-full object-cover" />
+                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                                                <label className="bg-white text-leather p-2 rounded-full cursor-pointer active:scale-90 transition-transform shadow-lg">
+                                                    <span className="material-icons text-xl">cached</span>
+                                                    <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'cover')} />
+                                                </label>
+                                                <button type="button" onClick={() => setEventForm({...eventForm, image_url: ''})} className="bg-red-500 text-white p-2 rounded-full active:scale-90 transition-transform shadow-lg">
+                                                    <span className="material-icons text-xl">delete</span>
+                                                </button>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <label className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-neutral-50 transition-colors">
+                                            <span className="material-icons text-4xl text-[#D4AF37] mb-2">add_photo_alternate</span>
+                                            <span className="text-[10px] font-black text-leather/40 uppercase tracking-widest">Toque para Upload</span>
+                                            <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'cover')} />
+                                        </label>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black text-leather/40 uppercase tracking-widest ml-1 flex justify-between items-center">
+                                    Galeria do Evento
+                                    <span className="text-[8px] opacity-60">Até 4 fotos extras</span>
+                                </label>
+                                <div className="grid grid-cols-4 gap-2">
+                                    {[0, 1, 2, 3].map((idx) => {
+                                        const imgUrl = (eventForm.gallery || [])[idx];
+                                        return (
+                                            <div key={idx} className="aspect-square bg-white border border-[#1A1108]/10 rounded-xl overflow-hidden relative group">
+                                                {imgUrl ? (
+                                                    <>
+                                                        <img src={imgUrl} className="w-full h-full object-cover" />
+                                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                            <button 
+                                                                type="button" 
+                                                                onClick={() => {
+                                                                    const newGal = [...(eventForm.gallery || [])];
+                                                                    newGal[idx] = '';
+                                                                    setEventForm({...eventForm, gallery: newGal});
+                                                                }}
+                                                                className="text-white material-icons text-sm"
+                                                            >delete</button>
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <label className="absolute inset-0 flex items-center justify-center cursor-pointer hover:bg-neutral-50">
+                                                        <span className="material-icons text-leather/20">add</span>
+                                                        <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, idx)} />
+                                                    </label>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-leather/40 uppercase tracking-widest ml-1">Detalhes</label>
+                                <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Premiação (ex: R$ 50.000)" value={eventForm.prizes || ''} onChange={(e)=>setEventForm({...eventForm, prizes: e.target.value})} />
+                                <textarea className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Descrição opcional..." rows={4} value={eventForm.description || ''} onChange={(e)=>setEventForm({...eventForm, description: e.target.value})} />
+                            </div>
+
+                            <div className="flex items-center gap-3 bg-white p-4 rounded-xl border border-[#1A1108]/5 shadow-sm">
+                                <input type="checkbox" id="hl_event" checked={eventForm.is_highlight || false} onChange={(e)=>setEventForm({...eventForm, is_highlight: e.target.checked})} className="w-6 h-6 accent-[#D4AF37] cursor-pointer" />
+                                <label htmlFor="hl_event" className="text-xs font-black text-leather block cursor-pointer select-none uppercase tracking-tight">Destacar no topo do App</label>
+                            </div>
+
+                            <div className="pt-4 pb-10 space-y-3">
+                                <button type="submit" disabled={loading} className="w-full bg-[#D4AF37] text-white p-5 rounded-2xl font-black uppercase text-xs active:scale-95 transition-transform shadow-xl shadow-[#D4AF37]/20 disabled:opacity-50 flex items-center justify-center gap-2">
+                                    {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <span className="material-icons text-sm">save</span>}
+                                    {eventForm.id ? "Atualizar Vaquejada" : "Salvar Vaquejada"}
+                                </button>
+                                <button type="button" onClick={()=>setSubviewEvents('HOME')} className="w-full bg-transparent text-leather/40 p-3 rounded-xl font-black uppercase text-[10px] tracking-widest">Descartar Alterações</button>
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -667,19 +817,83 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                         <h2 className="text-xl font-black uppercase italic tracking-tight text-leather">{newsForm.id ? "Editar Notícia" : "Criar Notícia"}</h2>
                     </header>
                     <div className="flex-1 overflow-y-auto p-6">
-                        <form onSubmit={handleSaveNews} className="space-y-4">
-                            <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-3 text-sm text-leather focus:border-[#D4AF37] outline-none" placeholder="Título da Notícia" required value={newsForm.title || ''} onChange={(e)=>setNewsForm({...newsForm, title: e.target.value})} />
-                            <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-3 text-sm text-leather focus:border-[#D4AF37] outline-none" placeholder="Tag Curta (Ex: RESULTADOS, URGENTE)" required value={newsForm.tag || ''} onChange={(e)=>setNewsForm({...newsForm, tag: e.target.value})} />
-                            <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-3 text-sm text-leather focus:border-[#D4AF37] outline-none" placeholder="Data (Ex: Ontem, 12 de Jan)" required value={newsForm.date || ''} onChange={(e)=>setNewsForm({...newsForm, date: e.target.value})} />
-                            <select className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-3 text-sm text-leather focus:border-[#D4AF37] outline-none" value={newsForm.type || 'info'} onChange={(e)=>setNewsForm({...newsForm, type: e.target.value})}>
-                                <option value="info">Geral / Informativo</option>
-                                <option value="urgent">Urgente (Destaque Vermelho)</option>
-                                <option value="official">Oficial (Destaque Dourado)</option>
-                            </select>
-                            <textarea className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-3 text-sm text-leather focus:border-[#D4AF37] outline-none" placeholder="Descrição completa..." rows={5} value={newsForm.description || ''} onChange={(e)=>setNewsForm({...newsForm, description: e.target.value})} />
-                            
-                            <button type="submit" className="w-full bg-[#D4AF37] text-white p-4 rounded-xl font-black uppercase text-xs mt-4 active:scale-95 transition-transform">Salvar Notícia</button>
-                            <button type="button" onClick={()=>setSubviewNews('HOME')} className="w-full bg-transparent text-leather p-4 rounded-xl font-bold uppercase text-xs">Cancelar</button>
+                        <form onSubmit={handleSaveNews} className="space-y-4 pb-20">
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-leather/40 uppercase tracking-widest ml-1">Cabeçalho</label>
+                                <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Título da Notícia" required value={newsForm.title || ''} onChange={(e)=>setNewsForm({...newsForm, title: e.target.value})} />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Tag Curta (Ex: RESULTADOS)" value={newsForm.tag || ''} onChange={(e)=>setNewsForm({...newsForm, tag: e.target.value})} />
+                                <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Data (Ex: Ontem)" value={newsForm.date || ''} onChange={(e)=>setNewsForm({...newsForm, date: e.target.value})} />
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-leather/40 uppercase tracking-widest ml-1">Tipo de Conteúdo</label>
+                                <select className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather focus:border-[#D4AF37] outline-none shadow-sm appearance-none" value={newsForm.type || 'info'} onChange={(e)=>setNewsForm({...newsForm, type: e.target.value})}>
+                                    <option value="info">Geral / Informativo</option>
+                                    <option value="important">Urgente / Alerta</option>
+                                    <option value="success">Resultado / Festa</option>
+                                </select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-leather/40 uppercase tracking-widest ml-1">Foto da Notícia</label>
+                                <div className="relative aspect-video bg-white border-2 border-dashed border-[#1A1108]/10 rounded-2xl overflow-hidden group">
+                                    {newsForm.image_url ? (
+                                        <>
+                                            <img src={newsForm.image_url} className="w-full h-full object-cover" />
+                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                                                <label className="bg-white text-leather p-2 rounded-full cursor-pointer shadow-lg active:scale-90 transition-transform">
+                                                    <span className="material-icons text-xl">cached</span>
+                                                    <input type="file" className="hidden" accept="image/*" onChange={(e) => handleNewsFileUpload(e, 'image')} />
+                                                </label>
+                                                <button type="button" onClick={() => setNewsForm({...newsForm, image_url: ''})} className="bg-red-500 text-white p-2 rounded-full shadow-lg active:scale-90 transition-transform">
+                                                    <span className="material-icons text-xl">delete</span>
+                                                </button>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <label className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-neutral-50 transition-colors">
+                                            <span className="material-icons text-4xl text-[#D4AF37] mb-2">add_photo_alternate</span>
+                                            <span className="text-[10px] font-black text-leather/40 uppercase tracking-widest">Adicionar Foto</span>
+                                            <input type="file" className="hidden" accept="image/*" onChange={(e) => handleNewsFileUpload(e, 'image')} />
+                                        </label>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-leather/40 uppercase tracking-widest ml-1">Anexo PDF</label>
+                                    <label className={`w-full h-14 border rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all ${newsForm.pdf_url ? 'bg-red-50 border-red-200 text-red-600' : 'bg-white border-[#1A1108]/10 text-leather/40'}`}>
+                                        <span className="material-icons text-xl">{newsForm.pdf_url ? 'picture_as_pdf' : 'attach_file'}</span>
+                                        <span className="text-[10px] font-black uppercase tracking-widest">{newsForm.pdf_url ? 'PDF Pronto' : 'Subir PDF'}</span>
+                                        <input type="file" className="hidden" accept="application/pdf" onChange={(e) => handleNewsFileUpload(e, 'pdf')} />
+                                        {newsForm.pdf_url && (
+                                            <button type="button" onClick={(e) => { e.preventDefault(); setNewsForm({...newsForm, pdf_url: ''}); }} className="ml-2 material-icons text-sm opacity-50 hover:opacity-100">close</button>
+                                        )}
+                                    </label>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-leather/40 uppercase tracking-widest ml-1">Link Externo</label>
+                                    <div className="relative">
+                                        <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 pl-10 text-sm text-leather focus:border-[#D4AF37] outline-none shadow-sm" placeholder="https://..." value={newsForm.external_link || ''} onChange={(e)=>setNewsForm({...newsForm, external_link: e.target.value})} />
+                                        <span className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-leather/20 text-lg">link</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-leather/40 uppercase tracking-widest ml-1">Texto da Notícia</label>
+                                <textarea className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Descrição completa..." rows={6} value={newsForm.description || ''} onChange={(e)=>setNewsForm({...newsForm, description: e.target.value})} />
+                            </div>
+
+                            <button type="submit" disabled={loading} className="w-full bg-[#D4AF37] text-white p-5 rounded-2xl font-black uppercase text-xs active:scale-95 transition-transform shadow-xl shadow-[#D4AF37]/20 flex items-center justify-center gap-2 disabled:opacity-50 mt-4">
+                                {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <span className="material-icons text-sm">publish</span>}
+                                {newsForm.id ? "Atualizar Notícia" : "Publicar Notícia"}
+                            </button>
+                            <button type="button" onClick={()=>setSubviewNews('HOME')} className="w-full bg-transparent text-leather/40 p-3 rounded-xl font-black uppercase text-[10px] tracking-widest">Cancelar</button>
                         </form>
                     </div>
                 </div>
