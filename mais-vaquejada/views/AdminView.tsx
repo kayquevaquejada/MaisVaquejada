@@ -13,6 +13,9 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [success, setSuccess] = useState<string | null>(null);
+    const [showFullUserList, setShowFullUserList] = useState(false);
+    const [userListSort, setUserListSort] = useState<'name' | 'newest'>('newest');
     
     // Stats for Main Menu
     const [totalUsersCount, setTotalUsersCount] = useState(0);
@@ -178,7 +181,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
 
     const searchUsers = async (query: string) => {
         setSearchQuery(query);
-        if (query.length < 3) {
+        if (query.trim().length === 0) {
             setSearchResults([]);
             return;
         }
@@ -208,6 +211,8 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
             if (error) throw error;
             // Update local state results
             setSearchResults(prev => prev.map(u => u.id === userId ? { ...u, [column]: !currentValue } : u));
+            setSuccess(currentValue ? 'Permissão removida' : 'Permissão concedida!');
+            setTimeout(() => setSuccess(null), 1500);
         } catch (err: any) {
             alert('Erro ao atualizar permissão: ' + err.message);
         } finally {
@@ -306,58 +311,128 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
 
     // --- SPECIFIC VIEWS ---
 
-    const renderUsersView = () => (
-        <div className="absolute inset-0 bg-[#F8F5F2] flex flex-col z-[120]">
-            <SubHeader title="Base de Usuários" />
-            <div className="flex-1 overflow-y-auto">
-                {isMaster && (
-                    <>
-                        <SectionTitle title="Hierarquia" />
-                        <PermissionManager />
-                    </>
-                )}
-                
-                <SectionTitle title="Segurança da Base" />
-                <div className="px-6 py-4 flex gap-4 bg-white/50 border-y border-[#1A1108]/5">
-                    <div className="w-12 h-12 bg-[#D4AF37]/10 rounded-full flex items-center justify-center">
-                        <span className="material-icons text-[#D4AF37]">group</span>
+    const renderUsersView = () => {
+        const sortedUsers = [...searchResults].sort((a, b) => {
+            if (userListSort === 'name') {
+                return (a.full_name || a.name || '').localeCompare(b.full_name || b.name || '');
+            }
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+
+        return (
+            <div className="absolute inset-0 bg-[#F8F5F2] flex flex-col z-[120]">
+                <SubHeader title="Base de Usuários" />
+                <div className="flex-1 overflow-y-auto pb-20">
+                    {isMaster && (
+                        <>
+                            <SectionTitle title="Hierarquia" />
+                            <PermissionManager />
+                        </>
+                    )}
+                    
+                    <SectionTitle title="Estatísticas da Base" />
+                    <div 
+                        onClick={async () => {
+                            setLoading(true);
+                            const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+                            if (data) setSearchResults(data);
+                            setShowFullUserList(!showFullUserList);
+                            setLoading(false);
+                        }}
+                        className="mx-6 p-4 flex gap-4 bg-white rounded-2xl border border-[#1A1108]/5 active:scale-95 transition-transform cursor-pointer shadow-sm"
+                    >
+                        <div className="w-12 h-12 bg-[#D4AF37]/10 rounded-full flex items-center justify-center">
+                            <span className="material-icons text-[#D4AF37]">group</span>
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-xl font-black text-leather">{totalUsersCount}</p>
+                            <p className="text-[10px] text-leather/40 uppercase font-black tracking-widest leading-tight">Contas Registradas</p>
+                            <p className="text-[8px] text-[#D4AF37] font-bold uppercase mt-1">Clique para ver lista completa</p>
+                        </div>
+                        <span className="material-icons text-leather/20 self-center">
+                            {showFullUserList ? 'expand_less' : 'expand_more'}
+                        </span>
                     </div>
-                    <div>
-                        <p className="text-xl font-black text-leather">{totalUsersCount}</p>
-                        <p className="text-[10px] text-leather/40 uppercase font-black tracking-widest">Contas Registradas</p>
+
+                    {showFullUserList && (
+                        <div className="px-6 mt-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div className="flex gap-2 mb-2">
+                                <button 
+                                    onClick={() => setUserListSort('newest')}
+                                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${
+                                        userListSort === 'newest' ? 'bg-leather text-white border-leather' : 'bg-white text-leather/40 border-leather/5'
+                                    }`}
+                                >ORDEM LOGIN</button>
+                                <button 
+                                    onClick={() => setUserListSort('name')}
+                                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${
+                                        userListSort === 'name' ? 'bg-leather text-white border-leather' : 'bg-white text-leather/40 border-leather/5'
+                                    }`}
+                                >ORDEM ALFABÉTICA</button>
+                            </div>
+
+                            {sortedUsers.map(u => (
+                                <div key={u.id} className="bg-white border border-leather/5 p-4 rounded-xl flex items-center justify-between shadow-sm">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-leather/5 flex items-center justify-center overflow-hidden border border-leather/10">
+                                            {u.avatar_url ? <img src={u.avatar_url} className="w-full h-full object-cover" /> : <span className="material-icons text-leather/20 text-sm">person</span>}
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-xs text-leather leading-tight">{u.full_name || u.name || 'Sem Nome'}</p>
+                                            <p className="text-[9px] text-leather/40 lowercase">@{u.username || 'user'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[8px] font-black text-leather/60 uppercase">{new Date(u.created_at).toLocaleDateString('pt-BR')}</p>
+                                        <p className="text-[7px] text-[#D4AF37] font-black uppercase">{u.role}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    <SectionTitle title="Ações Rápidas" />
+                    <div className="px-6 space-y-4">
+                        <div className="bg-white/50 border border-red-500/10 p-6 rounded-2xl">
+                            <h3 className="text-xs font-black text-red-600 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                <span className="material-icons text-red-500 text-[16px]">warning</span>
+                                Excluir Conta Manualmente
+                            </h3>
+                            <input 
+                                type="text" 
+                                placeholder="Buscar por @username, nome ou email..."
+                                className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather mb-4 outline-none focus:border-red-500/50 shadow-sm"
+                                value={searchQuery}
+                                onChange={(e) => searchUsers(e.target.value)}
+                            />
+                            <div className="space-y-2">
+                                {searchResults.map(result => (
+                                    <div key={result.id} className="bg-white border border-red-500/10 p-3 rounded-xl flex items-center justify-between shadow-sm">
+                                        <div>
+                                            <p className="font-bold text-sm text-leather">{result.name || result.full_name}</p>
+                                            <p className="text-[10px] text-leather/60">@{result.username}</p>
+                                        </div>
+                                        <button 
+                                            onClick={() => deleteUser(result.id, result.name || result.username)}
+                                            className="px-4 py-2 bg-red-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 shadow-md shadow-red-500/20"
+                                        >
+                                            Deletar
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div className="p-6 mt-4">
-                    <h3 className="text-xs font-black text-leather uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <span className="material-icons text-red-500 text-[16px]">warning</span>
-                        Excluir Conta Manualmente
-                    </h3>
-                    <input 
-                        type="text" 
-                        placeholder="Buscar por @username, nome ou email..."
-                        className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-3 text-sm text-leather mb-4 outline-none focus:border-red-500/50"
-                        value={searchQuery}
-                        onChange={(e) => searchUsers(e.target.value)}
-                    />
-                    {searchResults.map(result => (
-                        <div key={result.id} className="bg-white border border-red-500/20 p-3 rounded-xl flex items-center justify-between mb-2">
-                            <div>
-                                <p className="font-bold text-sm text-leather">{result.name || result.full_name}</p>
-                                <p className="text-[10px] text-leather/60">@{result.username}</p>
-                            </div>
-                            <button 
-                                onClick={() => deleteUser(result.id, result.name || result.username)}
-                                className="px-4 py-2 bg-red-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95"
-                            >
-                                Deletar
-                            </button>
-                        </div>
-                    ))}
-                </div>
+                {success && (
+                    <div className="fixed bottom-24 left-1/2 -translate-x-1/2 px-6 py-3 bg-leather text-[#D4AF37] rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-2xl z-[300] animate-in slide-in-from-bottom duration-300">
+                        {success}
+                    </div>
+                )}
             </div>
-        </div>
-    );
+        );
+    };
 
     const renderMercadoView = () => {
         if (subviewMercado === 'LIST') {

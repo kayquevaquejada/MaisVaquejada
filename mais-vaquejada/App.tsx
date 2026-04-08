@@ -32,7 +32,8 @@ const App: React.FC = () => {
     'kayquegusmao@icloud.com',
     'kayquegusmao276@gmail.com',
     'Kayquegusmao1@gmail.com',
-    'drkayquegusmao@gmail.com'
+    'drkayquegusmao@gmail.com',
+    'contato@maisvaquejada.com.br'
   ];
   const [initializing, setInitializing] = useState(true);
   const [isBiometricLocked, setIsBiometricLocked] = useState(false);
