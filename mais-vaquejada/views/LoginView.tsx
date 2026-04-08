@@ -20,7 +20,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
       .from('app_settings')
       .select('value')
       .eq('key', 'login_bg_url')
-      .single()
+      .maybeSingle()
       .then(({ data }) => {
         if (data?.value?.url) setLoginBg(data.value.url);
       });

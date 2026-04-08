@@ -79,18 +79,37 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         if (!file) return;
         setLoginBgUploading(true);
         try {
+            // 1. Upload da imagem
             const ext = file.name.split('.').pop();
             const fileName = `login_bg_${Date.now()}.${ext}`;
             const { error: uploadErr } = await supabase.storage.from('vaquejadas').upload(fileName, file, { upsert: true });
-            if (uploadErr) throw uploadErr;
+            if (uploadErr) throw new Error('Erro no upload do arquivo: ' + uploadErr.message);
+            
             const { data: { publicUrl } } = supabase.storage.from('vaquejadas').getPublicUrl(fileName);
-            const { error: settingsErr } = await supabase.from('app_settings')
-                .upsert({ key: 'login_bg_url', value: { url: publicUrl } }, { onConflict: 'key' });
-            if (settingsErr) throw settingsErr;
+            console.log('Upload OK, URL:', publicUrl);
+
+            // 2. Salvar URL no app_settings (tenta update, se não existir faz insert)
+            const { data: existing } = await supabase.from('app_settings').select('key').eq('key', 'login_bg_url').maybeSingle();
+            
+            let settingsErr;
+            if (existing) {
+                // Row já existe, faz update
+                ({ error: settingsErr } = await supabase.from('app_settings')
+                    .update({ value: { url: publicUrl } })
+                    .eq('key', 'login_bg_url'));
+            } else {
+                // Row não existe, faz insert
+                ({ error: settingsErr } = await supabase.from('app_settings')
+                    .insert({ key: 'login_bg_url', value: { url: publicUrl } }));
+            }
+            
+            if (settingsErr) throw new Error('Erro ao salvar configuração: ' + settingsErr.message);
+            
             setLoginBgUrl(publicUrl);
-            alert('✅ Fundo de login atualizado! Ative a atualização no app para ver.');
+            alert('✅ Fundo de login atualizado com sucesso!');
         } catch (err: any) {
-            alert('Erro no upload: ' + err.message);
+            console.error('handleLoginBgUpload error:', err);
+            alert('❌ ' + (err.message || 'Erro desconhecido'));
         } finally {
             setLoginBgUploading(false);
         }
