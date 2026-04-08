@@ -44,7 +44,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
     const [listModalLoading, setListModalLoading] = useState(false);
 
     // Determines if the user is looking at their own profile
-    const isMyProfile = !targetUsername || targetUsername === 'meu-perfil' || (user && user.username && targetUsername === user.username);
+    const isMyProfile = !targetUsername || targetUsername === 'meu-perfil' || (user && user.username && targetUsername === user.username) || (user && profileData && user.id === profileData.id);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -122,7 +122,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
     }, [isMyProfile, user, profileData]);
 
     const handleToggleFollow = async () => {
-        if (!user || isMyProfile || !profileData) return;
+        if (!user || isMyProfile || !profileData || user.id === profileData.id) return;
 
         try {
             if (isFollowing) {

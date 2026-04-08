@@ -3,11 +3,10 @@ import { View } from '../types';
 
 interface NavbarProps {
   currentView: View;
-  onViewChange: (view: View) => void;
   user: any;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, user }) => {
+const Navbar: React.FC<NavbarProps> = ({ currentView, user }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isMouseOver, setIsMouseOver] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
@@ -63,15 +62,13 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, user }) => {
   };
 
   const handleNav = (view: View) => {
-    onViewChange(view);
+    window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view } }));
+    setIsExpanded(false);
   };
 
   const handleCenterClick = () => {
-    if (!isExpanded) {
-      setIsExpanded(true);
-    } else {
-      handleNav(View.EVENTS);
-    }
+    handleNav(View.EVENTS);
+    setIsExpanded(!isExpanded);
   };
 
   return (

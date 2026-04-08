@@ -26,7 +26,11 @@ type AdminTab = 'MAIN' | 'USERS' | 'MERCADO' | 'SOCIAL' | 'EVENTOS' | 'NOTICIAS'
 
 const AdminView: React.FC<AdminViewProps> = ({ user }) => {
     const [activeTab, setActiveTab] = useState<AdminTab>('MAIN');
-    const [loading, setLoading] = useState(false);
+    const [loadingTasks, setLoadingTasks] = useState(0);
+    const loading = loadingTasks > 0;
+    const setLoading = (isLoading: boolean) => {
+        setLoadingTasks(prev => isLoading ? prev + 1 : Math.max(0, prev - 1));
+    };
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [success, setSuccess] = useState<string | null>(null);

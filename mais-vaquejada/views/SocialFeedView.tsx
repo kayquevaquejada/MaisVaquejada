@@ -506,25 +506,14 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
       {/* Header */}
       <header className="flex justify-between items-center px-4 py-3 sticky top-0 z-50 bg-background-dark/95 backdrop-blur-md border-b border-white/5">
         <div className="flex items-center gap-2 min-w-0">
+        <div className="flex flex-col">
           <h1 className="text-2xl font-black uppercase tracking-tighter text-[#ECA413] italic truncate">+VAQUEJADA</h1>
+          <div className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded font-black mt-1">SOU A TELA SOCIAL (FEED)</div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button 
-            onClick={() => setIsSearchOpen(true)} 
-            className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center border border-white/10 active:scale-90 transition-transform"
-          >
-            <span className="material-icons text-lg text-white" aria-label="buscar">search</span>
-          </button>
-
-          <button 
-            onClick={() => navigateToProfile('meu-perfil')}
-            className="w-8 h-8 rounded-full border border-[#ECA413] p-0.5 overflow-hidden active:scale-90 transition-transform shrink-0"
-          >
-            <img 
-              src={user?.avatar_url || `https://ui-avatars.com/api/?name=${user?.name || 'U'}&background=ECA413&color=fff`} 
-              className="w-full h-full rounded-full object-cover" 
-              alt="Perfil"
-            />
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          <button className="relative" onClick={() => setIsSearchOpen(true)}>
+            <span className="material-icons text-2xl text-white" aria-label="buscar">search</span>
           </button>
           
           <button className="relative" onClick={() => { setIsNotificationsOpen(!isNotificationsOpen); setHasUnreadNotifications(false); }}>

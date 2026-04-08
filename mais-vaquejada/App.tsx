@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
 import { View, User } from './types';
 import LoginView from './views/LoginView';
 import SignUpView from './views/SignUpView';
@@ -20,8 +19,35 @@ import Navbar from './components/Navbar';
 import { supabase } from './lib/supabase';
 import { requestPushPermission } from './lib/notifications';
 
+// Escudo de Erros (ErrorBoundary)
+class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean, error: any}> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: any, errorInfo: ErrorInfo) {
+    console.error("ErrorBoundary caught an error", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="fixed inset-0 z-[9999] bg-white text-black p-10 flex flex-col items-center justify-center text-center">
+          <h1 className="text-2xl font-black mb-4 uppercase text-red-600">ERRO DE COMPONENTE</h1>
+          <p className="font-mono text-sm bg-gray-100 p-4 rounded mb-6">{this.state.error?.message || "Erro desconhecido"}</p>
+          <button onClick={() => window.location.reload()} className="bg-black text-white px-6 py-3 rounded-full font-bold">RECARREGAR</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(View.LOGIN);
+  const [navKey, setNavKey] = useState(0);
   const [profileUsername, setProfileUsername] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   
@@ -37,17 +63,18 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const initApp = async () => {
+      let timeoutId: any;
       try {
         console.log('DEBUG: Current Browser URL:', window.location.href);
         
-        const timeout = setTimeout(() => {
+        timeoutId = setTimeout(() => {
             setInitializing(false);
-        }, 8000); // 8 seconds safety
+        }, 6000); 
 
         const params = new URLSearchParams(window.location.search);
         const eventId = params.get('event');
         
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
           await fetchProfile(session.user.id);
@@ -62,11 +89,12 @@ const App: React.FC = () => {
           }
           setInitializing(false);
         }
-        clearTimeout(timeout);
       } catch (err) {
         console.error('Init Error:', err);
         setInitializing(false);
         setCurrentView(View.LOGIN);
+      } finally {
+        if (timeoutId) clearTimeout(timeoutId);
       }
     };
 
@@ -93,6 +121,7 @@ const App: React.FC = () => {
       const username = e.detail?.username ?? null;
       
       setCurrentView(view);
+      setNavKey(Date.now());
       if (username !== undefined) {
           setProfileUsername(username);
       }
@@ -111,6 +140,7 @@ const App: React.FC = () => {
         if (e.state) {
             setCurrentView(e.state.view);
             setProfileUsername(e.state.username);
+            setNavKey(Date.now());
         } else {
             const path = window.location.pathname;
             if (path.startsWith('/perfil/')) {
@@ -123,6 +153,7 @@ const App: React.FC = () => {
             } else {
                 setCurrentView(View.SOCIAL);
             }
+            setNavKey(Date.now());
         }
     };
 
@@ -143,6 +174,35 @@ const App: React.FC = () => {
 
   const fetchProfile = async (userId: string) => {
     try {
+      if (userId === 'guest_user') {
+        const guestProfile = {
+          id: 'guest_user',
+          full_name: 'Visitante Arena',
+          display_name: 'Visitante',
+          email: 'convidado@arena.com',
+          role: 'USER',
+          status: 'ACTIVE',
+          profile_completed: true,
+          username: 'visitante'
+        };
+        
+        const mappedUser: User = {
+          id: guestProfile.id,
+          name: guestProfile.full_name,
+          email: guestProfile.email,
+          role: guestProfile.role as any,
+          status: guestProfile.status,
+          profile_completed: guestProfile.profile_completed,
+          username: guestProfile.username,
+          isMaster: false
+        } as any;
+        
+        setUser(mappedUser);
+        setCurrentView(View.EVENTS);
+        setInitializing(false);
+        return;
+      }
+
       const { data: { user: authUser } } = await supabase.auth.getUser();
       const userEmail = authUser?.email;
       const isMasterEmail = userEmail && MASTER_EMAILS.some(e => e.toLowerCase() === userEmail.toLowerCase());
@@ -221,7 +281,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleAuthSuccess = (userData: any) => {
+  const handleAuthSuccess = async (userData: any) => {
     setInitializing(true);
     if (userData?.id) {
       fetchProfile(userData.id);
@@ -253,8 +313,8 @@ const App: React.FC = () => {
         case View.NEWS:
           return <NewsView user={user} />;
         case View.EVENTS:
-          const params = new URLSearchParams(window.location.search);
-          return <EventsView publicEventId={params.get('event') || undefined} onLoginPrompt={() => setCurrentView(View.LOGIN)} />;
+          const eventsParams = new URLSearchParams(window.location.search);
+          return <EventsView publicEventId={eventsParams.get('event') || undefined} onLoginPrompt={() => setCurrentView(View.LOGIN)} />;
         case View.SOCIAL:
           return <SocialFeedView user={user} onMediaCreation={() => setCurrentView(View.MEDIA_CREATION)} />;
         case View.MERCADO:
@@ -298,10 +358,20 @@ const App: React.FC = () => {
           return <EventsView />;
       }
     } catch (e: any) {
+      console.error('CRITICAL RENDER ERROR:', e);
       return (
-        <div className="p-10 bg-white text-black">
-          <h1>ERRO DE RENDERIZAÇÃO NA VIEW: {currentView}</h1>
-          <pre>{e.stack || e.message}</pre>
+        <div className="fixed inset-0 z-[5000] bg-white text-black p-10 flex flex-col items-center justify-center text-center">
+          <span className="material-icons text-red-600 text-6xl mb-4">error</span>
+          <h1 className="text-2xl font-black mb-2 uppercase">ERRO CRÍTICO NA VIEW: {currentView}</h1>
+          <p className="text-sm font-mono bg-gray-100 p-4 rounded-xl border border-red-200 mb-6 max-w-lg overflow-auto">
+            {e.message || 'Erro desconhecido'}
+          </p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-8 py-4 bg-black text-white rounded-full font-black uppercase text-xs"
+          >
+            RECARREGAR APLICATIVO
+          </button>
         </div>
       );
     }
@@ -333,18 +403,20 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background-dark overflow-hidden">
-      <div className="relative w-full h-screen bg-background-dark overflow-hidden flex flex-col">
-        <div className="flex-1 overflow-y-auto hide-scrollbar relative">
-          <div className="max-w-7xl mx-auto w-full h-full">
-            {renderView()}
+    <ErrorBoundary>
+      <div className="min-h-screen flex flex-col bg-background-dark overflow-hidden">
+        <div className="relative w-full h-screen bg-background-dark overflow-hidden flex flex-col">
+          <div className="flex-1 overflow-y-auto hide-scrollbar relative">
+            <div key={navKey} className="max-w-7xl mx-auto w-full h-full">
+              {renderView()}
+            </div>
           </div>
+          {showNavbar && (
+            <Navbar currentView={currentView} user={user} />
+          )}
         </div>
-        {showNavbar && (
-          <Navbar currentView={currentView} onViewChange={setCurrentView} user={user} />
-        )}
       </div>
-    </div>
+    </ErrorBoundary>
   );
 };
 

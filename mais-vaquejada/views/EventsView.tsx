@@ -101,10 +101,20 @@ interface EventsViewProps {
 }
 
 const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt }) => {
+  const [events, setEvents] = useState<any[]>([]);
+  const [banners, setBanners] = useState<any[]>(MOCK_ADVERTISERS);
   const [selectedState, setSelectedState] = useState('TODOS');
   const [selectedCircuit, setSelectedCircuit] = useState('todos');
   const [isCircuitPanelOpen, setIsCircuitPanelOpen] = useState(false);
   const [viewingEvent, setViewingEvent] = useState<EventItem | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [adIndex, setAdIndex] = useState(0);
+  const [bannerHeight, setBannerHeight] = useState(140); 
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    const saved = localStorage.getItem('arena_favorites');
+    return saved ? JSON.parse(saved) : [];
+  });
 
   // Sync with public event from URL
   useEffect(() => {
@@ -113,18 +123,6 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
       if (publicEv) setViewingEvent(publicEv);
     }
   }, [publicEventId, events]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [adIndex, setAdIndex] = useState(0);
-  const [bannerHeight, setBannerHeight] = useState(140); // Increased default height
-  const [banners, setBanners] = useState<any[]>(MOCK_ADVERTISERS);
-  const [favorites, setFavorites] = useState<string[]>(() => {
-    // Load from local storage if available for persistence mocking
-    const saved = localStorage.getItem('arena_favorites');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [events, setEvents] = useState<any[]>([]);
 
   useEffect(() => {
     localStorage.setItem('arena_favorites', JSON.stringify(favorites));
@@ -132,32 +130,37 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
 
   useEffect(() => {
     const fetchBannersAndSettingsAndEvents = async () => {
-      // Fetch Banners
-      const { data: bannersData } = await supabase.from('banners').select('*').eq('status', 'active');
-      if (bannersData && bannersData.length > 0) setBanners(bannersData);
+      try {
+        // Fetch Banners
+        const { data: bannersData } = await supabase.from('banners').select('*').eq('status', 'active');
+        if (bannersData && bannersData.length > 0) setBanners(bannersData);
 
-      // Fetch Height
-      const { data: heightData } = await supabase.from('app_settings').select('value').eq('key', 'banner_height').single();
-      if (heightData?.value?.value) setBannerHeight(heightData.value.value);
-      
-      // Fetch Live Events
-      const { data: eventsData } = await supabase.from('events').select('*').eq('is_paused', false).order('created_at', { ascending: false });
-      if (eventsData) {
-          // map snake_case to camelCase
-          setEvents(eventsData.map(ev => ({
-              ...ev,
-              imageUrl: ev.image_url,
-              date: { month: ev.date_month, day: ev.date_day }
-          })));
+        // Fetch Height
+        const { data: heightData } = await supabase.from('app_settings').select('value').eq('key', 'banner_height').single();
+        if (heightData?.value?.value) setBannerHeight(heightData.value.value);
+        
+        // Fetch Live Events
+        const { data: eventsData } = await supabase.from('events').select('*').eq('is_paused', false).order('created_at', { ascending: false });
+        if (eventsData) {
+            setEvents(eventsData.map(ev => ({
+                ...ev,
+                imageUrl: ev.image_url,
+                date: { month: ev.date_month, day: ev.date_day }
+            })));
+        }
+      } catch (err) {
+        console.error("Error fetching data:", err);
       }
     };
 
     fetchBannersAndSettingsAndEvents();
+  }, []);
 
+  // Timer separate for banners
+  useEffect(() => {
+    if (banners.length <= 1) return;
     const timer = setInterval(() => {
-      if (banners.length > 1) {
-        setAdIndex(prev => (prev + 1) % banners.length);
-      }
+      setAdIndex(prev => (prev + 1) % banners.length);
     }, 5000);
     return () => clearInterval(timer);
   }, [banners.length]);
@@ -196,12 +199,18 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
     alert(`Comentário enviado: "${comment}"`);
   };
 
-  const filteredEvents = events.filter(e => {
-    const matchesState = selectedState === 'TODOS' || (e.location && e.location.includes(selectedState));
+  const filteredEvents = (events || []).filter(e => {
+    if (!e) return false;
+    const location = e.location || '';
+    const title = e.title || '';
+    const circuitoId = e.circuitoId || '';
+
+    const matchesState = selectedState === 'TODOS' || location.includes(selectedState);
     const matchesSearch = searchQuery === '' ||
-      e.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      e.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCircuit = selectedCircuit === 'todos' || e.circuitoId === selectedCircuit;
+      location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCircuit = selectedCircuit === 'todos' || circuitoId === selectedCircuit;
+    
     return matchesState && matchesSearch && matchesCircuit;
   });
 
@@ -361,7 +370,10 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
       <header className="mb-6 -mx-6 px-6">
         <div className="flex justify-between items-center mb-6">
           {!isSearchOpen ? (
-            <h1 className="text-2xl font-black uppercase text-[#D4AF37] tracking-tighter italic">VAQUEJADAS</h1>
+            <div className="flex flex-col">
+              <h1 className="text-2xl font-black uppercase text-[#D4AF37] tracking-tighter italic">VAQUEJADAS</h1>
+              <div className="bg-green-600 text-white text-[10px] px-2 py-0.5 rounded font-black mt-1">SOU A TELA DE EVENTOS (HOME)</div>
+            </div>
           ) : (
             <div className="flex-1 mr-4 relative animate-in slide-in-from-right-2 duration-300">
               <input
@@ -453,7 +465,7 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
 
             if (idx === 1) { // Injetar Circuitos logo após 'TODOS'
               const isActive = selectedCircuit !== 'todos';
-              const label = isActive ? `CIRCUITOS • ${MOCK_CIRCUITS.find(c => c.id === selectedCircuit)?.nome.toUpperCase()}` : 'CIRCUITOS';
+              const label = isActive ? 'CIRCUITO ATIVO' : 'CIRCUITOS';
               const btnCircuit = (
                 <button
                   key="circuitos-btn"
