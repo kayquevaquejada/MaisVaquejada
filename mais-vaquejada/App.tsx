@@ -18,6 +18,7 @@ import BlockedAccountView from './views/BlockedAccountView';
 import RecoveryAssistedView from './views/RecoveryAssistedView';
 import Navbar from './components/Navbar';
 import { supabase } from './lib/supabase';
+import { NativeBiometric } from '@capgo/capacitor-native-biometric';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(() => {
@@ -34,6 +35,7 @@ const App: React.FC = () => {
     'drkayquegusmao@gmail.com'
   ];
   const [initializing, setInitializing] = useState(true);
+  const [isBiometricLocked, setIsBiometricLocked] = useState(false);
 
   useEffect(() => {
     // Consolidated Init Logic
@@ -166,6 +168,28 @@ const App: React.FC = () => {
   useEffect(() => {
     const requestDevicePermissions = async () => {
       if (!user) return;
+      
+      // Biometric lock check
+      try {
+        const bioResult = await NativeBiometric.isAvailable();
+        if (bioResult.isAvailable) {
+          setIsBiometricLocked(true);
+          await NativeBiometric.verifyIdentity({
+            reason: "Para proteger os seus dados, use sua biometria",
+            title: "Acesso Seguro +Vaquejada",
+            subtitle: "Identificação Exigida",
+            description: "Desbloqueie o App usando seu rosto ou dedo"
+          }).then(() => {
+            setIsBiometricLocked(false);
+          }).catch((err) => {
+            console.error("Falha na autenticação biométrica:", err);
+            // If they cancel, it remains locked
+          });
+        }
+      } catch (e) {
+        console.log("Biometria não suportada ou não é app nativo:", e);
+      }
+
       try {
         // Notificações Push
         if ('Notification' in window && Notification.permission === 'default') {
@@ -368,6 +392,36 @@ const App: React.FC = () => {
   };
 
   const showNavbar = ![View.LOGIN, View.SIGNUP, View.FORGOT_PASSWORD, View.COMPLETE_PROFILE, View.BLOCKED_ACCOUNT, View.RECOVERY_ASSISTED].includes(currentView);
+
+  if (isBiometricLocked) {
+    return (
+      <div className="min-h-screen flex flex-col pt-32 px-6 items-center bg-background-dark font-display">
+         <span className="material-icons text-8xl text-[#ECA413] drop-shadow-[0_0_15px_rgba(236,164,19,0.5)] mb-8">lock</span>
+         <h1 className="text-2xl font-black text-white uppercase italic tracking-tighter text-center">App Bloqueado</h1>
+         <p className="text-white/60 text-center mt-2 text-sm max-w-[250px]">
+           Por segurança, a biometria é necessária para usar o +Vaquejada nesta sessão.
+         </p>
+         <button 
+           onClick={async () => {
+             try {
+                await NativeBiometric.verifyIdentity({
+                  reason: "Para proteger os seus dados, use sua biometria",
+                  title: "Acesso Seguro +Vaquejada",
+                  subtitle: "Identificação Exigida",
+                  description: "Desbloqueie o App usando seu rosto ou dedo"
+                });
+                setIsBiometricLocked(false);
+             } catch(err) {
+                console.log('Biometria falhou novamente');
+             }
+           }}
+           className="mt-12 bg-[#ECA413] text-black font-black uppercase tracking-widest px-8 py-4 rounded-xl shadow-[0_0_20px_rgba(236,164,19,0.3)] active:scale-95 transition-transform"
+         >
+           Desbloquear
+         </button>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background-dark overflow-hidden">
