@@ -42,7 +42,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
 
     useEffect(() => {
         if (isMaster) fetchTotalUsers();
-        if (hasEventos && subviewEvents === 'LIST') fetchEvents();
+        if (hasEventos) fetchEvents();
         if (hasNoticias && subviewNews === 'LIST') fetchNews();
         if (hasMercado && subviewMercado === 'LIST') fetchMarket();
         if (hasSocial && subviewSocial === 'LIST') fetchPosts();
@@ -611,17 +611,47 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         return (
             <div className="absolute inset-0 bg-[#F8F5F2] flex flex-col z-[120]">
                 <SubHeader title="Vaquejadas" />
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex-1 overflow-y-auto pb-10">
                     <SectionTitle title="Gestão de Eventos" />
                     <div className="px-6 grid grid-cols-2 gap-3 mb-6">
                         <button onClick={()=>{ setEventForm({}); setSubviewEvents('CREATE'); }} className="bg-[#D4AF37] text-white p-4 rounded-xl font-black uppercase tracking-widest text-[10px] flex flex-col items-center gap-2 active:scale-95 shadow-sm">
                             <span className="material-icons">add_box</span>
                             Nova Vaquejada
                         </button>
-                        <button onClick={()=>{ setSubviewEvents('LIST'); }} className="bg-white border border-[#1A1108]/10 text-leather p-4 rounded-xl font-black uppercase tracking-widest text-[10px] flex flex-col items-center gap-2 active:scale-95">
-                            <span className="material-icons">list_alt</span>
-                            Lista/Ocultar
-                        </button>
+                    </div>
+
+                    <SectionTitle title="Eventos Atuais" />
+                    <div className="px-6 space-y-4">
+                        {eventsList.length === 0 ? (
+                            <div className="bg-white/50 border border-leather/5 p-10 rounded-2xl flex flex-col items-center gap-2 opacity-40">
+                                <span className="material-icons text-4xl">event_busy</span>
+                                <p className="text-[10px] font-black uppercase tracking-widest">Nenhum evento registrado</p>
+                            </div>
+                        ) : (
+                            eventsList.map((ev) => (
+                                <div key={ev.id} className={`bg-white border rounded-2xl p-4 flex justify-between items-center shadow-sm transition-all ${ev.is_paused ? 'border-red-300 opacity-60 bg-red-50/20' : 'border-[#1A1108]/5'}`}>
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 bg-neutral-100 rounded-xl overflow-hidden border border-[#1A1108]/5">
+                                            <img src={ev.image_url} className="w-full h-full object-cover" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-black text-sm text-leather leading-tight uppercase tracking-tight">{ev.title}</h4>
+                                            <p className="text-[9px] text-leather/40 font-bold uppercase">{ev.date_day} {ev.date_month} • {ev.park}</p>
+                                            {ev.is_paused && <span className="text-[7px] bg-red-500 text-white px-1.5 py-0.5 rounded-full font-black inline-block mt-1 uppercase tracking-tighter">Oculto</span>}
+                                            {ev.is_highlight && <span className="text-[7px] bg-[#D4AF37] text-white px-1.5 py-0.5 rounded-full font-black inline-block mt-1 ml-1 uppercase tracking-tighter">Destaque</span>}
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => { setEventForm(ev); setSubviewEvents('CREATE'); }} className="w-8 h-8 rounded-lg bg-[#D4AF37]/10 text-[#D4AF37] flex items-center justify-center active:scale-90 transition-transform">
+                                            <span className="material-icons text-sm">edit</span>
+                                        </button>
+                                        <button onClick={() => toggleHideEvent(ev.id, ev.is_paused)} className={`w-8 h-8 rounded-lg flex items-center justify-center active:scale-90 transition-transform ${ev.is_paused ? 'bg-green-100 text-green-600' : 'bg-red-50 text-red-500'}`}>
+                                            <span className="material-icons text-sm">{ev.is_paused ? 'visibility' : 'visibility_off'}</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
             </div>
