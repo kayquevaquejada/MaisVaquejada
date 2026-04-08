@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View } from '../types';
 
 interface NavbarProps {
@@ -9,6 +9,58 @@ interface NavbarProps {
 
 const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, user }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isMouseOver, setIsMouseOver] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+  const lastScrollY = useRef(0);
+  const scrollThreshold = 10;
+
+  useEffect(() => {
+    const handleScroll = () => {
+      // If mouse is over, we don't auto-hide or collapse
+      if (isMouseOver) return;
+
+      const currentScrollY = window.scrollY || 0;
+      // Also check nested scroll containers (like the one in App.tsx)
+      const mainContainer = document.querySelector('.overflow-y-auto');
+      const containerScrollY = mainContainer ? mainContainer.scrollTop : 0;
+      const effectiveY = currentScrollY + containerScrollY;
+
+      const diff = effectiveY - lastScrollY.current;
+
+      if (Math.abs(diff) > scrollThreshold) {
+        if (diff > 0) {
+          // Scrolling DOWN
+          if (isExpanded) {
+            setIsExpanded(false);
+          } else {
+            setIsVisible(false);
+          }
+        } else {
+          // Scrolling UP
+          setIsVisible(true);
+        }
+        lastScrollY.current = effectiveY;
+      }
+    };
+
+    // Use capture phase to catch scroll events from nested divs
+    window.addEventListener('scroll', handleScroll, true);
+    // Also catch mouse wheel and touch moves for immediate feedback
+    window.addEventListener('wheel', handleScroll, { passive: true });
+    window.addEventListener('touchmove', handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll, true);
+      window.removeEventListener('wheel', handleScroll);
+      window.removeEventListener('touchmove', handleScroll);
+    };
+  }, [isExpanded, isMouseOver]);
+
+  // When mouse enters, always show
+  const handleMouseEnter = () => {
+    setIsMouseOver(true);
+    setIsVisible(true);
+  };
 
   const handleNav = (view: View) => {
     onViewChange(view);
@@ -31,7 +83,13 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, user }) => {
           } transition-all duration-300`}
       />
 
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] flex items-center justify-center">
+      <div 
+        className={`fixed left-1/2 -translate-x-1/2 z-[100] flex items-center justify-center transition-all duration-500 ${
+          isVisible ? 'bottom-8' : 'bottom-[-100px]'
+        }`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={() => setIsMouseOver(false)}
+      >
         {/* Container Principal Expandível */}
         <div
           className={`relative flex items-center justify-center transition-all duration-500 cubic-bezier(0.175, 0.885, 0.32, 1.275) ${isExpanded

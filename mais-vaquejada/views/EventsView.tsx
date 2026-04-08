@@ -103,7 +103,7 @@ const EventsView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [adIndex, setAdIndex] = useState(0);
-  const [bannerHeight, setBannerHeight] = useState(112); // Default 28 * 4
+  const [bannerHeight, setBannerHeight] = useState(140); // Increased default height
   const [banners, setBanners] = useState<any[]>(MOCK_ADVERTISERS);
   const [favorites, setFavorites] = useState<string[]>(() => {
     // Load from local storage if available for persistence mocking
@@ -142,8 +142,10 @@ const EventsView: React.FC = () => {
     fetchBannersAndSettingsAndEvents();
 
     const timer = setInterval(() => {
-      setAdIndex(prev => (prev + 1) % (banners.length || 1));
-    }, 4000);
+      if (banners.length > 1) {
+        setAdIndex(prev => (prev + 1) % banners.length);
+      }
+    }, 5000);
     return () => clearInterval(timer);
   }, [banners.length]);
 
@@ -339,23 +341,53 @@ const EventsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Roller de Anunciantes */}
+        {/* Roller de Anunciantes (Propaganda) */}
         <div 
-          className="relative mb-6 w-full overflow-hidden rounded-2xl border border-white/10 bg-white/5 transition-all duration-500 ease-in-out"
+          className="relative mb-8 w-full overflow-hidden rounded-[32px] border border-white/10 bg-white/5 transition-all duration-700 ease-in-out shadow-2xl group"
           style={{ height: `${bannerHeight}px` }}
         >
           {banners.map((ad, idx) => (
             <div
               key={ad.id}
-              className={`absolute inset-0 transition-opacity duration-1000 flex items-center justify-center ${idx === adIndex ? 'opacity-100' : 'opacity-0'}`}
-              onClick={() => ad.link_url && window.open(ad.link_url, '_blank')}
+              className={`absolute inset-0 transition-all duration-1000 flex items-center justify-center cursor-pointer ${idx === adIndex ? 'opacity-100 scale-100' : 'opacity-0 scale-105 pointer-events-none'}`}
+              onClick={() => ad.link_url && window.open(ad.link_url.startsWith('http') ? ad.link_url : `https://${ad.link_url}`, '_blank')}
             >
-              <img src={ad.image_url || ad.img} className="w-full h-full object-cover" alt={ad.name || ad.title} />
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                <p className="text-[10px] font-black text-[#D4AF37] uppercase tracking-[0.3em] text-center">{ad.name || ad.title}</p>
+              <img src={ad.image_url || ad.img} className="w-full h-full object-cover" alt={ad.title || ad.name} />
+              
+              {/* Overlay Decorativo */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
+              
+              {/* Info do Anunciante */}
+              <div className="absolute bottom-4 left-0 right-0 px-6 flex justify-between items-end">
+                <div className="animate-in fade-in slide-in-from-bottom-2 duration-700 delay-300">
+                  <span className="text-[8px] font-black text-white/40 uppercase tracking-[0.3em] block mb-0.5">Parceiro Oficial</span>
+                  <p className="text-xs font-black text-[#D4AF37] uppercase tracking-widest">{ad.title || ad.name}</p>
+                </div>
+                {ad.link_url && (
+                  <div className="w-8 h-8 rounded-full bg-[#D4AF37] flex items-center justify-center text-background-dark shadow-lg shadow-[#D4AF37]/20 animate-in zoom-in duration-500">
+                    <span className="material-icons text-sm">open_in_new</span>
+                  </div>
+                )}
               </div>
             </div>
           ))}
+
+          {/* Indicadores de Slide */}
+          {banners.length > 1 && (
+            <div className="absolute top-4 right-6 flex gap-1 z-10">
+              {banners.map((_, i) => (
+                <div 
+                  key={i} 
+                  className={`h-1 rounded-full transition-all duration-500 ${i === adIndex ? 'w-4 bg-[#D4AF37]' : 'w-1 bg-white/20'}`}
+                />
+              ))}
+            </div>
+          )}
+          
+          {/* Badge "Publicidade" */}
+          <div className="absolute top-4 left-6 bg-black/40 backdrop-blur-md px-2 py-1 rounded border border-white/10 z-10">
+             <span className="text-[7px] font-black text-white/60 uppercase tracking-tighter">Publicidade</span>
+          </div>
         </div>
 
         {/* Horizontal Scrollable States */}

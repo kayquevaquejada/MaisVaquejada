@@ -10,7 +10,7 @@ interface SettingsViewProps {
     onProfileUpdate?: () => void;
 }
 
-type SettingsTab = 'MAIN' | 'EDIT_PROFILE' | 'PRIVACY' | 'SECURITY' | 'NOTIFICATIONS' | 'HELP' | 'ABOUT' | 'ACTIVITY' | 'BLOCKED' | 'LANGUAGE';
+type SettingsTab = 'MAIN' | 'EDIT_PROFILE' | 'PRIVACY' | 'SECURITY' | 'NOTIFICATIONS' | 'HELP' | 'ABOUT' | 'ACTIVITY' | 'BLOCKED' | 'LANGUAGE' | 'METRICS';
 
 const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onProfileUpdate }) => {
     const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -30,6 +30,15 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
     });
 
     // Toggles State
+    const [metricsData, setMetricsData] = useState<any>({
+        users: 0,
+        events: 0,
+        news: 0,
+        market: 0,
+        posts: 0,
+        banners: 0
+    });
+
     const [toggles, setToggles] = useState({
         notificationsLikes: true,
         notificationsComments: true,
@@ -113,6 +122,41 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
         setToggles(prev => ({ ...prev, [key]: !prev[key] }));
         setSuccess('Preferência atualizada');
         setTimeout(() => setSuccess(null), 2000);
+    };
+
+    const fetchMetrics = async () => {
+        setLoading(true);
+        try {
+            const [
+                { count: users },
+                { count: events },
+                { count: news },
+                { count: market },
+                { count: posts },
+                { count: banners }
+            ] = await Promise.all([
+                supabase.from('profiles').select('*', { count: 'exact', head: true }),
+                supabase.from('events').select('*', { count: 'exact', head: true }),
+                supabase.from('news').select('*', { count: 'exact', head: true }),
+                supabase.from('market_items').select('*', { count: 'exact', head: true }),
+                supabase.from('posts').select('*', { count: 'exact', head: true }),
+                supabase.from('banners').select('*', { count: 'exact', head: true })
+            ]);
+
+            setMetricsData({
+                users: users || 0,
+                events: events || 0,
+                news: news || 0,
+                market: market || 0,
+                posts: posts || 0,
+                banners: banners || 0
+            });
+            setActiveTab('METRICS');
+        } catch (err: any) {
+            alert('Erro ao carregar métricas: ' + err.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const SettingItem = ({ icon, label, onClick, color = "text-leather", value, isToggle, toggleKey }: any) => (
@@ -252,6 +296,66 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
         </div>
     );
 
+    const renderMetrics = () => {
+        const stats = [
+            { label: 'Usuários Totais', value: metricsData.users, icon: 'groups', color: 'bg-blue-50 text-blue-600', trend: '+12%' },
+            { label: 'Vaquejadas', value: metricsData.events, icon: 'emoji_events', color: 'bg-[#D4AF37]/10 text-[#D4AF37]', trend: 'Ativas' },
+            { label: 'Notícias App', value: metricsData.news, icon: 'newspaper', color: 'bg-red-50 text-red-600', trend: 'Live' },
+            { label: 'Marketplace', value: metricsData.market, icon: 'storefront', color: 'bg-green-50 text-green-600', trend: 'Items' },
+            { label: 'Postagens Core', value: metricsData.posts, icon: 'forum', color: 'bg-purple-50 text-purple-600', trend: 'Social' },
+            { label: 'Anunciantes', value: metricsData.banners, icon: 'campaign', color: 'bg-orange-50 text-orange-600', trend: 'Banners' },
+        ];
+
+        return (
+            <div className="absolute inset-0 bg-[#F8F5F2] flex flex-col z-[120]">
+                <SubHeader title="Métricas Globais" />
+                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                    <div className="bg-[#1A1108] p-8 rounded-[32px] text-white space-y-2 relative overflow-hidden shadow-2xl">
+                        <div className="relative z-10">
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Resumo Geral</p>
+                            <h3 className="text-3xl font-black italic tracking-tighter tabular-nums">{Object.values(metricsData).reduce((a: any, b: any) => a + b, 0)}</h3>
+                            <p className="text-xs font-bold text-[#D4AF37]">Total de interações acumuladas</p>
+                        </div>
+                        <div className="absolute top-[-20%] right-[-10%] opacity-10">
+                            <span className="material-icons text-[120px]">analytics</span>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        {stats.map((stat, i) => (
+                            <div key={i} className="bg-white p-5 rounded-3xl border border-[#1A1108]/5 shadow-sm space-y-3 active:scale-95 transition-transform">
+                                <div className={`w-10 h-10 rounded-2xl ${stat.color} flex items-center justify-center shadow-inner`}>
+                                    <span className="material-icons text-xl">{stat.icon}</span>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-leather/30">{stat.label}</p>
+                                    <div className="flex items-baseline gap-2">
+                                        <h4 className="text-2xl font-black italic tracking-tighter text-leather tabular-nums">{stat.value}</h4>
+                                        <span className="text-[8px] font-bold uppercase text-leather/40">{stat.trend}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Meta/Goal Progress */}
+                    <div className="bg-white p-6 rounded-3xl border border-[#1A1108]/5 space-y-4">
+                         <div className="flex justify-between items-center">
+                             <h4 className="text-[10px] font-black uppercase tracking-widest text-leather">Meta de Usuários</h4>
+                             <span className="text-[10px] font-black text-[#D4AF37]">{(metricsData.users / 5000 * 100).toFixed(1)}%</span>
+                         </div>
+                         <div className="h-2 bg-neutral-100 rounded-full overflow-hidden">
+                             <div className="h-full bg-[#D4AF37] transition-all duration-1000" style={{ width: `${Math.min(metricsData.users / 5000 * 100, 100)}%` }} />
+                         </div>
+                         <p className="text-[9px] font-bold text-leather/40 text-center uppercase tracking-tighter">Próximo Marco: 5.000 Usuários</p>
+                    </div>
+
+                    <p className="text-[9px] text-center text-leather/20 font-medium pb-10">Dados atualizados em tempo real via Supabase Database.</p>
+                </div>
+            </div>
+        );
+    };
+
     // Main Root View
     if (activeTab === 'EDIT_PROFILE') return renderEditProfile();
     if (activeTab === 'NOTIFICATIONS') return renderNotifications();
@@ -259,6 +363,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
     if (activeTab === 'SECURITY') return renderSecurity();
     if (activeTab === 'HELP') return renderHelp();
     if (activeTab === 'ABOUT') return renderAbout();
+    if (activeTab === 'METRICS') return renderMetrics();
 
     return (
         <div className="absolute inset-0 bg-[#F8F5F2] flex flex-col z-[120] animate-in slide-in-from-right duration-300">
@@ -301,7 +406,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
                     <>
                         <div className="px-6 py-4"><h3 className="text-[10px] font-black text-leather/40 uppercase tracking-[0.2em]">Administração</h3></div>
                         <SettingItem icon="admin_panel_settings" label="Painel de Controle (ADM)" color="text-[#D4AF37]" onClick={() => window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'ADMIN' } }))} />
-                        {user?.isMaster && <SettingItem icon="analytics" label="Métricas Globais" color="text-[#D4AF37]" onClick={() => alert('Carregando relatórios...')} />}
+                        {user?.isMaster && <SettingItem icon="analytics" label="Métricas Globais" color="text-[#D4AF37]" onClick={fetchMetrics} />}
                     </>
                 )}
 

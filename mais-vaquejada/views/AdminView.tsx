@@ -30,9 +30,11 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
     const [newsList, setNewsList] = useState<any[]>([]);
     const [marketList, setMarketList] = useState<any[]>([]);
     const [postsList, setPostsList] = useState<any[]>([]);
+    const [bannersList, setBannersList] = useState<any[]>([]);
 
     const [eventForm, setEventForm] = useState<any>({});
     const [newsForm, setNewsForm] = useState<any>({ type: 'info' });
+    const [bannerForm, setBannerForm] = useState<any>({});
 
     const isMaster = user?.isMaster || false;
     const hasMercado = isMaster || user?.admin_mercado;
@@ -45,7 +47,10 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         if (hasEventos) fetchEvents();
         if (hasNoticias && subviewNews === 'LIST') fetchNews();
         if (hasMercado && subviewMercado === 'LIST') fetchMarket();
-        if (hasSocial && subviewSocial === 'LIST') fetchPosts();
+        if (hasSocial) {
+             fetchPosts();
+             fetchBanners();
+        }
     }, [isMaster, hasEventos, subviewEvents, hasNoticias, subviewNews, hasMercado, subviewMercado, hasSocial, subviewSocial]);
 
     const fetchTotalUsers = async () => {
@@ -78,6 +83,13 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         setLoading(true);
         const { data } = await supabase.from('posts').select(`*, profiles!posts_user_id_fkey(username, avatar_url, full_name)`).order('created_at', { ascending: false });
         if (data) setPostsList(data);
+        setLoading(false);
+    };
+
+    const fetchBanners = async () => {
+        setLoading(true);
+        const { data } = await supabase.from('banners').select('*').order('created_at', { ascending: false });
+        if (data) setBannersList(data);
         setLoading(false);
     };
 
@@ -217,6 +229,47 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         const { error } = await supabase.from('posts').update({ is_hidden: !current }).eq('id', p_id);
         if (!error) fetchPosts();
         else { alert('Erro ao ocultar post: ' + error.message); setLoading(false); }
+    };
+
+    const handleBannerFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setLoading(true);
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Date.now()}_banner.${fileExt}`;
+            const { error: uploadError } = await supabase.storage.from('vaquejadas').upload(fileName, file);
+            if (uploadError) throw uploadError;
+            const { data: { publicUrl } } = supabase.storage.from('vaquejadas').getPublicUrl(fileName);
+            setBannerForm({ ...bannerForm, image_url: publicUrl });
+        } catch (err: any) { alert(err.message); }
+        finally { setLoading(false); }
+    };
+
+    const handleSaveBanner = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            let error;
+            if (bannerForm.id) {
+                ({ error } = await supabase.from('banners').update(bannerForm).eq('id', bannerForm.id));
+            } else {
+                ({ error } = await supabase.from('banners').insert([bannerForm]));
+            }
+            if (error) throw error;
+            setBannerForm({});
+            fetchBanners();
+            alert('Propaganda salva!');
+        } catch (err: any) { alert(err.message); }
+        finally { setLoading(false); }
+    };
+
+    const deleteBanner = async (id: string) => {
+        if (!confirm('Excluir esta propaganda?')) return;
+        setLoading(true);
+        const { error } = await supabase.from('banners').delete().eq('id', id);
+        if (!error) fetchBanners();
+        setLoading(false);
     };
 
     // --- REUSABLE COMPONENTS ---
@@ -567,7 +620,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         if (subviewSocial === 'LIST') {
             return (
                 <div className="absolute inset-0 bg-[#F8F5F2] flex flex-col z-[120]">
-                    <header className="px-6 py-6 border-b border-[#1A1108]/5 flex items-center gap-4 bg-[#F8F5F2] sticky top-0 z-10 w-full">
+                    <header className="px-6 py-6 border-b border-[#1A1108]/5 flex items-center gap-4 bg-[#F8F5F2] sticky top-0 z-10 w-full shadow-sm">
                         <button onClick={() => setSubviewSocial('HOME')} className="material-icons text-leather active:scale-90 transition-transform">arrow_back</button>
                         <h2 className="text-xl font-black uppercase italic tracking-tight text-leather">Moderação de Posts</h2>
                     </header>
@@ -578,15 +631,14 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                                     <img src={post.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${post.profiles?.username}`} className="w-8 h-8 rounded-full shadow-sm" alt="User" />
                                     <div className="flex-1">
                                         <p className="font-bold text-xs text-leather leading-tight">@{post.profiles?.username || 'user_unknown'}</p>
-                                        <p className="text-[9px] text-leather/40">ID do Post: {post.id.split('-')[0]}</p>
+                                        <p className="text-[9px] text-leather/40">ID: {post.id.split('-')[0]}</p>
                                     </div>
                                     <button onClick={() => toggleHidePost(post.id, post.is_hidden)} className={`p-2 rounded-lg material-icons text-sm shadow-sm border transition-colors ${post.is_hidden ? 'bg-red-500 border-red-600 text-white' : 'bg-white border-[#1A1108]/10 text-red-500'}`}>
-                                        {post.is_hidden ? 'delete_forever' : 'delete'}
+                                        {post.is_hidden ? 'visibility_off' : 'visibility'}
                                     </button>
                                 </div>
                                 {post.content && <p className="text-xs text-leather font-medium bg-neutral-50 p-2 rounded-lg border border-[#1A1108]/5">{post.content}</p>}
                                 {post.media_url && <img src={post.media_url} className="w-full h-32 object-cover rounded-xl mt-1 opacity-80" alt="Post media" />}
-                                {post.is_hidden && <p className="text-[9px] text-red-600 font-black tracking-widest text-center uppercase border-t border-red-500/20 pt-2 mt-1">Post censurado da timeline principal</p>}
                             </div>
                         ))}
                     </div>
@@ -596,21 +648,72 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
 
         return (
             <div className="absolute inset-0 bg-[#F8F5F2] flex flex-col z-[120]">
-                <SubHeader title="+Vaquejada" />
-                <div className="flex-1 overflow-y-auto">
-                    <SectionTitle title="Controle Social" />
+                <SubHeader title="Propagandas & Social" />
+                <div className="flex-1 overflow-y-auto pb-24">
+                    <SectionTitle title="Gestão de Banners (Propaganda)" />
                     <div className="px-6 mb-6">
+                        <form onSubmit={handleSaveBanner} className="bg-white p-6 rounded-[32px] border border-[#1A1108]/5 shadow-sm space-y-4 overflow-hidden relative">
+                             <div className="relative aspect-[4/1] bg-neutral-50 rounded-2xl overflow-hidden border-2 border-dashed border-[#1A1108]/10 group">
+                                {bannerForm.image_url ? (
+                                    <>
+                                        <img src={bannerForm.image_url} className="w-full h-full object-cover" />
+                                        <button type="button" onClick={() => setBannerForm({...bannerForm, image_url: ''})} className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full material-icons text-sm shadow-xl">close</button>
+                                    </>
+                                ) : (
+                                    <label className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-neutral-100 transition-colors">
+                                        <span className="material-icons text-3xl text-[#D4AF37] mb-1">add_photo_alternate</span>
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-leather/40">Banner (800x200 recomendado)</span>
+                                        <input type="file" className="hidden" accept="image/*" onChange={handleBannerFileUpload} />
+                                    </label>
+                                )}
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <input className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-3 text-xs font-bold text-leather outline-none focus:border-[#D4AF37]" placeholder="Anunciante / Título" value={bannerForm.title || ''} onChange={(e)=>setBannerForm({...bannerForm, title: e.target.value})} required />
+                                <input className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-3 text-xs font-bold text-leather outline-none focus:border-[#D4AF37]" placeholder="Link (Opcional)" value={bannerForm.link_url || ''} onChange={(e)=>setBannerForm({...bannerForm, link_url: e.target.value})} />
+                            </div>
+                            <button type="submit" disabled={loading} className="w-full bg-[#1A1108] text-white p-4 rounded-xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-xl">
+                                 {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <span className="material-icons text-sm">save</span>}
+                                 {bannerForm.id ? "Atualizar Propaganda" : "Ativar Propaganda"}
+                            </button>
+                            {bannerForm.id && <button type="button" onClick={() => setBannerForm({})} className="w-full text-[9px] font-black uppercase tracking-widest text-[#D4AF37] mt-2">Cancelar Edição</button>}
+                        </form>
+                    </div>
+
+                    <div className="px-6 space-y-3">
+                        {bannersList.map((b) => (
+                            <div key={b.id} className="bg-white border border-[#1A1108]/5 rounded-2xl p-3 flex items-center gap-4 shadow-sm group">
+                                <div className="w-16 h-10 bg-neutral-100 rounded-lg overflow-hidden border border-[#1A1108]/5">
+                                    <img src={b.image_url} className="w-full h-full object-cover" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[10px] font-black uppercase tracking-tight text-leather truncate">{b.title}</p>
+                                    <p className="text-[8px] font-bold text-[#D4AF37] truncate">{b.link_url || 'Sem link externo'}</p>
+                                </div>
+                                <div className="flex gap-1 shrink-0">
+                                    <button onClick={() => setBannerForm(b)} className="w-8 h-8 rounded-lg bg-neutral-50 text-leather/40 flex items-center justify-center hover:text-leather hover:bg-white transition-all">
+                                        <span className="material-icons text-sm">edit</span>
+                                    </button>
+                                    <button onClick={() => deleteBanner(b.id)} className="w-8 h-8 rounded-lg bg-red-50 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all">
+                                        <span className="material-icons text-sm">delete</span>
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <SectionTitle title="Timeline Social" />
+                    <div className="px-6">
                         <button onClick={() => setSubviewSocial('LIST')} className="w-full bg-white border border-[#1A1108]/10 text-leather p-4 rounded-xl font-black uppercase tracking-widest text-xs flex items-center justify-between active:scale-95 shadow-sm group">
                             <div className="flex items-center gap-3">
-                                <div className="bg-red-500/10 w-10 h-10 rounded-lg flex items-center justify-center">
-                                    <span className="material-icons text-red-500">warning</span>
+                                <div className="bg-[#D4AF37]/10 w-10 h-10 rounded-lg flex items-center justify-center text-[#D4AF37]">
+                                    <span className="material-icons">forum</span>
                                 </div>
                                 <div className="text-left">
-                                    <p className="font-black text-sm text-leather">Moderar Timeline</p>
+                                    <p className="font-black text-sm text-leather leading-tight">Moderar Timeline</p>
                                     <p className="text-[9px] text-leather/40 uppercase">Ocultar posts de usuários</p>
                                 </div>
                             </div>
-                            <span className="material-icons text-leather/20 group-hover:text-red-500 transition-colors">chevron_right</span>
+                            <span className="material-icons text-leather/20 group-hover:text-[#D4AF37] transition-colors">chevron_right</span>
                         </button>
                     </div>
                 </div>
