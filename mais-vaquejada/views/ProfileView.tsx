@@ -386,7 +386,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                     </div>
 
                     <div className="flex-1 flex justify-between">
-                       <div className="flex flex-col items-center">
+                       <div className="flex flex-col items-center cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setActiveTab('POSTS')}>
                            <span className="text-lg font-black text-white">{stats.posts}</span>
                            <span className="text-[10px] font-medium text-white/40 uppercase tracking-widest">Posts</span>
                        </div>
@@ -765,7 +765,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                                             className="flex items-center gap-4 cursor-pointer hover:bg-white/5 p-3 rounded-2xl border border-transparent hover:border-white/5 transition-all"
                                             onClick={() => {
                                                 setListModalType(null);
-                                                window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'PROFILE', targetUsername: p.username } }));
+                                                window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'PROFILE', username: p.username } }));
                                             }}
                                         >
                                             <div className="w-12 h-12 rounded-full border-2 border-[#ECA413]/20 overflow-hidden shrink-0">
