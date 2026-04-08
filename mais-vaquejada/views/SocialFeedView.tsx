@@ -181,6 +181,34 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
   });
   const [newMessage, setNewMessage] = useState('');
 
+  const [dmSearchQuery, setDmSearchQuery] = useState('');
+  const [dmSearchResults, setDmSearchResults] = useState<any[]>([]);
+
+  useEffect(() => {
+    const searchDMUsers = async () => {
+      if (dmSearchQuery.length < 2) {
+        setDmSearchResults([]);
+        return;
+      }
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .or(`username.ilike.%${dmSearchQuery}%,name.ilike.%${dmSearchQuery}%`)
+        .limit(10);
+      
+      if (data) setDmSearchResults(data);
+    };
+    const timer = setTimeout(searchDMUsers, 300);
+    return () => clearTimeout(timer);
+  }, [dmSearchQuery]);
+
+  useEffect(() => {
+    // Solicita permissão de Notificação Nativa (Push)
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
   // Persist DMs
   useEffect(() => {
     localStorage.setItem('arena_dms', JSON.stringify(messages));
@@ -907,15 +935,30 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
               <div className="p-4">
                 <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 flex items-center gap-2">
                   <span className="material-icons text-white/40">search</span>
-                  <input type="text" placeholder="Buscar..." className="bg-transparent border-none outline-none text-sm text-white w-full placeholder:text-white/40" />
+                  <input type="text" value={dmSearchQuery} onChange={e => setDmSearchQuery(e.target.value)} placeholder="Buscar vaqueiro pelo nome ou @" className="bg-transparent border-none outline-none text-sm text-white w-full placeholder:text-white/40" />
                 </div>
               </div>
-              <h4 className="px-6 py-2 text-[10px] font-black uppercase text-white/40 tracking-widest">Recentes</h4>
-              {Array.from(new Set([...['vitor_vaqueiro', 'ana_montaria', 'haras_nobre'], ...messages.map(m => m.chatWith)])).map(user => {
-                const userMessages = messages.filter(m => m.chatWith === user);
-                const lastMessage = userMessages.length > 0 ? userMessages[userMessages.length - 1] : {text: 'Tocar para conversar...', time: ''};
-                return (
-                  <div key={user} onClick={() => { setActiveChatUser(user); }} className="px-6 py-4 flex items-center gap-4 border-b border-white/5 active:bg-white/5 cursor-pointer transition-colors">
+              
+              {dmSearchQuery.length > 0 && dmSearchResults.length === 0 ? (
+                <div className="text-center py-10 opacity-40">
+                  <span className="material-icons text-4xl mb-2">person_search</span>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-[#ECA413]">Nenhum vaqueiro encontrado</p>
+                </div>
+              ) : Array.from(new Set(dmSearchQuery.length > 0 ? dmSearchResults.map(r => r.username) : messages.map(m => m.chatWith))).length === 0 ? (
+                <div className="text-center py-10 opacity-40">
+                  <span className="material-icons text-4xl mb-2">message</span>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Sua caixa está limpa.<br/>Busque alguém para papear!</p>
+                </div>
+              ) : (
+                <>
+                  <h4 className="px-6 py-2 text-[10px] font-black uppercase text-[#ECA413] tracking-widest">
+                    {dmSearchQuery ? 'Resultados Encontrados' : 'Recentes'}
+                  </h4>
+                  {Array.from(new Set(dmSearchQuery.length > 0 ? dmSearchResults.map(r => r.username) : messages.map(m => m.chatWith))).map(user => {
+                    const userMessages = messages.filter(m => m.chatWith === user);
+                    const lastMessage = userMessages.length > 0 ? userMessages[userMessages.length - 1] : {text: 'Tocar para conversar...', time: ''};
+                    return (
+                      <div key={user} onClick={() => { setActiveChatUser(user); setDmSearchQuery(''); }} className="px-6 py-4 flex items-center gap-4 border-b border-white/5 active:bg-white/5 cursor-pointer transition-colors">
                     <div className="w-14 h-14 rounded-full border border-white/10 overflow-hidden bg-neutral-800">
                       <img src={`https://picsum.photos/seed/${user}/100`} className="w-full h-full object-cover" />
                     </div>
@@ -930,6 +973,8 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
                   </div>
                 );
               })}
+              </>
+            )}
             </div>
           ) : (
             <div className="flex-1 flex flex-col bg-neutral-900/50 relative">
