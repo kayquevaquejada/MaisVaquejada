@@ -82,19 +82,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
               )}
             </button>
 
-            <button
-               id="guest-mode-btn"
-               onClick={() => {
-                 onLogin({ 
-                   id: 'guest_user', 
-                   email: 'convidado@arena.com',
-                   user_metadata: { full_name: 'Visitante Arena' }
-                 });
-               }}
-               className="w-full border-2 border-[#ECA413]/50 text-[#ECA413] py-4 rounded-3xl font-black text-xs uppercase tracking-[0.2em] animate-pulse shadow-lg shadow-[#ECA413]/20 mt-4 active:scale-95 transition-all"
-            >
-              ENTRAR EM MODO VISITANTE (PARA TESTE LOCAL)
-            </button>
+
           </div>
 
           <div className="mt-8 flex flex-col gap-4">

@@ -174,35 +174,6 @@ const App: React.FC = () => {
 
   const fetchProfile = async (userId: string) => {
     try {
-      if (userId === 'guest_user') {
-        const guestProfile = {
-          id: 'guest_user',
-          full_name: 'Visitante Arena',
-          display_name: 'Visitante',
-          email: 'convidado@arena.com',
-          role: 'USER',
-          status: 'ACTIVE',
-          profile_completed: true,
-          username: 'visitante'
-        };
-        
-        const mappedUser: User = {
-          id: guestProfile.id,
-          name: guestProfile.full_name,
-          email: guestProfile.email,
-          role: guestProfile.role as any,
-          status: guestProfile.status,
-          profile_completed: guestProfile.profile_completed,
-          username: guestProfile.username,
-          isMaster: false
-        } as any;
-        
-        setUser(mappedUser);
-        setCurrentView(View.EVENTS);
-        setInitializing(false);
-        return;
-      }
-
       const { data: { user: authUser } } = await supabase.auth.getUser();
       const userEmail = authUser?.email;
       const isMasterEmail = userEmail && MASTER_EMAILS.some(e => e.toLowerCase() === userEmail.toLowerCase());
