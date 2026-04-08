@@ -38,6 +38,9 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
     const [editingPost, setEditingPost] = useState<string | null>(null);
     const [editCaption, setEditCaption] = useState('');
     const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+    const [listModalType, setListModalType] = useState<'FOLLOWERS' | 'FOLLOWING' | null>(null);
+    const [listModalData, setListModalData] = useState<any[]>([]);
+    const [listModalLoading, setListModalLoading] = useState(false);
 
     // Determines if the user is looking at their own profile
     const isMyProfile = !targetUsername || targetUsername === 'meu-perfil' || (user && user.username && targetUsername === user.username);
@@ -270,6 +273,36 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
         return () => clearTimeout(safetyTimer);
     }, [isMyProfile, targetUsername, user?.id]);
 
+    const openListModal = async (type: 'FOLLOWERS' | 'FOLLOWING') => {
+        if (!displayData?.id) return;
+        setListModalType(type);
+        setListModalLoading(true);
+        setListModalData([]);
+
+        try {
+            const { data: followsData } = await supabase
+                .from('follows')
+                .select('*')
+                .eq(type === 'FOLLOWERS' ? 'following_id' : 'follower_id', displayData.id);
+
+            if (followsData && followsData.length > 0) {
+                const ids = followsData.map(f => type === 'FOLLOWERS' ? f.follower_id : f.following_id);
+                const { data: profilesData } = await supabase
+                    .from('profiles')
+                    .select('id, name, username, avatar_url')
+                    .in('id', ids);
+                
+                if (profilesData) {
+                    setListModalData(profilesData);
+                }
+            }
+        } catch (err) {
+            console.error("Error fetching list:", err);
+        } finally {
+            setListModalLoading(false);
+        }
+    };
+
     const displayData = profileData || (isMyProfile ? user : null);
 
     if (loading && !displayData) {
@@ -357,11 +390,11 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                            <span className="text-lg font-black text-white">{stats.posts}</span>
                            <span className="text-[10px] font-medium text-white/40 uppercase tracking-widest">Posts</span>
                        </div>
-                       <div className="flex flex-col items-center">
+                       <div className="flex flex-col items-center cursor-pointer hover:opacity-80 transition-opacity" onClick={() => openListModal('FOLLOWERS')}>
                            <span className="text-lg font-black text-white">{stats.followers}</span>
                            <span className="text-[10px] font-medium text-white/40 uppercase tracking-widest">Seguidores</span>
                        </div>
-                       <div className="flex flex-col items-center">
+                       <div className="flex flex-col items-center cursor-pointer hover:opacity-80 transition-opacity" onClick={() => openListModal('FOLLOWING')}>
                            <span className="text-lg font-black text-white">{stats.following}</span>
                            <span className="text-[10px] font-medium text-white/40 uppercase tracking-widest">Seguindo</span>
                        </div>
@@ -701,6 +734,54 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                                     onChange={(e) => setProfileData((prev: any) => prev ? {...prev, bio: e.target.value} : null)}
                                 />
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* List Modal */}
+            {listModalType && (
+                <div className="fixed inset-0 z-[400] bg-black/80 flex items-end sm:items-center justify-center animate-in fade-in duration-300">
+                    <div className="bg-background-dark w-full sm:w-[500px] h-[75vh] sm:h-[600px] sm:rounded-3xl rounded-t-3xl border border-white/10 flex flex-col animate-in slide-in-from-bottom duration-300 shadow-2xl">
+                        <header className="px-6 py-5 flex items-center justify-between border-b border-white/5 relative">
+                            <h3 className="text-xs font-black uppercase tracking-widest text-[#ECA413] mx-auto">{listModalType === 'FOLLOWERS' ? 'Seguidores' : 'Seguindo'}</h3>
+                            <button onClick={() => setListModalType(null)} className="material-icons text-white/40 hover:text-white transition-colors absolute right-6">close</button>
+                        </header>
+                        <div className="flex-1 overflow-y-auto p-4">
+                            {listModalLoading ? (
+                                <div className="flex justify-center py-12">
+                                    <div className="w-8 h-8 border-2 border-[#ECA413] border-t-white/10 rounded-full animate-spin" />
+                                </div>
+                            ) : listModalData.length === 0 ? (
+                                <div className="text-center py-16">
+                                    <span className="material-icons text-5xl text-white/10 mb-4">group_off</span>
+                                    <p className="text-white/40 text-xs font-black uppercase tracking-widest">Lista Vazia</p>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col gap-2">
+                                    {listModalData.map((p, i) => (
+                                        <div 
+                                            key={i} 
+                                            className="flex items-center gap-4 cursor-pointer hover:bg-white/5 p-3 rounded-2xl border border-transparent hover:border-white/5 transition-all"
+                                            onClick={() => {
+                                                setListModalType(null);
+                                                window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'PROFILE', targetUsername: p.username } }));
+                                            }}
+                                        >
+                                            <div className="w-12 h-12 rounded-full border-2 border-[#ECA413]/20 overflow-hidden shrink-0">
+                                                <img src={p.avatar_url || `https://ui-avatars.com/api/?name=${p.name}`} className="w-full h-full object-cover" alt="" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-black text-white truncate">{p.name}</p>
+                                                <p className="text-[11px] text-[#ECA413] lowercase truncate">@{p.username}</p>
+                                            </div>
+                                            <button className="bg-white/10 hover:bg-white/20 text-white rounded-xl px-4 py-2 font-black text-[9px] uppercase tracking-widest transition-colors shrink-0">
+                                                Ver
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
