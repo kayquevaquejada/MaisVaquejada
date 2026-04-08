@@ -206,7 +206,6 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                 .eq('id', userId);
             
             if (error) throw error;
-            alert(`Permissão ${column} atualizada com sucesso!`);
             // Update local state results
             setSearchResults(prev => prev.map(u => u.id === userId ? { ...u, [column]: !currentValue } : u));
         } catch (err: any) {
@@ -235,40 +234,69 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         }
     };
 
-    const PermissionManager = ({ columnLabel, columnKey }: { columnLabel: string, columnKey: string }) => (
+    const PermissionManager = () => (
         <div className="p-6">
-            <h4 className="text-xs font-black text-leather uppercase tracking-widest mb-2">Promover Administradores</h4>
-            <p className="text-[10px] text-leather/60 mb-4">Busque usuários e conceda a eles permissão de gestão apenas na aba "{columnLabel}".</p>
+            <h4 className="text-xs font-black text-leather uppercase tracking-widest mb-2">Classificar Administrativos</h4>
+            <p className="text-[10px] text-leather/60 mb-4 font-medium leading-relaxed">Localize usuários e selecione os módulos aos quais eles terão acesso administrativo restrito.</p>
             
             <input 
                 type="text" 
                 placeholder="Buscar por @username, nome ou email..."
-                className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-3 text-sm text-leather mb-4 outline-none focus:border-[#D4AF37]"
+                className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather mb-4 outline-none focus:border-[#D4AF37] shadow-sm"
                 value={searchQuery}
                 onChange={(e) => searchUsers(e.target.value)}
             />
 
             {searchResults.length > 0 && (
-                <div className="space-y-2 mt-4">
+                <div className="space-y-3 mt-4">
                     {searchResults.map(result => (
-                        <div key={result.id} className="bg-white border border-[#1A1108]/5 p-3 rounded-xl flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <img src={result.avatar_url || `https://ui-avatars.com/api/?name=${result.name || result.username}`} className="w-10 h-10 rounded-full" />
+                        <div key={result.id} className="bg-white border border-[#1A1108]/5 p-4 rounded-2xl shadow-sm">
+                            <div className="flex items-center gap-3 mb-4">
+                                <img src={result.avatar_url || `https://ui-avatars.com/api/?name=${result.name || result.username}`} className="w-10 h-10 rounded-full border border-leather/5" />
                                 <div>
-                                    <p className="font-bold text-sm text-leather">{result.name || result.full_name}</p>
-                                    <p className="text-[10px] text-leather/60 uppercase">@{result.username}</p>
+                                    <p className="font-bold text-sm text-leather leading-tight">{result.name || result.full_name}</p>
+                                    <p className="text-[10px] text-[#D4AF37] font-black uppercase tracking-widest">@{result.username}</p>
                                 </div>
                             </div>
-                            <button 
-                                onClick={() => toggleSubAdminPermission(result.id, columnKey, result[columnKey] || false)}
-                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors ${
-                                    result[columnKey] 
-                                    ? 'bg-red-50 text-red-600 border border-red-100 hover:bg-red-100' 
-                                    : 'bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20 hover:bg-[#D4AF37]/20'
-                                }`}
-                            >
-                                {result[columnKey] ? 'Remover Admin' : 'Promover'}
-                            </button>
+                            
+                            <div className="grid grid-cols-2 gap-2">
+                                <button 
+                                    onClick={() => toggleSubAdminPermission(result.id, 'admin_mercado', result.admin_mercado)}
+                                    className={`py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-tighter flex items-center justify-center gap-1.5 transition-all border ${
+                                        result.admin_mercado ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/20' : 'bg-neutral-50 text-neutral-400 border-neutral-100'
+                                    }`}
+                                >
+                                    <span className="material-icons text-sm">{result.admin_mercado ? 'check_circle' : 'add'}</span>
+                                    Mercado
+                                </button>
+                                <button 
+                                    onClick={() => toggleSubAdminPermission(result.id, 'admin_social', result.admin_social)}
+                                    className={`py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-tighter flex items-center justify-center gap-1.5 transition-all border ${
+                                        result.admin_social ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/20' : 'bg-neutral-50 text-neutral-400 border-neutral-100'
+                                    }`}
+                                >
+                                    <span className="material-icons text-sm">{result.admin_social ? 'check_circle' : 'add'}</span>
+                                    Propaganda
+                                </button>
+                                <button 
+                                    onClick={() => toggleSubAdminPermission(result.id, 'admin_eventos', result.admin_eventos)}
+                                    className={`py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-tighter flex items-center justify-center gap-1.5 transition-all border ${
+                                        result.admin_eventos ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/20' : 'bg-neutral-50 text-neutral-400 border-neutral-100'
+                                    }`}
+                                >
+                                    <span className="material-icons text-sm">{result.admin_eventos ? 'check_circle' : 'add'}</span>
+                                    Vaquejadas
+                                </button>
+                                <button 
+                                    onClick={() => toggleSubAdminPermission(result.id, 'admin_noticias', result.admin_noticias)}
+                                    className={`py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-tighter flex items-center justify-center gap-1.5 transition-all border ${
+                                        result.admin_noticias ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/20' : 'bg-neutral-50 text-neutral-400 border-neutral-100'
+                                    }`}
+                                >
+                                    <span className="material-icons text-sm">{result.admin_noticias ? 'check_circle' : 'add'}</span>
+                                    Notícias
+                                </button>
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -282,7 +310,14 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         <div className="absolute inset-0 bg-[#F8F5F2] flex flex-col z-[120]">
             <SubHeader title="Base de Usuários" />
             <div className="flex-1 overflow-y-auto">
-                <SectionTitle title="Geral" />
+                {isMaster && (
+                    <>
+                        <SectionTitle title="Hierarquia" />
+                        <PermissionManager />
+                    </>
+                )}
+                
+                <SectionTitle title="Segurança da Base" />
                 <div className="px-6 py-4 flex gap-4 bg-white/50 border-y border-[#1A1108]/5">
                     <div className="w-12 h-12 bg-[#D4AF37]/10 rounded-full flex items-center justify-center">
                         <span className="material-icons text-[#D4AF37]">group</span>
@@ -363,12 +398,6 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
             <div className="absolute inset-0 bg-[#F8F5F2] flex flex-col z-[120]">
                 <SubHeader title="Gestão do Mercado" />
                 <div className="flex-1 overflow-y-auto">
-                    {isMaster && (
-                        <>
-                            <SectionTitle title="Hierarquia" />
-                            <PermissionManager columnLabel="Mercado" columnKey="admin_mercado" />
-                        </>
-                    )}
                     <SectionTitle title="Anúncios" />
                     <div className="px-6 mb-6">
                         <button onClick={() => setSubviewMercado('LIST')} className="w-full bg-white border border-[#1A1108]/10 text-leather p-4 rounded-xl font-black uppercase tracking-widest text-xs flex items-center justify-between active:scale-95 shadow-sm group">
@@ -424,12 +453,6 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
             <div className="absolute inset-0 bg-[#F8F5F2] flex flex-col z-[120]">
                 <SubHeader title="+Vaquejada" />
                 <div className="flex-1 overflow-y-auto">
-                    {isMaster && (
-                        <>
-                            <SectionTitle title="Hierarquia" />
-                            <PermissionManager columnLabel="+Vaquejada" columnKey="admin_social" />
-                        </>
-                    )}
                     <SectionTitle title="Controle Social" />
                     <div className="px-6 mb-6">
                         <button onClick={() => setSubviewSocial('LIST')} className="w-full bg-white border border-[#1A1108]/10 text-leather p-4 rounded-xl font-black uppercase tracking-widest text-xs flex items-center justify-between active:scale-95 shadow-sm group">
@@ -514,12 +537,6 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
             <div className="absolute inset-0 bg-[#F8F5F2] flex flex-col z-[120]">
                 <SubHeader title="Vaquejadas" />
                 <div className="flex-1 overflow-y-auto">
-                    {isMaster && (
-                        <>
-                            <SectionTitle title="Hierarquia" />
-                            <PermissionManager columnLabel="Vaquejadas" columnKey="admin_eventos" />
-                        </>
-                    )}
                     <SectionTitle title="Gestão de Eventos" />
                     <div className="px-6 grid grid-cols-2 gap-3 mb-6">
                         <button onClick={()=>{ setEventForm({}); setSubviewEvents('CREATE'); }} className="bg-[#D4AF37] text-white p-4 rounded-xl font-black uppercase tracking-widest text-[10px] flex flex-col items-center gap-2 active:scale-95 shadow-sm">
@@ -599,12 +616,6 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
             <div className="absolute inset-0 bg-[#F8F5F2] flex flex-col z-[120]">
                 <SubHeader title="Arena Notícias" />
                 <div className="flex-1 overflow-y-auto">
-                    {isMaster && (
-                        <>
-                            <SectionTitle title="Hierarquia" />
-                            <PermissionManager columnLabel="Arena Notícias" columnKey="admin_noticias" />
-                        </>
-                    )}
                     <SectionTitle title="Gestão de Notícias" />
                     <div className="px-6 grid grid-cols-2 gap-3 mb-6">
                         <button onClick={()=>{ setNewsForm({ type: 'info' }); setSubviewNews('CREATE'); }} className="bg-[#D4AF37] text-white p-4 rounded-xl font-black uppercase tracking-widest text-[10px] flex flex-col items-center gap-2 active:scale-95 shadow-sm">

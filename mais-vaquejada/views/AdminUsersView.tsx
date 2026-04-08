@@ -56,6 +56,10 @@ const AdminUsersView: React.FC<AdminUsersViewProps> = ({ user }) => {
         createdAt: p.created_at,
         blocked: p.status === 'BLOCKED',
         isMaster: p.role === 'ADMIN_MASTER',
+        admin_mercado: p.admin_mercado,
+        admin_social: p.admin_social,
+        admin_eventos: p.admin_eventos,
+        admin_noticias: p.admin_noticias,
         permissions: p.can_add_vaquejada ? ['organize_event'] : [],
         trustLevel: 'normal'
       }));
@@ -99,6 +103,19 @@ const AdminUsersView: React.FC<AdminUsersViewProps> = ({ user }) => {
       const { error } = await supabase
         .from('profiles')
         .update({ can_add_vaquejada: perm })
+        .eq('id', userId);
+      if (error) throw error;
+      fetchUsers();
+    } catch (err: any) {
+        alert('Erro: ' + err.message);
+    }
+  };
+
+  const handleToggleAdminSubRole = async (userId: string, field: string, value: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ [field]: value })
         .eq('id', userId);
       if (error) throw error;
       fetchUsers();
@@ -304,6 +321,51 @@ const AdminUsersView: React.FC<AdminUsersViewProps> = ({ user }) => {
                             <span className="material-icons text-xs">add_circle</span>
                             {u.can_add_vaquejada ? 'PERM. OK' : 'PERM. VAQUEJADA'}
                         </button>
+                    </div>
+                )}
+
+                {/* Sub-Administrative Roles - ONLY FOR MASTER */}
+                {isAdminMaster && (
+                    <div className="mt-4 pt-4 border-t border-white/5 space-y-3">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-[#ECA413]/60 mb-1">Cargos Administrativos (Sub-Admins)</p>
+                        <div className="grid grid-cols-2 gap-2">
+                            <button 
+                                onClick={() => handleToggleAdminSubRole(u.id, 'admin_mercado', !u.admin_mercado)}
+                                className={`py-2 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 border ${
+                                    u.admin_mercado ? 'bg-[#00D1FF]/10 text-[#00D1FF] border-[#00D1FF]/30' : 'bg-white/5 text-white/20 border-white/5'
+                                }`}
+                            >
+                                <span className="material-icons text-[14px]">shopping_bag</span>
+                                {u.admin_mercado ? 'ADM MERCADO' : 'SEM ACESSO MERCADO'}
+                            </button>
+                            <button 
+                                onClick={() => handleToggleAdminSubRole(u.id, 'admin_eventos', !u.admin_eventos)}
+                                className={`py-2 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 border ${
+                                    u.admin_eventos ? 'bg-[#FF9B05]/10 text-[#FF9B05] border-[#FF9B05]/30' : 'bg-white/5 text-white/20 border-white/5'
+                                }`}
+                            >
+                                <span className="material-icons text-[14px]">emoji_events</span>
+                                {u.admin_eventos ? 'ADM EVENTOS' : 'SEM ACESSO EVENTOS'}
+                            </button>
+                            <button 
+                                onClick={() => handleToggleAdminSubRole(u.id, 'admin_noticias', !u.admin_noticias)}
+                                className={`py-2 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 border ${
+                                    u.admin_noticias ? 'bg-[#FF4181]/10 text-[#FF4181] border-[#FF4181]/30' : 'bg-white/5 text-white/20 border-white/5'
+                                }`}
+                            >
+                                <span className="material-icons text-[14px]">newspaper</span>
+                                {u.admin_noticias ? 'ADM NOTÍCIAS' : 'SEM ACESSO NOTÍCIAS'}
+                            </button>
+                            <button 
+                                onClick={() => handleToggleAdminSubRole(u.id, 'admin_social', !u.admin_social)}
+                                className={`py-2 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 border ${
+                                    u.admin_social ? 'bg-[#4CAF50]/10 text-[#4CAF50] border-[#4CAF50]/30' : 'bg-white/5 text-white/20 border-white/5'
+                                }`}
+                            >
+                                <span className="material-icons text-[14px]">campaign</span>
+                                {u.admin_social ? 'ADM PROPAGANDA' : 'SEM ACESSO PROP.'}
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>
