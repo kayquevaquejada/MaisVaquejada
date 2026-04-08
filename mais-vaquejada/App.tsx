@@ -162,6 +162,40 @@ const App: React.FC = () => {
     }
   }, [currentView]);
 
+  // Request all necessary permissions (Push, GPS, Camera, Mic) across iPad, Mac, Mobile
+  useEffect(() => {
+    const requestDevicePermissions = async () => {
+      if (!user) return;
+      try {
+        // Notificações Push
+        if ('Notification' in window && Notification.permission === 'default') {
+          Notification.requestPermission();
+        }
+        // Localização / GPS
+        if ('geolocation' in navigator) {
+          navigator.geolocation.getCurrentPosition(() => {}, () => {});
+        }
+        // Câmera & Microfone
+        const mediaPerm = localStorage.getItem('arena_media_perm_requested');
+        if (!mediaPerm && navigator.mediaDevices) {
+          await navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+              // Immediately stop tracks so we don't leave camera on
+              stream.getTracks().forEach(track => track.stop());
+          });
+          localStorage.setItem('arena_media_perm_requested', 'true');
+        }
+      } catch (err) {
+        console.log('Permissões negadas ou em ambiente restrito:', err);
+        localStorage.setItem('arena_media_perm_requested', 'true');
+      }
+    };
+    
+    // Dispara 2.5s após o login para a UI principal carregar antes
+    if (user) {
+       setTimeout(requestDevicePermissions, 2500);
+    }
+  }, [user]);
+
   const fetchProfile = async (userId: string) => {
     try {
       const { data: { user: authUser } } = await supabase.auth.getUser();

@@ -186,7 +186,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         const { data } = await supabase
             .from('profiles')
             .select('*')
-            .or(`name.ilike.%${query}%,full_name.ilike.%${query}%,email.ilike.%${query}%,username.ilike.%${query}%`)
+            .or(`full_name.ilike.%${query}%,email.ilike.%${query}%,username.ilike.%${query}%`)
             .limit(10);
         
         if (data) setSearchResults(data);

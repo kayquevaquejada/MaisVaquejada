@@ -193,7 +193,7 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
       const { data } = await supabase
         .from('profiles')
         .select('*')
-        .or(`username.ilike.%${dmSearchQuery}%,name.ilike.%${dmSearchQuery}%`)
+        .or(`username.ilike.%${dmSearchQuery}%,full_name.ilike.%${dmSearchQuery}%`)
         .limit(10);
       
       if (data) setDmSearchResults(data);
@@ -267,7 +267,7 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
       const { data } = await supabase
         .from('profiles')
         .select('*')
-        .or(`username.ilike.%${searchQuery}%,name.ilike.%${searchQuery}%`)
+        .or(`username.ilike.%${searchQuery}%,full_name.ilike.%${searchQuery}%`)
         .limit(5);
       
       if (data) setSearchQueryResult(data);
