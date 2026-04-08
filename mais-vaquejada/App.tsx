@@ -191,30 +191,17 @@ const App: React.FC = () => {
       }
 
       try {
-        // Notificações Push
+        // Apenas pede Notificações Push antecipadamente (comum em redes sociais).
+        // Câmera, Galeria e Localização foram removidos e serão pedidos "sob demanda"
+        // quando a função real for clicada na MediaCreation ou Mapa.
         if ('Notification' in window && Notification.permission === 'default') {
           Notification.requestPermission();
         }
-        // Localização / GPS
-        if ('geolocation' in navigator) {
-          navigator.geolocation.getCurrentPosition(() => {}, () => {});
-        }
-        // Câmera & Microfone
-        const mediaPerm = localStorage.getItem('arena_media_perm_requested');
-        if (!mediaPerm && navigator.mediaDevices) {
-          await navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
-              // Immediately stop tracks so we don't leave camera on
-              stream.getTracks().forEach(track => track.stop());
-          });
-          localStorage.setItem('arena_media_perm_requested', 'true');
-        }
       } catch (err) {
-        console.log('Permissões negadas ou em ambiente restrito:', err);
-        localStorage.setItem('arena_media_perm_requested', 'true');
+        console.log('Permissões de notificação falharam:', err);
       }
     };
     
-    // Dispara 2.5s após o login para a UI principal carregar antes
     if (user) {
        setTimeout(requestDevicePermissions, 2500);
     }
