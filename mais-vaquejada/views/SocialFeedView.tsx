@@ -175,6 +175,18 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
   // DM State
   const [isDMScreenOpen, setIsDMScreenOpen] = useState(false);
   const [activeChatUser, setActiveChatUser] = useState<string | null>(null);
+  const [activeChatProfile, setActiveChatProfile] = useState<any>(null);
+
+  useEffect(() => {
+    if (activeChatUser) {
+      supabase.from('profiles').select('*').eq('username', activeChatUser).single().then(({data}) => {
+         if (data) setActiveChatProfile(data);
+      });
+    } else {
+      setActiveChatProfile(null);
+    }
+  }, [activeChatUser]);
+
   const [messages, setMessages] = useState<{sender: string, text: string, time: string, chatWith: string}[]>(() => {
     const saved = localStorage.getItem('arena_dms');
     return saved ? JSON.parse(saved) : [];
@@ -918,6 +930,11 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
           <header className="px-6 py-4 flex items-center justify-between border-b border-white/5 bg-background-dark/95 backdrop-blur-md sticky top-0 z-10">
             <div className="flex items-center gap-4">
               <button onClick={() => { activeChatUser ? setActiveChatUser(null) : setIsDMScreenOpen(false); }} className="material-icons text-white">arrow_back</button>
+              {activeChatUser && (
+                <div onClick={() => { setActiveChatUser(null); setIsDMScreenOpen(false); navigateToProfile(activeChatUser) }} className="w-8 h-8 rounded-full border border-white/20 overflow-hidden shrink-0 cursor-pointer active:scale-95 transition-transform bg-neutral-800">
+                  <img src={activeChatProfile?.avatar_url || `https://ui-avatars.com/api/?name=${activeChatUser}&background=random`} className="w-full h-full object-cover" alt="Avatar"/>
+                </div>
+              )}
               <div>
                 <h3 className="text-xs font-black uppercase tracking-widest text-white">
                   {activeChatUser ? activeChatUser : 'MENSAGENS'}
