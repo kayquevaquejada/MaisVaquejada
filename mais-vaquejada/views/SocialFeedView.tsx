@@ -957,7 +957,7 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
               </div>
             </div>
             {activeChatUser ? (
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
                 <button 
                   onClick={() => {
                     if (activeChatProfile?.id) {
@@ -966,9 +966,9 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
                       });
                     }
                   }}
-                  className="material-icons text-white hover:text-[#ECA413] transition-colors"
+                  className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-[#ECA413] hover:bg-white/10 active:scale-95 transition-all"
                 >
-                  call
+                  <span className="material-icons text-[22px]">call</span>
                 </button>
                 <button 
                   onClick={() => {
@@ -978,9 +978,9 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
                       });
                     }
                   }}
-                  className="material-icons text-white hover:text-[#ECA413] transition-colors"
+                  className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-[#ECA413] hover:bg-white/10 active:scale-95 transition-all"
                 >
-                  videocam
+                  <span className="material-icons text-[22px]">videocam</span>
                 </button>
               </div>
             ) : (
