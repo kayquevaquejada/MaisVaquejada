@@ -16,12 +16,13 @@ const MOCK_ADVERTISERS = [
 ];
 
 interface MarketViewProps {
+    user: any;
     forceShowWizard?: boolean;
     onWizardClose?: () => void;
     onViewChange?: (view: View) => void;
 }
 
-const MarketView: React.FC<MarketViewProps> = ({ forceShowWizard = false, onWizardClose, onViewChange }) => {
+const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, onWizardClose, onViewChange }) => {
     const [showCreateWizard, setShowCreateWizard] = useState(forceShowWizard);
 
     // Sync local wizard state with prop (for global navigation)

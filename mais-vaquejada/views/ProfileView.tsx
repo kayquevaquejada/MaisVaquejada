@@ -44,7 +44,12 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
     const [listModalLoading, setListModalLoading] = useState(false);
 
     // Determines if the user is looking at their own profile
-    const isMyProfile = !targetUsername || targetUsername === 'meu-perfil' || (user && user.username && targetUsername === user.username) || (user && profileData && user.id === profileData.id);
+    const isMyProfile = !targetUsername || 
+                       targetUsername === 'meu-perfil' || 
+                       (user && user.username && targetUsername === user.username) || 
+                       (user && profileData && user.id === profileData.id) ||
+                       (user && (targetUsername === user.id || targetUsername === user.username));
+
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -120,7 +125,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
     // Persist Follow State from DB
     useEffect(() => {
         const checkFollow = async () => {
-            if (!isMyProfile && user && profileData) {
+            if (!isMyProfile && user && profileData && user.id !== profileData.id) {
                 const { data } = await supabase
                     .from('follows')
                     .select('*')
@@ -135,7 +140,10 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
     }, [isMyProfile, user, profileData]);
 
     const handleToggleFollow = async () => {
-        if (!user || isMyProfile || !profileData || user.id === profileData.id) return;
+        if (!user || isMyProfile || !profileData || user.id === profileData.id) {
+            console.warn("Self-follow blocked or missing user data");
+            return;
+        }
 
         try {
             if (isFollowing) {
@@ -307,7 +315,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                     .in('id', ids);
                 
                 if (profilesData) {
-                    setListModalData(profilesData);
+                    // Filter out the user itself just in case there are legacy self-follows in DB
+                    setListModalData(profilesData.filter(p => p.id !== user?.id));
                 }
             }
         } catch (err) {

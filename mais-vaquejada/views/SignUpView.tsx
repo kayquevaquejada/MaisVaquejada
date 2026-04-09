@@ -12,11 +12,44 @@ const STATES = [
   'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
 ];
 
+const BRAZIL_DDDS = [
+  { ddd: '11', state: 'SP' }, { ddd: '12', state: 'SP' }, { ddd: '13', state: 'SP' }, { ddd: '14', state: 'SP' }, { ddd: '15', state: 'SP' }, { ddd: '16', state: 'SP' }, { ddd: '17', state: 'SP' }, { ddd: '18', state: 'SP' }, { ddd: '19', state: 'SP' },
+  { ddd: '21', state: 'RJ' }, { ddd: '22', state: 'RJ' }, { ddd: '24', state: 'RJ' },
+  { ddd: '27', state: 'ES' }, { ddd: '28', state: 'ES' },
+  { ddd: '31', state: 'MG' }, { ddd: '32', state: 'MG' }, { ddd: '33', state: 'MG' }, { ddd: '34', state: 'MG' }, { ddd: '35', state: 'MG' }, { ddd: '37', state: 'MG' }, { ddd: '38', state: 'MG' },
+  { ddd: '41', state: 'PR' }, { ddd: '42', state: 'PR' }, { ddd: '43', state: 'PR' }, { ddd: '44', state: 'PR' }, { ddd: '45', state: 'PR' }, { ddd: '46', state: 'PR' },
+  { ddd: '47', state: 'SC' }, { ddd: '48', state: 'SC' }, { ddd: '49', state: 'SC' },
+  { ddd: '51', state: 'RS' }, { ddd: '53', state: 'RS' }, { ddd: '54', state: 'RS' }, { ddd: '55', state: 'RS' },
+  { ddd: '61', state: 'DF' },
+  { ddd: '62', state: 'GO' }, { ddd: '64', state: 'GO' },
+  { ddd: '63', state: 'TO' },
+  { ddd: '65', state: 'MT' }, { ddd: '66', state: 'MT' },
+  { ddd: '67', state: 'MS' },
+  { ddd: '68', state: 'AC' },
+  { ddd: '69', state: 'RO' },
+  { ddd: '71', state: 'BA' }, { ddd: '73', state: 'BA' }, { ddd: '74', state: 'BA' }, { ddd: '75', state: 'BA' }, { ddd: '77', state: 'BA' },
+  { ddd: '79', state: 'SE' },
+  { ddd: '81', state: 'PE' }, { ddd: '87', state: 'PE' },
+  { ddd: '82', state: 'AL' },
+  { ddd: '83', state: 'PB' },
+  { ddd: '84', state: 'RN' },
+  { ddd: '85', state: 'CE' }, { ddd: '88', state: 'CE' },
+  { ddd: '86', state: 'PI' }, { ddd: '89', state: 'PI' },
+  { ddd: '91', state: 'PA' }, { ddd: '93', state: 'PA' }, { ddd: '94', state: 'PA' },
+  { ddd: '92', state: 'AM' }, { ddd: '97', state: 'AM' },
+  { ddd: '95', state: 'RR' },
+  { ddd: '96', state: 'AP' },
+  { ddd: '98', state: 'MA' }, { ddd: '99', state: 'MA' }
+].sort((a, b) => parseInt(a.ddd) - parseInt(b.ddd));
+
 const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const [ddd, setDdd] = useState('83');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [dddSearch, setDddSearch] = useState('');
+  const [showDddList, setShowDddList] = useState(false);
   const [selectedState, setSelectedState] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
   const [password, setPassword] = useState('');
@@ -50,6 +83,22 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
       return;
     }
 
+    const usernameRegex = /^[a-z0-9._]+$/;
+    if (username.length < 6) {
+        setError('O @apelido deve ter no mínimo 6 caracteres.');
+        return;
+    }
+    if (!usernameRegex.test(username)) {
+        setError('O @apelido só pode conter letras, números, "_" e "."');
+        return;
+    }
+
+    const fullPhone = `${ddd}${phoneNumber.replace(/\D/g, '')}`;
+    if (phoneNumber.replace(/\D/g, '').length < 9) {
+        setError('Número de telefone inválido.');
+        return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -68,9 +117,9 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
           id: authData.user.id,
           full_name: name,
           display_name: name.split(' ')[0],
-          username: username.toLowerCase().trim().replace(/@/g, ''),
+          username: username.toLowerCase().trim(),
           email,
-          phone,
+          phone: fullPhone,
           state_id: selectedState,
           city_id: selectedCity,
           role: 'USER',
@@ -134,7 +183,7 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
               <span className="material-icons text-white">arrow_back</span>
             </button>
 
-            <h1 className="text-4xl font-black text-white italic tracking-tighter mb-2 uppercase">Junte-se à <span className="text-[#ECA413]">Tropa</span></h1>
+            <h1 className="text-4xl font-black text-white italic tracking-tighter mb-2 uppercase">Junte-se a <span className="text-[#ECA413]">Vaquerama</span></h1>
             <p className="text-white/40 text-xs font-bold uppercase tracking-widest mb-10">Faça parte da maior arena digital de vaquejada</p>
 
             <button
@@ -187,10 +236,63 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
                 <input
                   type="text" 
                   value={username} 
-                  onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))}
+                  onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._]/g, ''))}
                   className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-sm font-bold text-white focus:outline-none focus:border-[#ECA413]"
                   placeholder="Ex: kayquegusmao"
                 />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-widest text-[#ECA413] ml-2">WhatsApp / Telefone</label>
+                <div className="flex gap-2">
+                    {/* DDD Selector */}
+                    <div className="relative w-32 shrink-0">
+                        <button 
+                            type="button"
+                            onClick={() => setShowDddList(!showDddList)}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-4 text-sm font-bold text-white flex items-center justify-between"
+                        >
+                            <span className="truncate">({ddd}) {BRAZIL_DDDS.find(x => x.ddd === ddd)?.state}</span>
+                            <span className="material-icons text-xs text-[#ECA413]">expand_more</span>
+                        </button>
+                        {showDddList && (
+                            <div className="absolute top-full left-0 right-0 mt-2 bg-[#1A1108] border border-white/10 rounded-2xl shadow-2xl z-[50] max-h-60 overflow-y-auto overflow-x-hidden hide-scrollbar">
+                                <div className="p-2 border-b border-white/5 sticky top-0 bg-[#1A1108] z-10">
+                                    <input 
+                                        autoFocus
+                                        className="w-full bg-white/5 border-none rounded-xl py-2 px-3 text-[10px] font-bold text-white placeholder:text-white/20"
+                                        placeholder="Busque DDD ou UF..."
+                                        value={dddSearch}
+                                        onChange={(e) => setDddSearch(e.target.value.toUpperCase())}
+                                    />
+                                </div>
+                                {BRAZIL_DDDS.filter(x => x.ddd.includes(dddSearch) || x.state.includes(dddSearch)).map(x => (
+                                    <button
+                                        key={x.ddd}
+                                        type="button"
+                                        onClick={() => { setDdd(x.ddd); setShowDddList(false); setDddSearch(''); }}
+                                        className="w-full p-3 text-left hover:bg-white/5 flex items-center justify-between group transition-colors"
+                                    >
+                                        <span className="text-xs font-bold text-white">({x.ddd}) {x.state}</span>
+                                        {ddd === x.ddd && <span className="material-icons text-xs text-[#ECA413]">check</span>}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Phone Input */}
+                    <input
+                      type="tel"
+                      value={phoneNumber}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '');
+                        if (val.length <= 9) setPhoneNumber(val);
+                      }}
+                      className="flex-1 bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-sm font-bold text-white focus:outline-none focus:border-[#ECA413]"
+                      placeholder="9XXXX-XXXX"
+                    />
+                </div>
               </div>
 
               <div className="space-y-1">

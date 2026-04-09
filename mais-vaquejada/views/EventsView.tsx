@@ -394,10 +394,8 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
             >
               <span className="material-icons text-xl">{isSearchOpen ? 'search_off' : 'search'}</span>
             </button>
-            <div className="w-10 h-10 rounded-full border border-[#D4AF37]/20 p-1">
-              <img src="https://picsum.photos/seed/user/100" className="w-full h-full rounded-full object-cover" alt="User" />
-            </div>
           </div>
+
         </div>
 
         {/* Roller de Anunciantes (Propaganda) */}

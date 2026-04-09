@@ -177,7 +177,8 @@ const App: React.FC = () => {
 
   const fetchProfile = async (userId: string) => {
     try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const { data: authData } = await supabase.auth.getUser();
+      const authUser = authData?.user;
       const userEmail = authUser?.email;
       const isMasterEmail = userEmail && MASTER_EMAILS.some(e => e.toLowerCase() === userEmail.toLowerCase());
 
@@ -292,9 +293,9 @@ const App: React.FC = () => {
         case View.SOCIAL:
           return <SocialFeedView user={user} onMediaCreation={() => setCurrentView(View.MEDIA_CREATION)} />;
         case View.MERCADO:
-          return <MarketView onViewChange={setCurrentView} />;
+          return <MarketView user={user} onViewChange={setCurrentView} />;
         case View.AD_CREATION:
-          return <MarketView forceShowWizard={true} onViewChange={setCurrentView} onWizardClose={() => setCurrentView(View.MERCADO)} />;
+          return <MarketView user={user} forceShowWizard={true} onViewChange={setCurrentView} onWizardClose={() => setCurrentView(View.MERCADO)} />;
         case View.PROFILE:
           return <ProfileView 
             user={user} 

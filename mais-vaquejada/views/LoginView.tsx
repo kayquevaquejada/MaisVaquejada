@@ -26,6 +26,12 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
       });
   }, []);
 
+  const handleDevLogin = () => {
+    // ID do usuário "kayquegusmao" para testes locais
+    onLogin({ id: 'e417ceb0-b306-4156-87a6-32e459afb4eb' });
+  };
+
+
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
     setError(null);
@@ -95,7 +101,27 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
               )}
             </button>
 
+            <button
+              onClick={handleDevLogin}
+              className="w-full bg-[#ECA413] text-black py-4 rounded-3xl font-black text-xs uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3"
+            >
+              <span className="material-icons">terminal</span>
+              ENTRAR COMO DESENVOLVEDOR (LOCAL)
+            </button>
 
+
+            <div className="flex items-center gap-4 my-2">
+              <div className="flex-1 h-[1px] bg-white/5" />
+              <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">OU</span>
+              <div className="flex-1 h-[1px] bg-white/5" />
+            </div>
+
+            <button
+              onClick={onSignUp}
+              className="w-full bg-white/5 border border-white/10 text-white py-4 rounded-3xl font-black text-xs uppercase tracking-[0.2em] hover:bg-white/10 active:scale-95 transition-all"
+            >
+              CRIAR CONTA NA ARENA
+            </button>
           </div>
 
           <div className="mt-8 flex flex-col gap-4">

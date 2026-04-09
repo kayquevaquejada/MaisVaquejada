@@ -201,19 +201,102 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
 
   useEffect(() => {
     if (activeChatUser) {
-      supabase.from('profiles').select('*').eq('username', activeChatUser).single().then(({data}) => {
-         if (data) setActiveChatProfile(data);
-      });
+      // Use ilike for case-insensitive lookup
+      supabase.from('profiles')
+        .select('*')
+        .ilike('username', activeChatUser)
+        .maybeSingle()
+        .then(({data, error}) => {
+           if (error) console.error("Error fetching chat profile:", error);
+           if (data) setActiveChatProfile(data);
+           else setActiveChatProfile(null);
+        });
     } else {
       setActiveChatProfile(null);
     }
   }, [activeChatUser]);
 
-  const [messages, setMessages] = useState<{sender: string, text: string, time: string, chatWith: string}[]>(() => {
-    const saved = localStorage.getItem('arena_dms');
-    return saved ? JSON.parse(saved) : [];
-  });
+
+  const [messages, setMessages] = useState<{sender_id: string, receiver_id: string, content: string, created_at: string, chatWith: string}[]>([]);
+  
+  const fetchMessages = async (chatWithUsername: string) => {
+    if (!user?.id) return;
+    try {
+      // Find the profile of the user we are chatting with
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', chatWithUsername)
+        .single();
+      
+      if (!profile) return;
+
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .or(`sender_id.eq.${profile.id},receiver_id.eq.${profile.id}`)
+        .order('created_at', { ascending: true });
+
+
+
+
+      if (data) {
+        setMessages(data.map(m => ({
+          sender_id: m.sender_id,
+          receiver_id: m.receiver_id,
+          content: m.content,
+          created_at: m.created_at,
+          chatWith: chatWithUsername
+        })));
+      }
+    } catch (err) {
+      console.error("Error fetching messages:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeChatUser) {
+      fetchMessages(activeChatUser);
+      
+      // Subscribe to new messages
+      const channel = supabase
+        .channel(`chat_${activeChatUser}`)
+        .on('postgres_changes', { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'messages'
+        }, (payload) => {
+          const newMessage = payload.new;
+          if ((newMessage.sender_id === user?.id || newMessage.receiver_id === user?.id)) {
+            fetchMessages(activeChatUser);
+          }
+        })
+        .subscribe();
+
+      return () => { supabase.removeChannel(channel); };
+    }
+  }, [activeChatUser, user?.id]);
+
   const [newMessage, setNewMessage] = useState('');
+  const [isOtherTyping, setIsOtherTyping] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isOtherTyping, activeChatUser]);
+
+  // Simulation: Trigger typing indicator briefly when entering a chat
+  useEffect(() => {
+    if (activeChatUser) {
+      const timer = setTimeout(() => setIsOtherTyping(true), 1500);
+      const timerOff = setTimeout(() => setIsOtherTyping(false), 4500);
+      return () => { clearTimeout(timer); clearTimeout(timerOff); };
+    }
+  }, [activeChatUser]);
 
   const [dmSearchQuery, setDmSearchQuery] = useState('');
   const [dmSearchResults, setDmSearchResults] = useState<any[]>([]);
@@ -228,9 +311,11 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
         .from('profiles')
         .select('*')
         .or(`username.ilike.%${dmSearchQuery}%,full_name.ilike.%${dmSearchQuery}%`)
+        .neq('id', user?.id) // Prevent self-messaging
         .limit(10);
       
       if (data) setDmSearchResults(data);
+
     };
     const timer = setTimeout(searchDMUsers, 300);
     return () => clearTimeout(timer);
@@ -310,13 +395,29 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
         setSearchQueryResult([]);
         return;
       }
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .or(`username.ilike.%${searchQuery}%,full_name.ilike.%${searchQuery}%`)
-        .limit(5);
-      
-      if (data) setSearchQueryResult(data);
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, name, full_name, username, avatar_url')
+          .or(`username.ilike.%${searchQuery}%,name.ilike.%${searchQuery}%,full_name.ilike.%${searchQuery}%`)
+          .limit(10);
+        
+        if (error) {
+           // Fallback attempt without full_name if it errors
+           const { data: fallback } = await supabase
+             .from('profiles')
+             .select('id, name, username, avatar_url')
+             .or(`username.ilike.%${searchQuery}%,name.ilike.%${searchQuery}%`)
+             .neq('id', user?.id) // Prevent self-following
+             .limit(10);
+           setSearchQueryResult(fallback || []);
+        } else {
+           setSearchQueryResult((data || []).filter(p => p.id !== user?.id));
+        }
+
+      } catch (err) {
+        console.error("Search failed", err);
+      }
     };
     const timer = setTimeout(searchUsers, 300);
     return () => clearTimeout(timer);
@@ -572,9 +673,16 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
                             key={notif.id} 
                             className="p-4 border-b border-white/5 flex gap-3 items-center hover:bg-white/5 transition-colors cursor-pointer" 
                             onClick={() => {
-                                navigateToProfile(notif.actor_username || '');
-                                setIsNotificationsOpen(false);
-                            }}
+                                 // Check both 'message' and any metadata that might indicate a message
+                                 if (notif.type === 'message' || notif.metadata?.type === 'message') {
+                                     setActiveChatUser(notif.actor_username);
+                                     setIsDMScreenOpen(true);
+                                     setIsNotificationsOpen(false); // Close notification overlay
+                                 } else {
+                                     navigateToProfile(notif.actor_username || '');
+                                     setIsNotificationsOpen(false);
+                                 }
+                             }}
                         >
                             <div className="w-10 h-10 rounded-full border border-white/10 overflow-hidden shrink-0">
                                 <img src={notif.actor_avatar || `https://ui-avatars.com/api/?name=${notif.actor_username}&background=random`} className="w-full h-full object-cover" />
@@ -942,17 +1050,16 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
           </div>
         </div>
       )}
-
-      {/* Direct Messages Overlay */}
+{/* Direct Messages Overlay */}
       {isDMScreenOpen && (
         <div className="fixed inset-0 z-[200] bg-background-dark flex flex-col animate-in slide-in-from-right duration-300">
-          <header className="px-4 py-3 flex items-center justify-between border-b border-white/5 bg-background-dark/95 backdrop-blur-md sticky top-0 z-[100] w-full">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
+          <header className="px-6 py-4 flex items-center justify-between border-b border-white/5 bg-background-dark/95 backdrop-blur-md sticky top-0 z-20">
+            <div className="flex items-center gap-4">
               <button 
                 onClick={() => { activeChatUser ? setActiveChatUser(null) : setIsDMScreenOpen(false); }} 
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/5 transition-colors"
+                className="material-icons text-white hover:text-[#ECA413] transition-colors"
               >
-                <span className="material-icons text-white">arrow_back</span>
+                arrow_back
               </button>
               
               {!activeChatUser && (
@@ -961,18 +1068,17 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
               
               {activeChatUser && (
                 <div 
-                  onClick={() => { setActiveChatUser(null); setIsDMScreenOpen(false); navigateToProfile(activeChatUser) }} 
+                  onClick={() => navigateToProfile(activeChatUser)} 
                   className="flex items-center gap-3 overflow-hidden cursor-pointer active:scale-95 transition-transform"
                 >
-                  <div className="w-10 h-10 rounded-full border border-[#ECA413]/20 overflow-hidden shrink-0 bg-neutral-800">
-                    <img src={activeChatProfile?.avatar_url || `https://ui-avatars.com/api/?name=${activeChatUser}&background=random`} className="w-full h-full object-cover" alt="Avatar"/>
+                  <div className="w-10 h-10 rounded-full border-2 border-[#ECA413] p-0.5 overflow-hidden shrink-0">
+                    <img src={activeChatProfile?.avatar_url || `https://ui-avatars.com/api/?name=${activeChatUser}&background=random`} className="w-full h-full rounded-full object-cover" alt="Avatar"/>
                   </div>
-                  <div className="truncate">
-                    <h3 className="text-[11px] font-black uppercase tracking-widest text-white truncate">
-                      {activeChatUser}
-                    </h3>
-                    <p className="text-[9px] font-bold text-[#ECA413] uppercase tracking-tight truncate">Visto por último: há 10 min</p>
+                  <div className="flex flex-col">
+                    <h3 className="text-white font-black text-[13px] uppercase tracking-tighter leading-none">{activeChatProfile?.name || activeChatUser}</h3>
+                    {/* Status removed as requested */}
                   </div>
+
                 </div>
               )}
             </div>
@@ -1057,36 +1163,81 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
                 <div className="flex justify-center mb-6">
                   <div className="bg-white/10 rounded-full px-3 py-1 text-[10px] font-bold text-white/60 uppercase">HOJE</div>
                 </div>
-                {messages.filter(m => m.chatWith === activeChatUser).map((msg, idx) => (
-                  <div key={idx} className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[75%] rounded-2xl px-4 py-3 ${msg.sender === 'me' ? 'bg-[#ECA413] text-black rounded-tr-sm' : 'bg-white/10 text-white rounded-tl-sm'}`}>
-                      <p className="font-medium text-[13px]">{msg.text}</p>
-                      <p className={`text-[9px] font-black uppercase mt-1 text-right ${msg.sender === 'me' ? 'text-black/60' : 'text-white/40'}`}>{msg.time}</p>
+                {messages.map((msg, idx) => {
+                  const isMe = msg.sender_id === user?.id;
+                  const time = new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                  return (
+                    <div key={idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2 duration-300`}>
+                      <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 shadow-sm ${
+                        isMe 
+                        ? 'bg-[#ECA413] text-black rounded-tr-none' 
+                        : 'bg-white/10 text-white rounded-tl-none border border-white/5'
+                      }`}>
+                        <p className="font-medium text-[13px] leading-relaxed">{msg.content}</p>
+                        <div className="flex items-center justify-end gap-1 mt-1">
+                          <p className={`text-[8px] font-black uppercase ${isMe ? 'text-black/40' : 'text-white/30'}`}>{time}</p>
+                          {isMe && <span className="material-icons text-[10px] text-black/40">done_all</span>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                
+                {/* Typing Indicator Bubble */}
+                {isOtherTyping && (
+                  <div className="flex justify-start animate-in fade-in slide-in-from-left duration-300">
+                    <div className="bg-white/10 text-white rounded-2xl rounded-tl-none px-4 py-3 border border-white/5 flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                      <div className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                      <div className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce"></div>
                     </div>
                   </div>
-                ))}
+                )}
+                <div ref={messagesEndRef} />
               </div>
               <div className="p-4 bg-background-dark border-t border-white/5 drop-shadow-2xl flex gap-2">
                 <div className="flex-1 bg-white/10 rounded-full flex items-center px-4 border border-white/10">
                   <input 
                     value={newMessage}
                     onChange={e => setNewMessage(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && newMessage.trim() && activeChatUser) {
+                    onKeyDown={async e => {
+                      if (e.key === 'Enter' && newMessage.trim() && activeChatUser && activeChatProfile) {
                         const msgText = newMessage.trim();
-                        setMessages([...messages, { sender: 'me', text: msgText, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), chatWith: activeChatUser }]);
+                        
+                        // Optimistic Update: Add to UI immediately
+                        const sentMsg = {
+                          sender_id: user.id,
+                          receiver_id: activeChatProfile.id,
+                          content: msgText,
+                          created_at: new Date().toISOString(),
+                          chatWith: activeChatUser
+                        };
+                        setMessages(prev => [...prev, sentMsg]);
                         setNewMessage('');
+
+                        // Try to persist in DB
+                        const { error } = await supabase.from('messages').insert({
+                          sender_id: user.id,
+                          receiver_id: activeChatProfile.id,
+                          content: msgText
+                        });
+
+                        if (error) {
+                          console.error("DB Error (RLS likely):", error);
+                        }
+
+
                         
                         // Create notification for receiver
-                        if (activeChatProfile?.id) {
-                          createNotification({
-                            user_id: activeChatProfile.id,
-                            actor_id: user.id,
-                            type: 'message',
-                            message: msgText
-                          });
-                        }
+                        createNotification({
+                          user_id: activeChatProfile.id,
+                          actor_id: user.id,
+                          type: 'message',
+                          message: msgText
+                        });
                       }
+
                     }}
                     placeholder="Mensagem..." 
                     className="w-full bg-transparent text-sm py-3 outline-none font-medium placeholder:text-white/40"
@@ -1094,95 +1245,60 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
                 </div>
                 {newMessage.trim() ? (
                   <button 
-                    onClick={() => {
-                      if (activeChatUser && newMessage.trim()) {
+                    onClick={async () => {
+                      if (activeChatUser && newMessage.trim() && activeChatProfile) {
                         const msgText = newMessage.trim();
-                        setMessages([...messages, { sender: 'me', text: msgText, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), chatWith: activeChatUser }]);
+                        
+                        // Optimistic Update: Add to UI immediately
+                        const sentMsg = {
+                          sender_id: user.id,
+                          receiver_id: activeChatProfile.id,
+                          content: msgText,
+                          created_at: new Date().toISOString(),
+                          chatWith: activeChatUser
+                        };
+                        setMessages(prev => [...prev, sentMsg]);
                         setNewMessage('');
+
+                        // Try to persist in DB
+                        const { error } = await supabase.from('messages').insert({
+                          sender_id: user.id,
+                          receiver_id: activeChatProfile.id,
+                          content: msgText
+                        });
+
+                        if (error) {
+                          console.error("DB Error (RLS likely):", error);
+                        }
+
+
                         
                         // Create notification for receiver
-                        if (activeChatProfile?.id) {
-                          createNotification({
-                            user_id: activeChatProfile.id,
-                            actor_id: user.id,
-                            type: 'message',
-                            message: msgText
-                          });
-                        }
+                        createNotification({
+                          user_id: activeChatProfile.id,
+                          actor_id: user.id,
+                          type: 'message',
+                          message: msgText
+                        });
                       }
                     }}
+
                     className="w-12 h-12 rounded-full bg-[#ECA413] flex items-center justify-center text-black shadow-lg"
                   >
                     <span className="material-icons text-[20px]">send</span>
                   </button>
                 ) : (
-                  <button className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white/60">
+                  <button 
+                    onClick={() => alert("Gravação de áudio será implementada em breve!")}
+                    className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white/60"
+                  >
                     <span className="material-icons text-[20px]">mic</span>
                   </button>
+
                 )}
               </div>
             </div>
           )}
-        </div>
-      )}
-      {/* Overlay de Busca de Usuários */}
-      {isSearchOpen && (
-        <div className="fixed inset-0 z-[100] bg-background-dark animate-in fade-in slide-in-from-bottom duration-300 flex flex-col">
-          <header className="px-6 py-4 flex items-center gap-4 border-b border-white/5 sticky top-0 bg-background-dark/95 backdrop-blur-md">
-            <button onClick={() => setIsSearchOpen(false)} className="material-icons text-white/40 hover:text-white transition-colors">arrow_back</button>
-            <div className="flex-1 relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 material-icons text-[#ECA413] text-lg">search</span>
-              <input
-                autoFocus
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar vaqueiro pelo @username..."
-                className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-white placeholder:text-white/20 outline-none focus:border-[#ECA413] transition-all text-sm"
-              />
-            </div>
-          </header>
-
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {searchQuery.length > 0 ? (
-              <div className="space-y-4">
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-white/20 ml-2">Resultados Encontrados</h3>
-                {searchQueryResult.map(userResult => (
-                  <div 
-                    key={userResult.username} 
-                    onClick={() => {
-                      setIsSearchOpen(false);
-                      setSearchQuery('');
-                      setSearchQueryResult([]);
-                      navigateToProfile(userResult.username);
-                    }}
-                    className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-2xl active:scale-[0.98] transition-all cursor-pointer hover:bg-white/10"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full border border-[#ECA413]/30 p-0.5">
-                        <img src={userResult.avatar_url || `https://ui-avatars.com/api/?name=${userResult.name}&background=random`} className="w-full h-full rounded-full object-cover" alt={userResult.name} />
-                      </div>
-                      <div>
-                        <p className="text-white font-bold text-sm tracking-tight">{userResult.name}</p>
-                        <p className="text-[#ECA413] text-[10px] uppercase font-black tracking-widest">@{userResult.username}</p>
-                      </div>
-                    </div>
-                    <span className="material-icons text-white/20">chevron_right</span>
-                  </div>
-                ))}
-                
-                {searchQuery.length > 0 && searchQuery.length < 3 && (
-                  <p className="text-center text-[10px] text-white/20 uppercase tracking-widest pt-4 italic">
-                    Continue digitando para refinar...
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-20 opacity-20 space-y-4">
-                <span className="material-icons text-6xl">person_search</span>
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-center">Digite o nome ou @username <br/> para encontrar vaqueiros</p>
-              </div>
-            )}
-          </div>
         </div>
       )}
       {/* Modal de Opções do Post */}
@@ -1292,17 +1408,17 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
 
             <div className="flex-1 px-6 space-y-4 overflow-y-auto pb-10">
                 {searchQueryResult.length > 0 ? (
-                    searchQueryResult.map(res => (
+                    searchQueryResult.filter(r => r.id !== user?.id).map(res => (
                         <div 
                             key={res.id} 
                             onClick={() => { navigateToProfile(res.username); setIsSearchOpen(false); }}
                             className="bg-white/5 border border-white/5 rounded-[24px] p-4 flex items-center gap-4 active:scale-95 transition-all cursor-pointer"
                         >
                             <div className="w-12 h-12 rounded-full border border-[#ECA413]/30 p-0.5">
-                                <img src={res.avatar_url || `https://ui-avatars.com/api/?name=${res.full_name}&background=random`} className="w-full h-full rounded-full object-cover" />
+                                <img src={res.avatar_url || `https://ui-avatars.com/api/?name=${res.full_name || res.name}&background=random`} className="w-full h-full rounded-full object-cover" />
                             </div>
                             <div className="flex-1">
-                                <h4 className="text-white font-black text-sm tracking-tight">{res.full_name}</h4>
+                                <h4 className="text-white font-black text-sm tracking-tight">{res.full_name || res.name || 'Vaqueiro'}</h4>
                                 <p className="text-[#ECA413] text-[10px] font-black uppercase tracking-widest">@{res.username}</p>
                             </div>
                             <span className="material-icons text-white/20">arrow_forward_ios</span>
