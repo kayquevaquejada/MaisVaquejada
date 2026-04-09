@@ -17,13 +17,13 @@ const AdsCarousel: React.FC<AdsCarouselProps> = ({ targetPosition }) => {
     const fetchAds = async () => {
         setLoading(true);
         try {
-            // Find active ads that include targetPosition in target_screen array
-            // Since Supabase array contains is tricky with broad generic clients, we fetch active and filter locally for safety/speed if dataset is small, or use contains
+            // Fetch all active ads without the .contains() filter (which can silently fail
+            // if the column type isn't explicitly a Postgres text[] array).
+            // We filter locally instead for bulletproof reliability.
             const { data, error } = await supabase
                 .from('ads_campaigns')
                 .select('*')
                 .eq('status', 'active')
-                .contains('target_screen', [targetPosition])
                 .order('priority', { ascending: false })
                 .order('display_order', { ascending: true });
 
@@ -32,18 +32,33 @@ const AdsCarousel: React.FC<AdsCarouselProps> = ({ targetPosition }) => {
                 return;
             }
 
-            // Filter out date expiration locally to ensure bulletproof timezone handling
             const now = new Date();
             const validAds = (data || []).filter(ad => {
                 if (ad.status !== 'active') return false;
                 if (ad.start_at && new Date(ad.start_at) > now) return false;
                 if (ad.end_at && new Date(ad.end_at) < now) return false;
-                return true;
+
+                // Check if this ad targets the current screen position
+                // Handle both array and string formats for maximum compatibility
+                const screens = ad.target_screen;
+                if (!screens) return false;
+                if (Array.isArray(screens)) {
+                    return screens.includes(targetPosition);
+                }
+                if (typeof screens === 'string') {
+                    // Could be a JSON string like '["market_top_carousel"]'
+                    try {
+                        const parsed = JSON.parse(screens);
+                        return Array.isArray(parsed) && parsed.includes(targetPosition);
+                    } catch {
+                        return screens === targetPosition;
+                    }
+                }
+                return false;
             });
 
             setAds(validAds);
-            
-            // Register Impression for the first ad shown
+
             if (validAds.length > 0) {
                 registerImpression(validAds[0].id);
             }

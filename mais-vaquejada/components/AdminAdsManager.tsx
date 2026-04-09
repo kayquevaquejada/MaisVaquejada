@@ -66,20 +66,36 @@ const AdminAdsManager: React.FC<AdminAdsManagerProps> = ({ user, onBack }) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
+        // Validate file size — max 5MB to avoid mobile timeouts
+        const maxSizeMB = 5;
+        if (file.size > maxSizeMB * 1024 * 1024) {
+            alert(`A imagem é muito grande! Máximo permitido: ${maxSizeMB}MB. Comprima a imagem antes de enviar.`);
+            e.target.value = '';
+            return;
+        }
+
         setUploadingImage(true);
         try {
-            const ext = file.name.split('.').pop();
+            const ext = file.name.split('.').pop() || 'jpg';
             const fileName = `ads/${Date.now()}_${Math.random().toString(36).substr(2, 5)}.${ext}`;
             
-            const { error: uploadError } = await supabase.storage.from('vaquejadas').upload(fileName, file);
+            const { error: uploadError } = await supabase.storage
+                .from('vaquejadas')
+                .upload(fileName, file, { 
+                    upsert: true,
+                    contentType: file.type || 'image/jpeg',
+                    cacheControl: '3600'
+                });
+
             if (uploadError) throw uploadError;
 
-            const { data: { publicUrl } } = supabase.storage.from('vaquejadas').getPublicUrl(fileName);
-            setFormData(prev => ({ ...prev, image_url: publicUrl }));
+            const { data } = supabase.storage.from('vaquejadas').getPublicUrl(fileName);
+            setFormData(prev => ({ ...prev, image_url: data.publicUrl }));
         } catch (err: any) {
-            alert('Erro ao enviar imagem: ' + err.message);
+            alert('Erro ao enviar imagem: ' + (err?.message || 'Tente novamente ou comprime a imagem.'));
         } finally {
             setUploadingImage(false);
+            e.target.value = ''; // allow re-selecting same file
         }
     };
 
