@@ -178,6 +178,10 @@ class CallManager {
             this.localStream.getTracks().forEach(t => t.stop());
             this.localStream = null;
         }
+        this.remoteStreams.clear();
+        this.currentSession = null;
+    }
+
     private async updateStatus(status: CallStatus) {
         if (this.currentSession) {
             this.currentSession.status = status;

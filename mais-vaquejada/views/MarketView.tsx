@@ -607,7 +607,6 @@ const MarketView: React.FC<MarketViewProps> = ({ forceShowWizard = false, onWiza
                                         </p>
                                     </div>
                                 </div>
-                            </div>    </div>
                             </div>
                         </div>
                     )}
