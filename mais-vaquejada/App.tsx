@@ -16,6 +16,7 @@ import AdminUsersView from './views/AdminUsersView';
 import BlockedAccountView from './views/BlockedAccountView';
 import RecoveryAssistedView from './views/RecoveryAssistedView';
 import Navbar from './components/Navbar';
+import CallOverlay from './components/CallOverlay';
 import { supabase } from './lib/supabase';
 import { requestPushPermission } from './lib/notifications';
 
@@ -385,6 +386,7 @@ const App: React.FC = () => {
           {showNavbar && (
             <Navbar currentView={currentView} user={user} />
           )}
+          <CallOverlay user={user} />
         </div>
       </div>
     </ErrorBoundary>

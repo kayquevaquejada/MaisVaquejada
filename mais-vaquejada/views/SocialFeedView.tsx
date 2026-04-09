@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PostItem, StoryItem } from '../types';
 import { supabase } from '../lib/supabase';
+import { callManager } from '../lib/calls';
 import { ArenaNotification, fetchUserNotifications, getNotifText, timeAgo, createNotification } from '../lib/notifications';
 
 const STORY_GROUPS = [
@@ -941,7 +942,34 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
                 {activeChatUser && <p className="text-[10px] font-bold text-[#ECA413] uppercase tracking-tight">Visto por último: há 10 min</p>}
               </div>
             </div>
-            {!activeChatUser && (
+            {activeChatUser ? (
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => {
+                    if (activeChatProfile?.id) {
+                      callManager.initMedia('audio').then(() => {
+                        callManager.startCall(user.id, [activeChatProfile.id], 'audio');
+                      });
+                    }
+                  }}
+                  className="material-icons text-white hover:text-[#ECA413] transition-colors"
+                >
+                  call
+                </button>
+                <button 
+                  onClick={() => {
+                    if (activeChatProfile?.id) {
+                      callManager.initMedia('video').then(() => {
+                        callManager.startCall(user.id, [activeChatProfile.id], 'video');
+                      });
+                    }
+                  }}
+                  className="material-icons text-white hover:text-[#ECA413] transition-colors"
+                >
+                  videocam
+                </button>
+              </div>
+            ) : (
               <button className="material-icons text-white">edit_square</button>
             )}
           </header>
