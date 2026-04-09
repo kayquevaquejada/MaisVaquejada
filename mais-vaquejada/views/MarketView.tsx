@@ -104,10 +104,9 @@ const MarketView: React.FC<MarketViewProps> = ({ forceShowWizard = false, onWiza
         itemNF: '',
         // Step 3
         photos: [] as string[],
-        contactName: 'João Silvestre',
-        whatsapp: '(83) 99999-9999',
-        showPhone: true,
-        contactPref: 'whatsapp'
+        contactName: user?.name || 'Vendedor',
+        showPhone: false,
+        contactPref: 'chat'
     });
 
     const [cities, setCities] = useState<any[]>([]);
@@ -271,11 +270,18 @@ const MarketView: React.FC<MarketViewProps> = ({ forceShowWizard = false, onWiza
                         <span className="material-icons">{favorites.includes(viewingAd.title) ? 'favorite' : 'favorite_border'}</span>
                     </button>
                     <button
-                        onClick={() => alert(`Abrindo WhatsApp para conversar sobre: ${viewingAd.title}`)}
-                        className="flex-1 bg-[#25D366] text-white rounded-xl flex items-center justify-center gap-2 font-black uppercase tracking-widest shadow-lg shadow-green-500/20 active:scale-95 transition-transform"
+                        onClick={() => {
+                            window.dispatchEvent(new CustomEvent('arena_navigate', { 
+                                detail: { 
+                                    view: 'SOCIAL', 
+                                    openDM: viewingAd.sellerUsername || 'joao_vendedor' 
+                                } 
+                            }));
+                        }}
+                        className="flex-1 bg-[#D4AF37] text-white rounded-xl flex items-center justify-center gap-2 font-black uppercase tracking-widest shadow-lg shadow-[#D4AF37]/20 active:scale-95 transition-transform"
                     >
-                        <span className="material-icons text-lg">whatsapp</span>
-                        <span className="text-xs">Negociar</span>
+                        <span className="material-icons text-lg">chat_bubble</span>
+                        <span className="text-xs">Negociar no Chat</span>
                     </button>
                 </div>
             </div>
@@ -352,7 +358,7 @@ const MarketView: React.FC<MarketViewProps> = ({ forceShowWizard = false, onWiza
                                             <p className="text-[10px] font-medium text-[#1A1108]/40">Vendedor verificado</p>
                                         </div>
                                     </div>
-                                    <span className="material-icons text-green-500">whatsapp</span>
+                                    <span className="material-icons text-[#D4AF37]">chat_bubble</span>
                                 </div>
                             </div>
                         </div>
@@ -454,7 +460,7 @@ const MarketView: React.FC<MarketViewProps> = ({ forceShowWizard = false, onWiza
                             <div className="flex justify-between items-center bg-white p-6 rounded-3xl border border-[#1A1108]/5">
                                 <div>
                                     <h4 className="font-black uppercase text-sm italic">É negociável?</h4>
-                                    <p className="text-[10px] font-bold text-[#1A1108]/40">O preço será combinado via WhatsApp</p>
+                                    <p className="text-[10px] font-bold text-[#1A1108]/40">O comprador entrará em contato via Chat</p>
                                 </div>
                                 <button
                                     onClick={() => setAdData({ ...adData, priceType: adData.priceType === 'fixed' ? 'negotiable' : 'fixed' })}
@@ -533,25 +539,24 @@ const MarketView: React.FC<MarketViewProps> = ({ forceShowWizard = false, onWiza
                                         <span className="material-icons text-3xl mb-1">add_a_photo</span>
                                         <span className="text-[8px] font-black uppercase tracking-widest">Adicionar</span>
                                     </button>
-                                </div>
-                            </div>
-
-                            <div className="bg-white rounded-3xl p-6 border border-[#1A1108]/5 space-y-6">
+                                                            <div className="bg-white rounded-3xl p-6 border border-[#1A1108]/5 space-y-6">
                                 <div className="flex items-center gap-2 mb-2">
-                                    <span className="material-icons text-green-500">whatsapp</span>
-                                    <h4 className="font-black uppercase text-xs">Dados de Contato</h4>
+                                    <span className="material-icons text-[#D4AF37]">chat_bubble</span>
+                                    <h4 className="font-black uppercase text-xs">Abertura de Negociação</h4>
                                 </div>
 
                                 <div className="space-y-4">
                                     <div className="space-y-1">
-                                        <label className="text-[10px] font-black text-[#1A1108]/40 uppercase tracking-widest pl-1">Nome no anúncio</label>
+                                        <label className="text-[10px] font-black text-[#1A1108]/40 uppercase tracking-widest pl-1">Identificação no anúncio</label>
                                         <input className="w-full bg-[#F5F1E9] border-none rounded-xl py-3 px-4 font-bold text-sm text-[#1A1108]" value={adData.contactName} readOnly />
                                     </div>
-                                    <div className="space-y-1">
-                                        <label className="text-[10px] font-black text-[#1A1108]/40 uppercase tracking-widest pl-1">WhatsApp</label>
-                                        <input className="w-full bg-[#F5F1E9] border-none rounded-xl py-3 px-4 font-bold text-sm text-[#1A1108]" value={adData.whatsapp} readOnly />
+                                    <div className="bg-[#F5F1E9] p-4 rounded-xl">
+                                        <p className="text-[10px] font-bold text-[#1A1108]/60 leading-relaxed italic">
+                                            Atenção: Por segurança, todas as conversas agora ocorrem dentro do app. Você receberá notificações de novos interessados.
+                                        </p>
                                     </div>
                                 </div>
+                            </div>    </div>
                             </div>
                         </div>
                     )}
