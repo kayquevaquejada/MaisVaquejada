@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { User, View } from '../types';
 import { supabase } from '../lib/supabase';
+import AdminAdsManager from '../components/AdminAdsManager';
+
 
 // Extrai o ID do vídeo YouTube de uma URL
 function extractYouTubeId(url: string): string | null {
@@ -22,7 +24,8 @@ interface AdminViewProps {
     user: any;
 }
 
-type AdminTab = 'MAIN' | 'USERS' | 'MERCADO' | 'SOCIAL' | 'EVENTOS' | 'NOTICIAS';
+type AdminTab = 'MAIN' | 'USERS' | 'MERCADO' | 'SOCIAL' | 'EVENTOS' | 'NOTICIAS' | 'ADS';
+
 
 const AdminView: React.FC<AdminViewProps> = ({ user }) => {
     const [activeTab, setActiveTab] = useState<AdminTab>('MAIN');
@@ -58,11 +61,12 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
     const [transmissionForm, setTransmissionForm] = useState<any>({});
     const [bannerForm, setBannerForm] = useState<any>({});
 
-    const isMaster = user?.isMaster || false;
-    const hasMercado = isMaster || user?.admin_mercado;
-    const hasSocial = isMaster || user?.admin_social;
-    const hasEventos = isMaster || user?.admin_eventos;
-    const hasNoticias = isMaster || user?.admin_noticias;
+    const isMaster = user?.isMaster || user?.role === 'ADMIN_MASTER' || false;
+    const hasMercado = isMaster || user?.admin_mercado || user?.role === 'ADMIN' || false;
+    const hasSocial = isMaster || user?.admin_social || user?.role === 'ADMIN' || false;
+    const hasEventos = isMaster || user?.admin_eventos || user?.role === 'ADMIN' || false;
+    const hasNoticias = isMaster || user?.admin_noticias || user?.role === 'ADMIN' || false;
+
 
     const [loginBgUrl, setLoginBgUrl] = useState('');
     const [loginBgUploading, setLoginBgUploading] = useState(false);
@@ -116,18 +120,26 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
     };
 
     useEffect(() => {
+        // DIAGNÓSTICO FORÇADO
+        if (hasMercado) {
+            console.log("DEBUG: Perfil Admin Detectado. Role:", user?.role);
+            fetchMarket();
+        } else {
+            console.log("DEBUG: Acesso negado ao Mercado. Role atual:", user?.role);
+        }
+
         if (isMaster) fetchTotalUsers();
         if (hasEventos) fetchEvents();
         if (hasNoticias) {
             if (subviewNews === 'LIST') fetchNews();
             if (subviewNews === 'TV') fetchTransmissions();
         }
-        if (hasMercado && subviewMercado === 'LIST') fetchMarket();
+        
         if (hasSocial) {
              fetchPosts();
              fetchBanners();
         }
-    }, [isMaster, hasEventos, subviewEvents, hasNoticias, subviewNews, hasMercado, subviewMercado, hasSocial, subviewSocial]);
+    }, [isMaster, hasEventos, subviewEvents, hasNoticias, subviewNews, hasMercado, subviewMercado, hasSocial, subviewSocial, user?.role]);
 
     const fetchTotalUsers = async () => {
         const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
@@ -135,50 +147,71 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
     };
 
     const fetchEvents = async () => {
-        setLoading(true);
-        const { data } = await supabase.from('events').select('*').order('created_at', { ascending: false });
-        if (data) setEventsList(data);
-        setLoading(false);
+        try {
+            const { data } = await supabase.from('events').select('*').order('created_at', { ascending: false });
+            if (data) setEventsList(data);
+        } catch (err) {
+            console.error("Error fetching events:", err);
+        }
     };
+
 
     const fetchNews = async () => {
-        setLoading(true);
-        const { data } = await supabase.from('news').select('*').order('created_at', { ascending: false });
-        if (data) setNewsList(data);
-        setLoading(false);
+        try {
+            const { data } = await supabase.from('news').select('*').order('created_at', { ascending: false });
+            if (data) setNewsList(data);
+        } catch (err) {
+            console.error("Error fetching news:", err);
+        }
     };
+
 
     const fetchTransmissions = async () => {
-        setLoading(true);
-        const { data } = await supabase.from('transmissions').select('*').order('created_at', { ascending: false });
-        if (data) setTransmissionsList(data);
-        setLoading(false);
+        try {
+            const { data } = await supabase.from('transmissions').select('*').order('created_at', { ascending: false });
+            if (data) setTransmissionsList(data);
+        } catch (err) {
+            console.error("Error fetching transmissions:", err);
+        }
     };
 
+
     const fetchMarket = async () => {
-        setLoading(true);
-        const { data } = await supabase.from('market_items').select('*').order('created_at', { ascending: false });
-        if (data) setMarketList(data);
-        setLoading(false);
+        try {
+            const { data, count, error } = await supabase.from('market_items').select('*', { count: 'exact' });
+            
+            if (error) {
+                console.error("ERRO SUPABASE:", error.message);
+                return;
+            }
+
+            if (data) {
+                setMarketList(data);
+            }
+        } catch (err: any) {
+            console.error("ERRO NO FLUXO:", err.message);
+        }
     };
 
     const fetchPosts = async () => {
-        setLoading(true);
         try {
             const { data } = await supabase.from('posts').select(`*, profiles:user_id(username, avatar_url, name)`).order('created_at', { ascending: false });
             if (data) setPostsList(data);
         } catch (err) {
             console.error("Error fetching posts:", err);
         }
-        setLoading(false);
     };
 
     const fetchBanners = async () => {
-        setLoading(true);
-        const { data } = await supabase.from('banners').select('*').order('created_at', { ascending: false });
-        if (data) setBannersList(data);
-        setLoading(false);
+        try {
+            const { data, error } = await supabase.from('banners').select('*').order('created_at', { ascending: false });
+            if (error) console.error("Error fetching banners:", error.message);
+            if (data) setBannersList(data);
+        } catch(err) {
+            console.error("Error fetching banners:", err);
+        }
     };
+
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, index: number | 'cover') => {
         const file = e.target.files?.[0];
@@ -352,6 +385,35 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         if (!error) fetchMarket();
         else { alert('Erro: ' + error.message); setLoading(false); }
     };
+
+    const deleteMarketItem = async (ad: any) => {
+        if (!confirm(`Deseja EXCLUIR permanentemente o anúncio "${ad.title}"? O vendedor receberá uma notificação sobre a remoção.`)) return;
+        
+        setLoading(true);
+        try {
+            // 1. Deletar o anúncio
+            const { error: delError } = await supabase.from('market_items').delete().eq('id', ad.id);
+            if (delError) throw delError;
+
+            // 2. Notificar o usuário
+            if (ad.user_id) {
+                await supabase.from('notifications').insert({
+                    user_id: ad.user_id,
+                    actor_id: user.id, // Admin que deletou
+                    type: 'system',
+                    message: `O +Vaquejada retirou do mercado o seu produto "${ad.title}" por não condizer com a política do aplicativo.`
+                });
+            }
+
+            alert('Anúncio excluído e usuário notificado.');
+            fetchMarket();
+        } catch (err: any) {
+            alert('Erro ao excluir: ' + err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
 
     // Social Moderation
     const toggleHidePost = async (p_id: string, current: boolean) => {
@@ -711,10 +773,12 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                                     </div>
                                     <img src={ad.img} className="w-12 h-12 object-cover rounded shadow-sm shrink-0" alt="Anúncio" />
                                 </div>
-                                <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-[#1A1108]/5">
-                                    <button onClick={() => updateMarketStatus(ad.id, 'approved')} disabled={ad.status === 'approved'} className="text-[9px] font-black uppercase tracking-widest bg-green-500 text-white rounded-lg py-2 disabled:opacity-30">Aprovar Anúncio</button>
-                                    <button onClick={() => updateMarketStatus(ad.id, 'rejected')} disabled={ad.status === 'rejected'} className="text-[9px] font-black uppercase tracking-widest bg-red-100 text-red-600 rounded-lg py-2 disabled:opacity-30">Ocultar/Rejeitar</button>
+                                <div className="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-[#1A1108]/5">
+                                    <button onClick={() => updateMarketStatus(ad.id, 'approved')} disabled={ad.status === 'approved'} className="text-[9px] font-black uppercase tracking-widest bg-green-500 text-white rounded-lg py-2 disabled:opacity-30">Aprovar</button>
+                                    <button onClick={() => updateMarketStatus(ad.id, 'rejected')} disabled={ad.status === 'rejected'} className="text-[9px] font-black uppercase tracking-widest bg-yellow-500 text-white rounded-lg py-2 disabled:opacity-30">Ocultar</button>
+                                    <button onClick={() => deleteMarketItem(ad)} className="text-[9px] font-black uppercase tracking-widest bg-red-100 text-red-600 rounded-lg py-2">Excluir Item</button>
                                 </div>
+
                             </div>
                         ))}
                     </div>
@@ -726,21 +790,36 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
             <div className="absolute inset-0 bg-[#F8F5F2] flex flex-col z-[120]">
                 <SubHeader title="Gestão do Mercado" />
                 <div className="flex-1 overflow-y-auto">
-                    <SectionTitle title="Anúncios" />
-                    <div className="px-6 mb-6">
+                    <SectionTitle title="Métricas & Ações" />
+
+
+                    <div className="px-6 space-y-4">
+                        {/* Card de Resumo */}
+                        <div className="bg-white p-6 rounded-[32px] border border-[#1A1108]/5 shadow-sm flex items-center justify-between">
+                            <div>
+                                <p className="text-2xl font-black text-leather">{marketList.length}</p>
+                                <p className="text-[10px] text-leather/40 uppercase font-black tracking-widest leading-tight">Total de Anúncios</p>
+                            </div>
+                            <div className="w-12 h-12 bg-[#D4AF37]/10 rounded-2xl flex items-center justify-center">
+                                <span className="material-icons text-[#D4AF37]">storefront</span>
+                            </div>
+                        </div>
+
+                        {/* Botão para Lista Completa */}
                         <button onClick={() => setSubviewMercado('LIST')} className="w-full bg-white border border-[#1A1108]/10 text-leather p-4 rounded-xl font-black uppercase tracking-widest text-xs flex items-center justify-between active:scale-95 shadow-sm group">
                             <div className="flex items-center gap-3">
                                 <div className="bg-[#D4AF37]/10 w-10 h-10 rounded-lg flex items-center justify-center">
                                     <span className="material-icons text-[#D4AF37]">fact_check</span>
                                 </div>
                                 <div className="text-left">
-                                    <p className="font-black text-sm text-leather">Mural de Aprovação</p>
-                                    <p className="text-[9px] text-leather/40 uppercase">Aprovar / Ocultar Produtos</p>
+                                    <p className="font-black text-sm text-leather">Gerenciar Mural</p>
+                                    <p className="text-[9px] text-leather/40 uppercase">Aprovar, Ocultar ou Excluir</p>
                                 </div>
                             </div>
                             <span className="material-icons text-leather/20 group-hover:text-[#D4AF37] transition-colors">chevron_right</span>
                         </button>
                     </div>
+
                 </div>
             </div>
         );
@@ -1384,6 +1463,8 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
     if (activeTab === 'SOCIAL') return renderSocialView();
     if (activeTab === 'EVENTOS') return renderEventosView();
     if (activeTab === 'NOTICIAS') return renderNoticiasView();
+    if (activeTab === 'ADS') return <AdminAdsManager user={user} onBack={() => setActiveTab('MAIN')} />;
+
 
     return (
         <div className="min-h-full bg-[#F8F5F2] text-leather font-sans pb-24 font-display animate-in slide-in-from-right duration-300 z-[150] relative">
@@ -1416,6 +1497,11 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                             label="Comunidade & Usuários" 
                             badge={totalUsersCount ? totalUsersCount.toLocaleString() : undefined} 
                             onClick={() => setActiveTab('USERS')} 
+                        />
+                        <MenuItem 
+                            icon="campaign" 
+                            label="Central de Publicidade" 
+                            onClick={() => setActiveTab('ADS')} 
                         />
 
                         {/* Trocar Fundo de Login */}

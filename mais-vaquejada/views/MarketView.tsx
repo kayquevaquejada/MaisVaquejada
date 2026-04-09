@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View } from '../types';
 import { supabase } from '../lib/supabase';
+import AdsCarousel from '../components/AdsCarousel';
+
 
 const STATES = [
     'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
@@ -40,7 +42,92 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
     });
     const [adIndex, setAdIndex] = useState(0);
     const [publishedAds, setPublishedAds] = useState<any[]>([]);
+    const [loadingAds, setLoadingAds] = useState(true);
     const [activeCategoryId, setActiveCategoryId] = useState('all');
+    const [isUploading, setIsUploading] = useState(false);
+
+
+
+    const deleteAdDirectly = async (ad: any) => {
+        if (!confirm(`Deseja EXCLUIR permanentemente o anúncio "${ad.title}"?`)) return;
+        
+        // 1. Verificar se é um anúncio local/mock
+        if (ad.id && ad.id.toString().startsWith('local-')) {
+            setPublishedAds(prev => prev.filter(p => p.id !== ad.id));
+            alert('Anúncio de exemplo removido localmente.');
+            return;
+        }
+
+        try {
+            // 2. Deletar do banco (para IDs UUID reais)
+            const { error: delError } = await supabase.from('market_items').delete().eq('id', ad.id);
+            if (delError) throw delError;
+
+            // 3. Se o deletador não for o dono (é admin), notifica o dono
+            const isAdmin = user?.role === 'ADMIN' || user?.role === 'ADMIN_MASTER' || user?.isMaster;
+            if (isAdmin && ad.user_id !== user.id) {
+                await supabase.from('notifications').insert({
+                    user_id: ad.user_id,
+                    actor_id: user.id,
+                    type: 'system',
+                    message: `O +Vaquejada retirou do mercado o seu produto "${ad.title}" por não condizer com a política do aplicativo.`
+                });
+            }
+
+            alert('Anúncio removido com sucesso!');
+            fetchAds(); // Recarregar feed
+        } catch (err: any) {
+            console.error('Delete error:', err);
+            alert('Erro ao excluir: ' + err.message);
+        }
+    };
+
+
+    // Ensure cache is cleared for fresh start
+    useEffect(() => {
+        localStorage.removeItem('arena_local_ads');
+    }, []);
+
+
+    const fetchAds = async () => {
+        setLoadingAds(true);
+        try {
+            const { data, error } = await supabase
+                .from('market_items')
+                .select('*, profiles:user_id(name, avatar_url, username)')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            
+            console.log(`MERCADO: Recebidos ${data?.length || 0} anúncios do banco.`);
+            // if (data?.length === 0) alert("AVISO: O banco retornou ZERO anúncios.");
+
+            setPublishedAds(data || []);
+
+        } catch (err) {
+            console.error('Error fetching ads from DB:', err);
+        } finally {
+            setLoadingAds(false);
+        }
+    };
+
+    // Fetch Ads from Supabase
+    useEffect(() => {
+        fetchAds();
+
+        // Realtime updates
+        const channel = supabase
+            .channel('market_items_realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'market_items' }, () => {
+                fetchAds();
+            })
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
+    }, []);
+
+
+
 
     const FILTER_TAGS = [
         { label: 'TUDO', id: 'all' },
@@ -50,14 +137,8 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
         { label: 'ACESSÓRIOS', id: 'access' }
     ];
 
-    const MOCK_MARKET_ITEMS = [
-        { title: 'SELA PROFISSIONAL LUXO', price: 'R$ 1.500', loc: 'CG, PB', img: 'https://picsum.photos/seed/sela/400', isNew: true, category: 'access' },
-        { title: 'CAMINHÃO REBOQUE 2024', price: 'R$ 85.000', loc: 'JP, PB', img: 'https://picsum.photos/seed/truck/400', isNew: true, category: 'truck' },
-        { title: 'CAVALO QUARTO DE MILHA', price: 'A COMBINAR', loc: 'CE, PE', img: 'https://picsum.photos/seed/horse/400', isNew: false, category: 'horse' },
-        { title: 'BOTAS DE COURO LEGÍTIMO', price: 'R$ 350', loc: 'CG, PB', img: 'https://picsum.photos/seed/boots/400', isNew: false, category: 'access' },
-        { title: 'VAN DE TRANSPORTE', price: 'R$ 120.000', loc: 'SP, SP', img: 'https://picsum.photos/seed/van/400', isNew: true, category: 'truck' },
-        { title: 'POTRO QM 2 ANOS', price: 'A COMBINAR', loc: 'BA, MG', img: 'https://picsum.photos/seed/colt/400', isNew: true, category: 'horse' },
-    ];
+    const MOCK_MARKET_ITEMS: any[] = [];
+
 
     useEffect(() => {
         localStorage.setItem('arena_market_favorites', JSON.stringify(favorites));
@@ -145,65 +226,106 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
 
     const handleRealPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
-        if (!files || files.length === 0 || !user?.id) return;
+        if (!files || files.length === 0) return;
 
-        setLoadingCities(true);
+        setIsUploading(true);
         try {
-            const newPhotos: string[] = [];
-            
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
+                
+                // 1. Upload para o Supabase
                 const fileExt = file.name.split('.').pop();
                 const fileName = `market/${user.id}/${Date.now()}_${i}.${fileExt}`;
+                
+                const { error: uploadError } = await supabase.storage
+                    .from('vaquejadas')
+                    .upload(fileName, file);
 
-                try {
-                    const { error: uploadError } = await supabase.storage
-                        .from('vaquejadas')
-                        .upload(fileName, file, { upsert: true });
-
-                    if (uploadError) throw uploadError;
-
-                    const { data: { publicUrl } } = supabase.storage
-                        .from('vaquejadas')
-                        .getPublicUrl(fileName);
-
-                    newPhotos.push(publicUrl);
-                } catch (dbError: any) {
-                    console.warn('DB Upload failed, using local fallback:', dbError);
-                    // Fallback para visualização local (Modo de Teste)
-                    const localUrl = await new Promise<string>((resolve) => {
-                        const reader = new FileReader();
-                        reader.onloadend = () => resolve(reader.result as string);
-                        reader.readAsDataURL(file);
-                    });
-                    newPhotos.push(localUrl);
+                if (uploadError) {
+                    console.error("Erro upload:", uploadError);
+                    alert(`Falha ao enviar uma das fotos: ${uploadError.message}`);
+                    continue;
                 }
-            }
 
-            setAdData(prev => ({ ...prev, photos: [...prev.photos, ...newPhotos] }));
+                const { data: { publicUrl } } = supabase.storage.from('vaquejadas').getPublicUrl(fileName);
+                
+                // Atualiza INCREMENTALMENTE para o usuário ver progresso
+                setAdData(prev => ({ 
+                    ...prev, 
+                    photos: [...prev.photos, publicUrl] 
+                }));
+            }
         } catch (error: any) {
-            console.error('Error in photo upload flow:', error);
-            alert(`Erro ao processar fotos: ${error.message}`);
+
+            console.error('Error in photo flow:', error);
+            alert("Erro ao processar fotos: " + error.message);
         } finally {
-            setLoadingCities(false);
+            setIsUploading(false);
         }
     };
 
 
-    const publishAd = () => {
-        const newAd = {
-            title: adData.title || 'Anúncio Sem Título',
-            price: adData.priceType === 'negotiable' ? 'A COMBINAR' : `R$ ${adData.price}`,
-            loc: `${adData.city || 'Cidade'}, ${adData.uf || 'UF'}`,
-            img: adData.photos[0] || 'https://picsum.photos/seed/novo_anuncio/400',
-            isNew: adData.condition === 'NOVO',
-            description: adData.description,
-            category: adData.category
-        };
-        setPublishedAds(prev => [newAd, ...prev]);
-        setShowConfirm(false);
-        setShowSuccess(true);
+
+
+
+    const publishAd = async () => {
+        if (!user?.id) return;
+
+        try {
+            const newItem = {
+                user_id: user.id, 
+                title: adData.title,
+                description: adData.description,
+                category: adData.category,
+                price: adData.priceType === 'negotiable' ? 'A COMBINAR' : `R$ ${adData.price}`,
+                price_type: adData.priceType,
+                is_new: adData.condition === 'NOVO',
+                loc: `${adData.city}, ${adData.uf}`,
+                city: adData.city,
+                uf: adData.uf,
+                img: adData.photos[0] || '',
+                photos: adData.photos,
+                status: 'approved', 
+                created_at: new Date().toISOString()
+            };
+
+            // 1. Try to save to Supabase FIRST
+            const { error: dbError } = await supabase.from('market_items').insert(newItem);
+
+            if (dbError) {
+                console.error("DB Insert failed:", dbError);
+                alert("Erro ao salvar no banco: " + dbError.message);
+                return;
+            }
+
+            // 2. ONLY after Success, update state and UI
+            setPublishedAds(prev => [newItem, ...prev]);
+            setShowConfirm(false);
+            setShowSuccess(true);
+            setStep(1);
+
+            setAdData({
+                category: '',
+                title: '',
+                description: '',
+                price: '',
+                priceType: 'fixed',
+                uf: '',
+                city: '',
+                photos: [],
+                contactName: user?.name || ''
+            });
+
+            fetchAds(); // Refresh the list
+
+        } catch (err: any) {
+
+            console.error('Error publishing ad:', err);
+            alert(`Erro ao publicar: ${err.message}`);
+        }
     };
+
+
 
     const handleOpenWizard = () => {
         // Use direct callback if available, otherwise fallback to dispatch
@@ -227,25 +349,58 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
             <div className="absolute inset-0 z-[100] bg-[#F5F1E9] flex flex-col animate-in slide-in-from-right duration-300 overflow-y-auto">
                 {/* Header Navigation relative for back button */}
                 <div className="relative">
-                    <div className="absolute top-6 left-6 z-10">
+                    <div className="absolute top-6 left-6 z-20">
                         <button onClick={() => setViewingAd(null)} className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-lg">
                             <span className="material-icons">arrow_back</span>
                         </button>
                     </div>
 
-                    {/* Main Image Banner */}
-                    <div className="h-[350px] relative bg-neutral-900">
-                        <img src={viewingAd.img} className="w-full h-full object-cover" alt={viewingAd.title} />
+                    {(user?.id === viewingAd.user_id || user?.role === 'ADMIN' || user?.role === 'ADMIN_MASTER' || user?.isMaster) && (
+                        <div className="absolute top-6 right-6 z-20">
+                            <button 
+                                onClick={async () => {
+                                    await deleteAdDirectly(viewingAd);
+                                    setViewingAd(null);
+                                }}
+                                className="w-10 h-10 rounded-full bg-red-500/80 backdrop-blur-md flex items-center justify-center text-white shadow-lg active:scale-90"
+                            >
+                                <span className="material-icons text-xl">delete</span>
+                            </button>
+                        </div>
+                    )}
+
+
+                    {/* Main Image Gallery / Carousel */}
+                    <div className="h-[350px] relative bg-neutral-900 group">
+                        {Array.isArray(viewingAd.photos) && viewingAd.photos.length > 1 ? (
+                            <div className="flex w-full h-full overflow-x-auto snap-x snap-mandatory hide-scrollbar">
+                                {viewingAd.photos.map((ph: string, idx: number) => (
+                                    <div key={idx} className="w-full h-full shrink-0 snap-center">
+                                        <img src={ph} className="w-full h-full object-cover" alt={`${viewingAd.title} - ${idx + 1}`} />
+                                    </div>
+                                ))}
+                                {/* Indicator dots */}
+                                <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-1.5 z-10 bg-black/20 px-2 py-1 rounded-full backdrop-blur-sm">
+                                    {viewingAd.photos.map((_: any, idx: number) => (
+                                        <div key={idx} className="w-1.5 h-1.5 rounded-full bg-white/30" />
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <img src={viewingAd.img || viewingAd.photos?.[0]} className="w-full h-full object-cover" alt={viewingAd.title} />
+                        )}
+                        
                         <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#1A1108] to-transparent"></div>
                         <div className="absolute bottom-6 left-6 right-6 flex justify-between items-end">
                             <div>
                                 <span className="bg-[#D4AF37] text-white text-[10px] font-black px-2 py-1 rounded uppercase tracking-widest mb-2 inline-block shadow-lg">
-                                    {viewingAd.isNew ? 'NOVO' : 'OPORTUNIDADE'}
+                                    {viewingAd.isNew || viewingAd.is_new ? 'NOVO' : 'OPORTUNIDADE'}
                                 </span>
                                 <h2 className="text-white text-2xl font-black uppercase leading-tight shadow-black drop-shadow-md">{viewingAd.title}</h2>
                             </div>
                         </div>
                     </div>
+
                 </div>
 
                 <div className="flex-1 -mt-4 bg-[#F5F1E9] rounded-t-[32px] px-6 pt-8 relative z-0">
@@ -353,58 +508,76 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
 
     if (showConfirm) {
         return (
-            <div className="min-h-full bg-[#F5F1E9] flex flex-col pb-24">
-                <header className="px-6 py-6 border-b border-[#1A1108]/5 bg-white flex items-center gap-4">
-                    <button onClick={() => setShowConfirm(false)} className="material-icons text-leather">arrow_back</button>
-                    <h1 className="text-xl font-black uppercase italic tracking-tight">Revisar Anúncio</h1>
+            <div className="absolute inset-0 z-[110] bg-[#F5F1E9] flex flex-col">
+                <header className="px-6 py-6 border-b border-[#1A1108]/5 bg-white flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <button onClick={() => setShowConfirm(false)} className="material-icons text-leather">arrow_back</button>
+                        <h1 className="text-xl font-black uppercase italic tracking-tight">Revisar Anúncio</h1>
+                    </div>
                 </header>
 
-                <div className="flex-1 overflow-y-auto p-6">
-                    <p className="text-xs font-black text-[#1A1108]/40 uppercase tracking-[0.2em] mb-4 text-center">Confirme antes de colocar na praça</p>
+                <div className="flex-1 overflow-y-auto px-6 py-8">
+                    <div className="text-center mb-6">
+                        <p className="text-[10px] font-black text-leather/30 uppercase tracking-[0.3em]">Confirme antes de colocar na praça</p>
+                    </div>
 
-                    {/* Card Preview */}
-                    <div className="bg-white rounded-3xl overflow-hidden shadow-xl border border-[#1A1108]/5 mb-8">
-                        <div className="aspect-square relative flex items-center justify-center bg-neutral-100">
-                            {adData.photos.length > 0 ? (
-                                <img src={adData.photos[0]} className="w-full h-full object-cover" alt="Cover" />
-                            ) : (
-                                <span className="material-icons text-6xl text-[#1A1108]/10">image</span>
-                            )}
-                            <div className="absolute top-4 left-4 bg-[#D4AF37] text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">PREVIEW</div>
-                        </div>
-                        <div className="p-6">
-                            <div className="flex justify-between items-start mb-2">
-                                <span className="bg-[#1A1108]/5 text-[#1A1108]/60 text-[10px] font-black px-2 py-1 rounded uppercase tracking-widest">{adData.category.toUpperCase()}</span>
-                                <span className="text-[#D4AF37] font-black text-xl">{adData.priceType === 'negotiable' ? 'A COMBINAR' : `R$ ${adData.price}`}</span>
-                            </div>
-                            <h3 className="text-2xl font-black mb-1 uppercase leading-tight">{adData.title || 'SEM TÍTULO'}</h3>
-                            <div className="flex items-center gap-1 text-[#1A1108]/40 mb-4">
-                                <span className="material-icons text-sm">place</span>
-                                <span className="text-xs font-bold">{adData.city}, {adData.uf}</span>
-                            </div>
-
-                            <div className="space-y-4 pt-4 border-t border-[#1A1108]/5">
-                                <div>
-                                    <p className="text-[10px] font-black text-[#1A1108]/40 uppercase tracking-widest mb-1">DETALHES</p>
-                                    <div className="flex flex-wrap gap-2">
-                                        <span className="bg-[#1A1108]/5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase text-[#1A1108]/80">{adData.condition}</span>
-                                        {adData.category === 'horse' && <span className="bg-[#1A1108]/5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase text-[#1A1108]/80">{adData.horseBreed}</span>}
-                                    </div>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-black text-[#1A1108]/40 uppercase tracking-widest mb-1">DESCRIÇÃO</p>
-                                    <p className="text-sm text-[#1A1108]/70 leading-relaxed">{adData.description}</p>
-                                </div>
-                                <div className="bg-[#F5F1E9] p-4 rounded-2xl flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <img src="https://picsum.photos/seed/profile/100" className="w-8 h-8 rounded-full" />
-                                        <div>
-                                            <p className="text-[11px] font-black">{adData.contactName}</p>
-                                            <p className="text-[10px] font-medium text-[#1A1108]/40">Vendedor verificado</p>
+                    <div className="bg-white rounded-[32px] overflow-hidden shadow-2xl shadow-leather/10 border border-leather/5 mb-8">
+                        {/* Photo Quick Review Carousel */}
+                        <div className="relative aspect-square bg-[#1A1108] group">
+                            <div id="review-carousel" className="flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth hide-scrollbar">
+                                {adData.photos.map((ph, idx) => (
+                                    <div key={idx} className="w-full h-full shrink-0 snap-center relative">
+                                        <img src={ph} className="w-full h-full object-cover" alt="Preview" />
+                                        <div className="absolute top-4 left-4 bg-black/40 backdrop-blur-md text-white text-[9px] font-black px-2 py-1 rounded-full">
+                                            FOTO {idx + 1}/{adData.photos.length}
                                         </div>
                                     </div>
-                                    <span className="material-icons text-[#D4AF37]">chat_bubble</span>
+                                ))}
+                            </div>
+
+                            {/* Navigation Arrows */}
+                            {adData.photos.length > 1 && (
+                                <>
+                                    <button 
+                                        onClick={() => document.getElementById('review-carousel')?.scrollBy({ left: -300, behavior: 'smooth' })}
+                                        className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/20 backdrop-blur-md text-white flex items-center justify-center active:scale-90 transition-all z-20"
+                                    >
+                                        <span className="material-icons text-sm">chevron_left</span>
+                                    </button>
+                                    <button 
+                                        onClick={() => document.getElementById('review-carousel')?.scrollBy({ left: 300, behavior: 'smooth' })}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/20 backdrop-blur-md text-white flex items-center justify-center active:scale-90 transition-all z-20"
+                                    >
+                                        <span className="material-icons text-sm">chevron_right</span>
+                                    </button>
+                                </>
+                            )}
+
+                            <div className="absolute bottom-4 right-4">
+                                <span className="bg-[#D4AF37] text-white text-[9px] font-black px-2 py-1 rounded uppercase tracking-widest shadow-lg">PREVIEW</span>
+                            </div>
+                        </div>
+
+                        <div className="p-8 space-y-6">
+                            <div className="flex justify-between items-start">
+                                <div className="space-y-1">
+                                    <h3 className="text-2xl font-black text-leather uppercase tracking-tight leading-none">{adData.title || 'SEM TÍTULO'}</h3>
+                                    <div className="flex items-center gap-1.5 text-leather/40">
+                                        <span className="material-icons text-sm">place</span>
+                                        <span className="text-[10px] font-bold uppercase tracking-wider">{adData.city}, {adData.uf}</span>
+                                    </div>
                                 </div>
+                                <div className="text-right">
+                                    <p className="text-[10px] font-black text-[#D4AF37] uppercase tracking-widest mb-1">VALOR</p>
+                                    <p className="text-2xl font-black text-leather">{adData.priceType === 'negotiable' ? 'COMBINAR' : `R$ ${adData.price}`}</p>
+                                </div>
+                            </div>
+
+                            <div className="h-px bg-leather/5" />
+
+                            <div>
+                                <p className="text-[10px] font-black text-leather/30 uppercase tracking-widest mb-2">DESCRIÇÃO</p>
+                                <p className="text-sm font-medium text-leather/70 leading-relaxed italic">{adData.description || 'Sem descrição.'}</p>
                             </div>
                         </div>
                     </div>
@@ -412,11 +585,12 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
 
                 <div className="p-6 bg-white border-t border-[#1A1108]/5 flex gap-4">
                     <button onClick={() => setShowConfirm(false)} className="flex-1 bg-white border-2 border-[#1A1108]/10 text-leather font-black py-4 rounded-xl uppercase tracking-widest">Editar</button>
-                    <button onClick={publishAd} className="flex-[2] bg-[#D4AF37] text-white font-black py-4 rounded-xl uppercase tracking-widest shadow-lg shadow-[#D4AF37]/20">Publicar Anúncio</button>
+                    <button onClick={publishAd} className="flex-[2] bg-[#D4AF37] text-white font-black py-4 rounded-xl uppercase tracking-widest shadow-lg shadow-[#D4AF37]/20">Publicar Agora</button>
                 </div>
             </div>
         );
     }
+
 
     if (showCreateWizard) {
         return (
@@ -627,7 +801,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                 </div>
 
                 {/* Footer Navigation */}
-                <div className="flex-none p-6 pb-8 bg-white border-t border-[#1A1108]/5 flex gap-4 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+                <div className="flex-none p-6 pb-8 bg-white border-t border-[#1A1108]/5 flex flex-col gap-4 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
                     {step < 3 ? (
                         <button
                             disabled={step === 1 && !adData.category}
@@ -637,15 +811,23 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                             Próximo Passo
                         </button>
                     ) : (
-                        <button
-                            disabled={adData.photos.length === 0}
-                            onClick={() => setShowConfirm(true)}
-                            className="w-full bg-[#1A1108] text-white font-black py-4 rounded-xl uppercase tracking-widest shadow-lg disabled:opacity-50 active:scale-[0.98] transition-all"
-                        >
-                            Revisar Anúncio
-                        </button>
+                        <>
+                            {isUploading && (
+                                <p className="text-[10px] font-black text-[#D4AF37] uppercase tracking-widest text-center animate-pulse">
+                                    Enviando fotos... aguarde
+                                </p>
+                            )}
+                            <button
+                                disabled={adData.photos.length === 0 || isUploading}
+                                onClick={() => setShowConfirm(true)}
+                                className="w-full bg-[#1A1108] text-white font-black py-4 rounded-xl uppercase tracking-widest shadow-lg disabled:opacity-50 active:scale-[0.98] transition-all"
+                            >
+                                {isUploading ? 'Anexando imagens...' : 'Revisar Anúncio'}
+                            </button>
+                        </>
                     )}
                 </div>
+
             </div>
         );
     }
@@ -674,20 +856,10 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                     </div>
                 </div>
 
-                {/* Roller de Anunciantes (Same as Events View) */}
-                <div className="relative mb-6 h-28 w-full overflow-hidden rounded-2xl border border-[#1A1108]/5 bg-white shadow-sm">
-                    {MOCK_ADVERTISERS.map((ad, idx) => (
-                        <div
-                            key={ad.id}
-                            className={`absolute inset-0 transition-opacity duration-1000 flex items-center justify-center ${idx === adIndex ? 'opacity-100' : 'opacity-0'}`}
-                        >
-                            <img src={ad.img} className="w-full h-full object-cover" alt={ad.name} />
-                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                                <p className="text-[10px] font-black text-[#D4AF37] uppercase tracking-[0.3em] text-center">{ad.name}</p>
-                            </div>
-                        </div>
-                    ))}
+                <div className="-mx-6 border-b border-[#1A1108]/5 pb-4 mb-2">
+                    <AdsCarousel targetPosition="market_top_carousel" />
                 </div>
+
 
                 <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2">
                     {FILTER_TAGS.map((tag) => (
@@ -704,32 +876,56 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
 
             <main className="px-6 pb-32 space-y-6">
                 <div className="grid grid-cols-2 gap-4">
-                    {/* Ad Cards */}
-                    {[
-                        ...publishedAds,
-                        ...MOCK_MARKET_ITEMS
+                    {loadingAds ? (
+                        <div className="col-span-2 py-20 flex flex-col items-center justify-center opacity-40">
+                            <div className="w-10 h-10 border-4 border-[#D4AF37] border-t-transparent rounded-full animate-spin mb-4"></div>
+                            <p className="text-[10px] font-black uppercase tracking-widest">Carregando ofertas...</p>
+                        </div>
+                    ) : [
+                        ...publishedAds
                     ].filter(item => {
                         if (activeCategoryId === 'all') return true;
                         return item.category === activeCategoryId;
-                    }).map((item, i) => (
-                        <div onClick={() => setViewingAd(item)} key={i} className="bg-white rounded-[24px] overflow-hidden shadow-xl shadow-black/5 border border-[#1A1108]/5 group active:scale-[0.98] transition-all">
-                            <div className="aspect-square relative overflow-hidden bg-neutral-100">
-                                <img src={item.img} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={item.title} />
-                                {item.isNew && (
-                                    <div className="absolute top-3 left-3 bg-red-500 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-widest shadow-lg">NOVO</div>
+                    }).map((item, i) => {
+                        const poster = item.profiles || { name: 'Vendedor', avatar_url: `https://picsum.photos/seed/${item.user_id}/100` };
+                        const displayPrice = item.price_type === 'negotiable' ? 'A COMBINAR' : (item.price?.startsWith('R$') ? item.price : `R$ ${item.price}`);
+                        const displayLoc = item.city ? `${item.city}, ${item.uf}` : item.loc;
+                        const displayImg = Array.isArray(item.photos) && item.photos.length > 0 ? item.photos[0] : (item.img || 'https://picsum.photos/seed/market/400');
+
+                        return (
+                            <div key={item.id || i} className="bg-white rounded-[24px] overflow-hidden shadow-xl shadow-black/5 border border-[#1A1108]/5 group active:scale-[0.98] transition-all relative">
+                                <div onClick={() => setViewingAd({ ...item, img: displayImg, price: displayPrice, loc: displayLoc, sellerName: poster.name, poster })} className="aspect-square relative overflow-hidden bg-neutral-100">
+                                    <img src={displayImg} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={item.title} />
+                                    {(item.condition === 'NOVO' || item.isNew) && (
+                                        <div className="absolute top-3 left-3 bg-red-500 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-widest shadow-lg">NOVO</div>
+                                    )}
+                                    
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                </div>
+
+                                {/* Ações de Gestão (Dono ou Admin) */}
+                                {(user?.id === item.user_id || user?.role === 'ADMIN' || user?.role === 'ADMIN_MASTER' || user?.isMaster) && (
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); deleteAdDirectly(item); }}
+                                        className="absolute top-3 right-3 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform z-20"
+                                    >
+                                        <span className="material-icons text-sm">delete</span>
+                                    </button>
                                 )}
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                            </div>
-                            <div className="p-4">
-                                <p className="text-[14px] font-black text-[#D4AF37] leading-none mb-1.5">{item.price}</p>
-                                <h3 className="text-[11px] font-black uppercase tracking-tight line-clamp-1 mb-2 leading-tight">{item.title}</h3>
-                                <div className="flex items-center gap-1 opacity-20">
-                                    <span className="material-icons text-[10px]">place</span>
-                                    <span className="text-[9px] font-bold uppercase">{item.loc}</span>
+
+                                <div onClick={() => setViewingAd({ ...item, img: displayImg, price: displayPrice, loc: displayLoc, sellerName: poster.name, poster })} className="p-4">
+                                    <p className="text-[14px] font-black text-[#D4AF37] leading-none mb-1.5">{displayPrice}</p>
+                                    <h3 className="text-[11px] font-black uppercase tracking-tight line-clamp-1 mb-2 leading-tight">{item.title}</h3>
+                                    <div className="flex items-center gap-1 opacity-20">
+                                        <span className="material-icons text-[10px]">place</span>
+                                        <span className="text-[9px] font-bold uppercase">{displayLoc}</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+
+                        );
+                    })}
+
 
                 </div>
             </main>

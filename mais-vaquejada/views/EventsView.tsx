@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { EventItem, Circuito } from '../types';
 import { supabase } from '../lib/supabase';
+import AdsCarousel from '../components/AdsCarousel';
+
 
 const MOCK_CIRCUITS: Circuito[] = [
   { id: 'todos', nome: 'Todos os circuitos', slug: 'todos', ativo: true, destaque: true, ordem: 0 },
@@ -156,14 +158,8 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
     fetchBannersAndSettingsAndEvents();
   }, []);
 
-  // Timer separate for banners
-  useEffect(() => {
-    if (banners.length <= 1) return;
-    const timer = setInterval(() => {
-      setAdIndex(prev => (prev + 1) % banners.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [banners.length]);
+  // Banner auto-scroll logic removed to rely on AdsCarousel component
+
 
   const toggleFavorite = (id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -398,54 +394,11 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
 
         </div>
 
-        {/* Roller de Anunciantes (Propaganda) */}
-        <div 
-          className="relative mb-8 w-full overflow-hidden rounded-[32px] border border-white/10 bg-white/5 transition-all duration-700 ease-in-out shadow-2xl group"
-          style={{ height: `${bannerHeight}px` }}
-        >
-          {banners.map((ad, idx) => (
-            <div
-              key={ad.id}
-              className={`absolute inset-0 transition-all duration-1000 flex items-center justify-center cursor-pointer ${idx === adIndex ? 'opacity-100 scale-100' : 'opacity-0 scale-105 pointer-events-none'}`}
-              onClick={() => ad.link_url && window.open(ad.link_url.startsWith('http') ? ad.link_url : `https://${ad.link_url}`, '_blank')}
-            >
-              <img src={ad.image_url || ad.img} className="w-full h-full object-cover" alt={ad.title || ad.name} />
-              
-              {/* Overlay Decorativo */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
-              
-              {/* Info do Anunciante */}
-              <div className="absolute bottom-4 left-0 right-0 px-6 flex justify-between items-end">
-                <div className="animate-in fade-in slide-in-from-bottom-2 duration-700 delay-300">
-                  <span className="text-[8px] font-black text-white/40 uppercase tracking-[0.3em] block mb-0.5">Parceiro Oficial</span>
-                  <p className="text-xs font-black text-[#D4AF37] uppercase tracking-widest">{ad.title || ad.name}</p>
-                </div>
-                {ad.link_url && (
-                  <div className="w-8 h-8 rounded-full bg-[#D4AF37] flex items-center justify-center text-background-dark shadow-lg shadow-[#D4AF37]/20 animate-in zoom-in duration-500">
-                    <span className="material-icons text-sm">open_in_new</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-
-          {/* Indicadores de Slide */}
-          {banners.length > 1 && (
-            <div className="absolute top-4 right-6 flex gap-1 z-10">
-              {banners.map((_, i) => (
-                <div 
-                  key={i} 
-                  className={`h-1 rounded-full transition-all duration-500 ${i === adIndex ? 'w-4 bg-[#D4AF37]' : 'w-1 bg-white/20'}`}
-                />
-              ))}
-            </div>
-          )}
-          
-          {/* Badge "Publicidade" */}
-          <div className="absolute top-4 left-6 bg-black/40 backdrop-blur-md px-2 py-1 rounded border border-white/10 z-10">
-             <span className="text-[7px] font-black text-white/60 uppercase tracking-tighter">Publicidade</span>
-          </div>
+        {/* Novo Módulo de Publicidade ADM */}
+        <div className="-mx-6 border-b border-white/5 pb-4 mb-2">
+            <AdsCarousel targetPosition="vaquejada_top_carousel" />
         </div>
+
 
         {/* Horizontal Scrollable States */}
         <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">

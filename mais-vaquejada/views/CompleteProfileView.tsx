@@ -55,18 +55,8 @@ const CompleteProfileView: React.FC<CompleteProfileViewProps> = ({ user, onCompl
   const [selectedState, setSelectedState] = useState(user?.state_id || '');
   const [selectedCity, setSelectedCity] = useState(user?.city_id || '');
   const [cities, setCities] = useState<any[]>([]);
-   const [loading, setLoading] = useState(false);
-   const [error, setError] = useState<string | null>(null);
-   const [suggestions, setSuggestions] = useState<string[]>([]);
- 
-   const generateSuggestions = (baseEmail: string) => {
-     const prefix = baseEmail.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
-     return [
-       `${prefix}_v${Math.floor(Math.random() * 99)}`,
-       `${prefix}_arena`,
-       `v_${prefix}`
-     ];
-   };
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (selectedState) {
@@ -79,83 +69,42 @@ const CompleteProfileView: React.FC<CompleteProfileViewProps> = ({ user, onCompl
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName || !username || !phone || !selectedState || !selectedCity) {
+    if (!fullName || !username || !phoneNumber || !selectedState || !selectedCity) {
       setError('Todos os campos são obrigatórios.');
       return;
     }
 
-     setLoading(true);
-     setError(null);
+    setLoading(true);
+    setError(null);
 
-     const usernameRegex = /^[a-z0-9._]+$/;
-     if (username.length < 6) {
-         setError('O @apelido deve ter no mínimo 6 caracteres.');
-         setLoading(false);
-         return;
-     }
-     if (!usernameRegex.test(username)) {
-         setError('O @apelido só pode conter letras, números, "_" e "."');
-         setLoading(false);
-         return;
-     }
+    const fullPhone = `${ddd}${phoneNumber.replace(/\D/g, '')}`;
 
-     const fullPhone = `${ddd}${phoneNumber.replace(/\D/g, '')}`;
-     if (phoneNumber.replace(/\D/g, '').length < 9) {
-         setError('Número de telefone inválido.');
-         setLoading(false);
-         return;
-     }
-
-     try {
-       // Check if username is already taken
-       const { data: existing } = await supabase
-         .from('profiles')
-         .select('id')
-         .eq('username', username.toLowerCase().trim())
-         .neq('id', user?.id) // Don't match self
-         .maybeSingle();
-       
-       if (existing) {
-           setError('Este @apelido já existe. Escolha outro ou uma das sugestões:');
-           const email = user?.email || 'vaqueiro@gmail.com';
-           setSuggestions(generateSuggestions(email));
-           setLoading(false);
-           return;
-       }
-
-       const { error: updateError } = await supabase
-         .from('profiles')
-         .update({
-           full_name: fullName,
-           display_name: fullName.split(' ')[0],
-           username: username.toLowerCase().trim(),
-           phone: fullPhone,
-           state_id: selectedState,
-          state_name: selectedState, // Simplification
+    try {
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user?.id,
+          email: user?.email,
+          full_name: fullName,
+          display_name: fullName.split(' ')[0],
+          username: username.toLowerCase().trim(),
+          phone: fullPhone,
+          state_id: selectedState,
+          state_name: selectedState, 
           city_id: selectedCity,
           city_name: selectedCity,
           profile_completed: true,
           updated_at: new Date().toISOString()
-        })
-        .eq('id', user?.id);
+        }, { onConflict: 'id' });
 
       if (updateError) throw updateError;
-
       onComplete();
     } catch (err: any) {
+      console.error("Save Error:", err);
       setError(err.message || 'Erro ao salvar perfil.');
     } finally {
       setLoading(false);
     }
-  };
-
-  const formatPhone = (value: string) => {
-    const digits = value.replace(/\D/g, '');
-    if (digits.length <= 11) {
-      return digits.replace(/^(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')
-                 .replace(/^(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
-    }
-    return digits.substring(0, 11);
   };
 
   return (
@@ -175,7 +124,7 @@ const CompleteProfileView: React.FC<CompleteProfileViewProps> = ({ user, onCompl
                 <h1 className="text-3xl font-black text-white italic tracking-tighter uppercase mb-1">Quase <span className="text-[#ECA413]">Lá!</span></h1>
                 <p className="text-white/40 text-[10px] font-bold uppercase tracking-[0.2em]">Complete seu cadastro para entrar na Arena</p>
             </div>
-            <button onClick={onLogout} className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-red-500 transition-colors">
+            <button onClick={onLogout} className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40">
                 <span className="material-icons text-lg">logout</span>
             </button>
         </div>
@@ -186,7 +135,7 @@ const CompleteProfileView: React.FC<CompleteProfileViewProps> = ({ user, onCompl
                 <label className="text-[10px] font-black uppercase tracking-widest text-[#ECA413] ml-2">Nome Completo</label>
                 <input
                   type="text" value={fullName} onChange={(e) => setFullName(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-sm font-bold text-white focus:outline-none focus:border-[#ECA413] transition-all"
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-sm font-bold text-white focus:outline-none focus:border-[#ECA413]"
                   placeholder="Seu nome completo"
                 />
               </div>
@@ -197,7 +146,7 @@ const CompleteProfileView: React.FC<CompleteProfileViewProps> = ({ user, onCompl
                   type="text" 
                   value={username} 
                   onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._]/g, ''))}
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-sm font-bold text-white focus:outline-none focus:border-[#ECA413] transition-all"
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-sm font-bold text-white focus:outline-none focus:border-[#ECA413]"
                   placeholder="Como quer ser chamado"
                 />
               </div>
@@ -205,51 +154,35 @@ const CompleteProfileView: React.FC<CompleteProfileViewProps> = ({ user, onCompl
               <div className="space-y-1">
                 <label className="text-[10px] font-black uppercase tracking-widest text-[#ECA413] ml-2">WhatsApp / Telefone</label>
                 <div className="flex gap-2">
-                    {/* DDD Selector */}
                     <div className="relative w-32 shrink-0">
                         <button 
                             type="button"
                             onClick={() => setShowDddList(!showDddList)}
                             className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-4 text-sm font-bold text-white flex items-center justify-between"
                         >
-                            <span className="truncate">({ddd}) {BRAZIL_DDDS.find(x => x.ddd === ddd)?.state}</span>
+                            <span className="truncate">({ddd})</span>
                             <span className="material-icons text-xs text-[#ECA413]">expand_more</span>
                         </button>
                         {showDddList && (
-                            <div className="absolute top-full left-0 right-0 mt-2 bg-[#1A1108] border border-white/10 rounded-2xl shadow-2xl z-[50] max-h-60 overflow-y-auto overflow-x-hidden hide-scrollbar">
-                                <div className="p-2 border-b border-white/5 sticky top-0 bg-[#1A1108] z-10">
-                                    <input 
-                                        autoFocus
-                                        className="w-full bg-white/5 border-none rounded-xl py-2 px-3 text-[10px] font-bold text-white placeholder:text-white/20"
-                                        placeholder="Busque DDD ou UF..."
-                                        value={dddSearch}
-                                        onChange={(e) => setDddSearch(e.target.value.toUpperCase())}
-                                    />
-                                </div>
-                                {BRAZIL_DDDS.filter(x => x.ddd.includes(dddSearch) || x.state.includes(dddSearch)).map(x => (
+                            <div className="absolute top-full left-0 right-0 mt-2 bg-[#1A1108] border border-white/10 rounded-2xl shadow-2xl z-[50] max-h-60 overflow-y-auto hide-scrollbar">
+                                {BRAZIL_DDDS.map(x => (
                                     <button
                                         key={x.ddd}
                                         type="button"
-                                        onClick={() => { setDdd(x.ddd); setShowDddList(false); setDddSearch(''); }}
-                                        className="w-full p-3 text-left hover:bg-white/5 flex items-center justify-between group transition-colors"
+                                        onClick={() => { setDdd(x.ddd); setShowDddList(false); }}
+                                        className="w-full p-3 text-left hover:bg-white/5 text-xs font-bold text-white"
                                     >
-                                        <span className="text-xs font-bold text-white">({x.ddd}) {x.state}</span>
-                                        {ddd === x.ddd && <span className="material-icons text-xs text-[#ECA413]">check</span>}
+                                        ({x.ddd}) {x.state}
                                     </button>
                                 ))}
                             </div>
                         )}
                     </div>
-
-                    {/* Phone Input */}
                     <input
                       type="tel"
                       value={phoneNumber}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, '');
-                        if (val.length <= 9) setPhoneNumber(val);
-                      }}
-                      className="flex-1 bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-sm font-bold text-white focus:outline-none focus:border-[#ECA413] transition-all"
+                      onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').substring(0, 9))}
+                      className="flex-1 bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-sm font-bold text-white focus:outline-none focus:border-[#ECA413]"
                       placeholder="9XXXX-XXXX"
                     />
                 </div>
@@ -257,10 +190,10 @@ const CompleteProfileView: React.FC<CompleteProfileViewProps> = ({ user, onCompl
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-[#ECA413] ml-2">Estado (UF)</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-[#ECA413] ml-2">Estado</label>
                   <select
                     value={selectedState} onChange={(e) => setSelectedState(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-sm font-bold text-white focus:outline-none focus:border-[#ECA413] appearance-none"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-sm font-bold text-white focus:outline-none appearance-none"
                   >
                     <option value="" className="bg-[#1A1108]">UF</option>
                     {STATES.map(s => <option key={s} value={s} className="bg-[#1A1108]">{s}</option>)}
@@ -270,7 +203,7 @@ const CompleteProfileView: React.FC<CompleteProfileViewProps> = ({ user, onCompl
                   <label className="text-[10px] font-black uppercase tracking-widest text-[#ECA413] ml-2">Cidade</label>
                   <select
                     value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-sm font-bold text-white focus:outline-none focus:border-[#ECA413] appearance-none"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-sm font-bold text-white focus:outline-none appearance-none"
                   >
                     <option value="" className="bg-[#1A1108]">Selecione</option>
                     {cities.map(c => <option key={c.id} value={c.nome} className="bg-[#1A1108]">{c.nome.toUpperCase()}</option>)}
@@ -279,41 +212,20 @@ const CompleteProfileView: React.FC<CompleteProfileViewProps> = ({ user, onCompl
               </div>
 
               {error && (
-                <div className="space-y-3">
-                  <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 animate-in fade-in zoom-in duration-300">
-                    <span className="material-icons text-red-500 text-sm">error_outline</span>
-                    <p className="text-[10px] text-red-200 font-black uppercase tracking-tight">{error}</p>
-                  </div>
-                  
-                  {suggestions.length > 0 && (
-                    <div className="flex flex-wrap gap-2 px-2">
-                       {suggestions.map(s => (
-                         <button 
-                           key={s} 
-                           type="button"
-                           onClick={() => { setUsername(s); setSuggestions([]); setError(null); }}
-                           className="bg-white/5 border border-white/10 px-3 py-2 rounded-full text-[10px] font-bold text-[#ECA413] hover:bg-[#ECA413] hover:text-black transition-all"
-                         >
-                           @{s}
-                         </button>
-                       ))}
-                    </div>
-                  )}
+                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3">
+                  <span className="material-icons text-red-500 text-sm">error_outline</span>
+                  <p className="text-[10px] text-red-200 font-black uppercase">{error}</p>
                 </div>
               )}
 
               <button
                 disabled={loading}
-                className="w-full bg-[#ECA413] hover:bg-[#B47B09] text-white py-5 rounded-3xl font-black text-xs uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 mt-4"
+                className="w-full bg-[#ECA413] hover:bg-[#B47B09] text-white py-5 rounded-3xl font-black text-xs uppercase tracking-[0.2em] shadow-xl disabled:opacity-50 mt-4 flex items-center justify-center gap-3"
               >
                 {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>CONCLUIR CADASTRO <span className="material-icons text-sm">check_circle</span></>}
               </button>
             </form>
         </div>
-        
-        <p className="mt-10 text-center text-[10px] text-white/20 font-bold uppercase tracking-[0.2em] leading-relaxed">
-            Ao clicar em concluir, você concorda com nossos <br/> <span className="text-white/40 underline">Termos de Uso</span> e <span className="text-white/40 underline">Política de Privacidade</span>.
-        </p>
       </div>
     </div>
   );

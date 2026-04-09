@@ -200,21 +200,9 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
         </div>
     );
 
-    const renderDataUsage = () => (
-        <div className="absolute inset-0 bg-[#FBFBFB] flex flex-col z-[120]">
-            <SubHeader title={t('dataUsage')} />
-            <div className="p-6">
-                <div className="bg-white p-8 rounded-[32px] border border-black/5 shadow-sm space-y-1">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-black/20">Sua Conexão Atual</p>
-                    <h4 className="text-3xl font-black text-[#1A1108] italic">{connectionType}</h4>
-                </div>
-            </div>
-        </div>
-    );
-
     if (activeTab === 'EDIT_PROFILE') return renderEditProfile();
     if (activeTab === 'LANGUAGE') return renderLanguage();
-    if (activeTab === 'DATA_USAGE') return renderDataUsage();
+
 
     return (
         <div className="absolute inset-0 bg-[#FBFBFB] flex flex-col z-[120]">
@@ -228,11 +216,16 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
                 
                 <div className="px-6 py-6 bg-neutral-50 text-[10px] font-black text-black/30 uppercase tracking-[0.3em] border-b border-black/5">App</div>
                 <SettingItem icon="language" label={t('language')} value={lang.toUpperCase()} onClick={() => setActiveTab('LANGUAGE')} />
-                <SettingItem icon="monitor_weight" label={t('dataUsage')} value={connectionType} onClick={() => setActiveTab('DATA_USAGE')} />
+
                 
-                {user?.isMaster && (
-                    <SettingItem icon="security" label="Painel ADM" color="text-[#D4AF37]" onClick={() => window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'ADMIN' } }))} />
+                {/* Administrative Access */}
+                {(user?.isMaster || user?.role === 'ADMIN' || user?.role === 'ADMIN_MASTER' || user?.admin_mercado || user?.admin_social || user?.admin_eventos || user?.admin_noticias) && (
+                    <>
+                        <div className="px-6 py-6 bg-neutral-50 text-[10px] font-black text-[#D4AF37] uppercase tracking-[0.3em] border-b border-black/5">Administração</div>
+                        <SettingItem icon="security" label="Acesso Painel ADM" color="text-[#D4AF37]" onClick={() => window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'ADMIN' } }))} />
+                    </>
                 )}
+
 
                 <div className="p-8 mt-4">
                     <button onClick={onLogout} className="w-full bg-red-50 text-red-600 font-black py-5 rounded-[24px] uppercase text-[11px] tracking-widest active:scale-95 transition-all">Sair da Conta</button>

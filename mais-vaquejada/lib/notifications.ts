@@ -5,7 +5,8 @@
 
 import { supabase } from './supabase';
 
-export type NotifType = 'follow' | 'like' | 'comment' | 'message' | 'mention';
+export type NotifType = 'follow' | 'like' | 'comment' | 'message' | 'mention' | 'system';
+
 
 export interface ArenaNotification {
   id: string;
@@ -134,7 +135,9 @@ export function getNotifText(notif: ArenaNotification): string {
     case 'comment': return notif.message ? `${actor} comentou: "${notif.message}"` : `${actor} comentou em sua publicação.`;
     case 'message': return notif.message ? `${actor}: ${notif.message}` : `${actor} te enviou uma mensagem.`;
     case 'mention': return `${actor} te mencionou em um comentário.`;
+    case 'system':  return notif.message || 'O +Vaquejada enviou um alerta sobre sua conta.';
     default:        return `${actor} interagiu com você.`;
+
   }
 }
 

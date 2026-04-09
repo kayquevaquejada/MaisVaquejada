@@ -101,6 +101,8 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
               )}
             </button>
 
+            {/* Botões ocultos por solicitação do administrador */}
+            {/* 
             <button
               onClick={handleDevLogin}
               className="w-full bg-[#ECA413] text-black py-4 rounded-3xl font-black text-xs uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3"
@@ -108,7 +110,6 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
               <span className="material-icons">terminal</span>
               ENTRAR COMO DESENVOLVEDOR (LOCAL)
             </button>
-
 
             <div className="flex items-center gap-4 my-2">
               <div className="flex-1 h-[1px] bg-white/5" />
@@ -122,6 +123,8 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
             >
               CRIAR CONTA NA ARENA
             </button>
+            */}
+
           </div>
 
           <div className="mt-8 flex flex-col gap-4">
