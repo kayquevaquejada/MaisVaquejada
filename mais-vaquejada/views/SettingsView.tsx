@@ -50,6 +50,20 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
         darkMode: true
     });
 
+    // Sincronizar estado inicial com permissões do sistema
+    useEffect(() => {
+        if (typeof Notification !== 'undefined' && Notification.permission === 'denied') {
+            setToggles(prev => ({
+                ...prev,
+                notificationsLikes: false,
+                notificationsComments: false,
+                notificationsNewFollowers: false,
+                notificationsMessages: false,
+                notificationsEvents: false
+            }));
+        }
+    }, []);
+
     const handleSaveProfile = async () => {
         setLoading(true);
         try {
@@ -118,7 +132,30 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
         }
     };
 
-    const toggleSetting = (key: keyof typeof toggles) => {
+    const [browserNotificationPermission, setBrowserNotificationPermission] = useState<NotificationPermission>(
+        typeof Notification !== 'undefined' ? Notification.permission : 'default'
+    );
+
+    const toggleSetting = async (key: keyof typeof toggles) => {
+        // Se for um toggle de notificação, precisamos verificar permissões do sistema
+        if (key.startsWith('notifications')) {
+            if (typeof Notification === 'undefined') {
+                alert('Notificações não são suportadas neste navegador.');
+                return;
+            }
+
+            if (Notification.permission === 'denied') {
+                alert('As notificações estão bloqueadas no seu aparelho. Por favor, ative-as nas configurações do sistema/navegador para continuar.');
+                return;
+            }
+
+            if (Notification.permission === 'default') {
+                const permission = await Notification.requestPermission();
+                setBrowserNotificationPermission(permission);
+                if (permission !== 'granted') return;
+            }
+        }
+
         setToggles(prev => ({ ...prev, [key]: !prev[key] }));
         setSuccess('Preferência atualizada');
         setTimeout(() => setSuccess(null), 2000);
