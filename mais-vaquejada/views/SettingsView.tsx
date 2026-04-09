@@ -79,21 +79,28 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
 
         setLoading(true);
         try {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `avatars/${user.id}_${Date.now()}.${fileExt}`;
+            // Padrão solicitado: userId/avatar.jpg
+            const filePath = `${user.id}/avatar.jpg`;
 
+            // 1. Upload para o bucket 'avatars'
             const { error: uploadError } = await supabase.storage
-                .from('vaquejadas')
-                .upload(fileName, file, { upsert: true });
+                .from('avatars')
+                .upload(filePath, file, { 
+                    upsert: true,
+                    cacheControl: '3600'
+                });
 
             if (uploadError) throw uploadError;
 
+            // 2. Obter URL pública
             const { data: { publicUrl } } = supabase.storage
-                .from('vaquejadas')
-                .getPublicUrl(fileName);
+                .from('avatars')
+                .getPublicUrl(filePath);
 
+            // 3. Atualizar estado local
             setProfileData(prev => ({ ...prev, avatar_url: publicUrl }));
             
+            // 4. Atualizar tabela profiles
             const { error: updateError } = await supabase
                 .from('profiles')
                 .update({ avatar_url: publicUrl })
@@ -102,11 +109,12 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
             if (updateError) throw updateError;
 
             if (onProfileUpdate) onProfileUpdate();
-            setSuccess('Foto atualizada!');
+            setSuccess('Foto atualizada com sucesso!');
             setTimeout(() => setSuccess(null), 2000);
         } catch (error: any) {
             console.error('Error uploading avatar:', error);
-            alert(`Erro ao enviar foto: ${error.message}`);
+            // Tratamento de erro amigável solicitado
+            alert(`Erro ao enviar foto: ${error.message || 'Verifique as permissões de storage'}`);
         } finally {
             setLoading(false);
         }
