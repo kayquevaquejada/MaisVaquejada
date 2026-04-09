@@ -941,50 +941,68 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
       {/* Direct Messages Overlay */}
       {isDMScreenOpen && (
         <div className="fixed inset-0 z-[200] bg-background-dark flex flex-col animate-in slide-in-from-right duration-300">
-          <header className="px-6 py-4 flex items-center justify-between border-b border-white/5 bg-background-dark/95 backdrop-blur-md sticky top-0 z-10">
-            <div className="flex items-center gap-4">
-              <button onClick={() => { activeChatUser ? setActiveChatUser(null) : setIsDMScreenOpen(false); }} className="material-icons text-white">arrow_back</button>
+          <header className="px-4 py-3 flex items-center justify-between border-b border-white/5 bg-background-dark/95 backdrop-blur-md sticky top-0 z-[100] w-full">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <button 
+                onClick={() => { activeChatUser ? setActiveChatUser(null) : setIsDMScreenOpen(false); }} 
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/5 transition-colors"
+              >
+                <span className="material-icons text-white">arrow_back</span>
+              </button>
+              
               {activeChatUser && (
-                <div onClick={() => { setActiveChatUser(null); setIsDMScreenOpen(false); navigateToProfile(activeChatUser) }} className="w-8 h-8 rounded-full border border-white/20 overflow-hidden shrink-0 cursor-pointer active:scale-95 transition-transform bg-neutral-800">
-                  <img src={activeChatProfile?.avatar_url || `https://ui-avatars.com/api/?name=${activeChatUser}&background=random`} className="w-full h-full object-cover" alt="Avatar"/>
+                <div 
+                  onClick={() => { setActiveChatUser(null); setIsDMScreenOpen(false); navigateToProfile(activeChatUser) }} 
+                  className="flex items-center gap-3 overflow-hidden cursor-pointer active:scale-95 transition-transform"
+                >
+                  <div className="w-10 h-10 rounded-full border border-[#ECA413]/20 overflow-hidden shrink-0 bg-neutral-800">
+                    <img src={activeChatProfile?.avatar_url || `https://ui-avatars.com/api/?name=${activeChatUser}&background=random`} className="w-full h-full object-cover" alt="Avatar"/>
+                  </div>
+                  <div className="truncate">
+                    <h3 className="text-[11px] font-black uppercase tracking-widest text-white truncate">
+                      {activeChatUser}
+                    </h3>
+                    <p className="text-[9px] font-bold text-[#ECA413] uppercase tracking-tight truncate">Visto por último: há 10 min</p>
+                  </div>
                 </div>
               )}
-              <div>
-                <h3 className="text-xs font-black uppercase tracking-widest text-white">
-                  {activeChatUser ? activeChatUser : 'MENSAGENS'}
-                </h3>
-                {activeChatUser && <p className="text-[10px] font-bold text-[#ECA413] uppercase tracking-tight">Visto por último: há 10 min</p>}
-              </div>
             </div>
+
             {activeChatUser ? (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 pl-2">
                 <button 
                   onClick={() => {
+                    console.log('Botão Áudio clicado para:', activeChatProfile?.id);
                     if (activeChatProfile?.id) {
                       callManager.initMedia('audio').then(() => {
                         callManager.startCall(user.id, [activeChatProfile.id], 'audio');
                       });
                     }
                   }}
-                  className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-[#ECA413] hover:bg-white/10 active:scale-95 transition-all"
+                  className="w-10 h-10 rounded-2xl bg-[#ECA413]/10 border border-[#ECA413]/20 flex items-center justify-center text-[#ECA413] hover:bg-[#ECA413]/20 active:scale-90 transition-all"
+                  title="Chamada de Áudio"
                 >
-                  <span className="material-icons text-[22px]">call</span>
+                  <span className="material-icons text-xl">call</span>
                 </button>
                 <button 
                   onClick={() => {
+                    console.log('Botão Vídeo clicado para:', activeChatProfile?.id);
                     if (activeChatProfile?.id) {
                       callManager.initMedia('video').then(() => {
                         callManager.startCall(user.id, [activeChatProfile.id], 'video');
                       });
                     }
                   }}
-                  className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-[#ECA413] hover:bg-white/10 active:scale-95 transition-all"
+                  className="w-10 h-10 rounded-2xl bg-[#ECA413] flex items-center justify-center text-black hover:bg-[#D4AF37] active:scale-90 transition-all font-bold shadow-lg shadow-[#ECA413]/20"
+                  title="Chamada de Vídeo"
                 >
-                  <span className="material-icons text-[22px]">videocam</span>
+                  <span className="material-icons text-xl">videocam</span>
                 </button>
               </div>
             ) : (
-              <button className="material-icons text-white">edit_square</button>
+              <button className="w-10 h-10 rounded-full flex items-center justify-center text-white/40 hover:text-white transition-colors">
+                <span className="material-icons">edit_square</span>
+              </button>
             )}
           </header>
 
