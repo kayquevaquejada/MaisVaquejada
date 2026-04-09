@@ -140,9 +140,41 @@ const MarketView: React.FC<MarketViewProps> = ({ forceShowWizard = false, onWiza
         { id: 'other', label: 'Outros', icon: 'grid_view' },
     ];
 
-    const handlePhotoUpload = () => {
-        const dummyPhoto = `https://picsum.photos/seed/${Math.random()}/600`;
-        setAdData({ ...adData, photos: [...adData.photos, dummyPhoto] });
+    const marketFileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleRealPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0 || !user?.id) return;
+
+        setLoadingCities(true); // Usando um loader existente ou criando um novo se necessário
+        try {
+            const newPhotos: string[] = [];
+            
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const fileExt = file.name.split('.').pop();
+                const fileName = `market/${user.id}/${Date.now()}_${i}.${fileExt}`;
+
+                const { error: uploadError } = await supabase.storage
+                    .from('vaquejadas')
+                    .upload(fileName, file, { upsert: true });
+
+                if (uploadError) throw uploadError;
+
+                const { data: { publicUrl } } = supabase.storage
+                    .from('vaquejadas')
+                    .getPublicUrl(fileName);
+
+                newPhotos.push(publicUrl);
+            }
+
+            setAdData(prev => ({ ...prev, photos: [...prev.photos, ...newPhotos] }));
+        } catch (error: any) {
+            console.error('Error uploading market photo:', error);
+            alert(`Erro ao subir fotos: ${error.message}`);
+        } finally {
+            setLoadingCities(false);
+        }
     };
 
     const publishAd = () => {
@@ -532,14 +564,33 @@ const MarketView: React.FC<MarketViewProps> = ({ forceShowWizard = false, onWiza
                                             </button>
                                         </div>
                                     ))}
+                                    <input 
+                                        type="file" 
+                                        ref={marketFileInputRef} 
+                                        className="hidden" 
+                                        accept="image/*" 
+                                        multiple 
+                                        onChange={handleRealPhotoUpload} 
+                                    />
+
                                     <button
-                                        onClick={handlePhotoUpload}
-                                        className="aspect-square rounded-2xl border-2 border-dashed border-[#1A1108]/10 bg-white/50 flex flex-col items-center justify-center text-[#1A1108]/20 hover:text-[#D4AF37] hover:border-[#D4AF37] transition-all"
+                                        onClick={() => !loadingCities && marketFileInputRef.current?.click()}
+                                        disabled={loadingCities}
+                                        className="aspect-square rounded-2xl border-2 border-dashed border-[#1A1108]/10 bg-white/50 flex flex-col items-center justify-center text-[#1A1108]/20 hover:text-[#D4AF37] hover:border-[#D4AF37] transition-all disabled:opacity-50"
                                     >
-                                        <span className="material-icons text-3xl mb-1">add_a_photo</span>
-                                        <span className="text-[8px] font-black uppercase tracking-widest">Adicionar</span>
+                                        {loadingCities ? (
+                                            <div className="w-6 h-6 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
+                                        ) : (
+                                            <>
+                                                <span className="material-icons text-3xl mb-1">add_a_photo</span>
+                                                <span className="text-[8px] font-black uppercase tracking-widest">Galeria</span>
+                                            </>
+                                        )}
                                     </button>
-                                                            <div className="bg-white rounded-3xl p-6 border border-[#1A1108]/5 space-y-6">
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-3xl p-6 border border-[#1A1108]/5 space-y-6">
                                 <div className="flex items-center gap-2 mb-2">
                                     <span className="material-icons text-[#D4AF37]">chat_bubble</span>
                                     <h4 className="font-black uppercase text-xs">Abertura de Negociação</h4>
