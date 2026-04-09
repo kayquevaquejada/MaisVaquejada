@@ -62,42 +62,81 @@ const AdminAdsManager: React.FC<AdminAdsManagerProps> = ({ user, onBack }) => {
         }
     };
 
+    // Compress image client-side and convert to base64 — no storage needed
+    const compressImage = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            const objectUrl = URL.createObjectURL(file);
+
+            img.onload = () => {
+                const MAX_W = 1200;
+                const MAX_H = 500;
+                let w = img.width;
+                let h = img.height;
+
+                // Scale down proportionally
+                if (w > MAX_W) { h = Math.round(h * MAX_W / w); w = MAX_W; }
+                if (h > MAX_H) { w = Math.round(w * MAX_H / h); h = MAX_H; }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx!.drawImage(img, 0, 0, w, h);
+
+                URL.revokeObjectURL(objectUrl);
+                resolve(canvas.toDataURL('image/jpeg', 0.82));
+            };
+
+            img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Falha ao carregar imagem')); };
+            img.src = objectUrl;
+        });
+    };
+
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Validate file size — max 5MB to avoid mobile timeouts
-        const maxSizeMB = 5;
-        if (file.size > maxSizeMB * 1024 * 1024) {
-            alert(`A imagem é muito grande! Máximo permitido: ${maxSizeMB}MB. Comprima a imagem antes de enviar.`);
+        // Max 10MB raw file
+        if (file.size > 10 * 1024 * 1024) {
+            alert('Imagem muito grande! Máximo 10MB.');
             e.target.value = '';
             return;
         }
 
         setUploadingImage(true);
         try {
-            const ext = file.name.split('.').pop() || 'jpg';
-            const fileName = `ads/${Date.now()}_${Math.random().toString(36).substr(2, 5)}.${ext}`;
-            
-            const { error: uploadError } = await supabase.storage
-                .from('vaquejadas')
-                .upload(fileName, file, { 
-                    upsert: true,
-                    contentType: file.type || 'image/jpeg',
-                    cacheControl: '3600'
-                });
+            // First try: compress + upload to Supabase Storage
+            try {
+                const ext = file.name.split('.').pop() || 'jpg';
+                const fileName = `ads/${Date.now()}_${Math.random().toString(36).substr(2, 5)}.${ext}`;
+                const { error: uploadError } = await supabase.storage
+                    .from('vaquejadas')
+                    .upload(fileName, file, { upsert: true, contentType: file.type || 'image/jpeg' });
 
-            if (uploadError) throw uploadError;
+                if (!uploadError) {
+                    const { data } = supabase.storage.from('vaquejadas').getPublicUrl(fileName);
+                    setFormData(prev => ({ ...prev, image_url: data.publicUrl }));
+                    return; // success via storage
+                }
+                // Storage failed, fall through to base64
+                console.warn('Storage upload failed, falling back to base64:', uploadError.message);
+            } catch (_) {
+                // ignore, fall through
+            }
 
-            const { data } = supabase.storage.from('vaquejadas').getPublicUrl(fileName);
-            setFormData(prev => ({ ...prev, image_url: data.publicUrl }));
+            // Fallback: compress client-side and store as base64 data URL
+            const base64 = await compressImage(file);
+            setFormData(prev => ({ ...prev, image_url: base64 }));
+
         } catch (err: any) {
-            alert('Erro ao enviar imagem: ' + (err?.message || 'Tente novamente ou comprime a imagem.'));
+            alert('Erro ao processar imagem: ' + (err?.message || 'Tente uma imagem menor.'));
         } finally {
             setUploadingImage(false);
-            e.target.value = ''; // allow re-selecting same file
+            e.target.value = '';
         }
     };
+
 
     const handleSave = async () => {
         if (!formData.internal_name || !formData.image_url) {
