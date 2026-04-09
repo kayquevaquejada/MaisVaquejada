@@ -63,28 +63,33 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
         setUploadingAvatar(true);
         try {
             const fileExt = file.name.split('.').pop();
-            const fileName = `${user.id}-${Math.random()}.${fileExt}`;
-            const filePath = `avatars/${fileName}`;
+            const fileName = `avatars/${user.id}_${Date.now()}.${fileExt}`;
 
-            // Upload para o storage do Supabase
+            // Upload para o storage do Supabase usando o bucket 'vaquejadas'
             const { error: uploadError } = await supabase.storage
-                .from('vaquejadas') // Usando o bucket existente 'vaquejadas' ou 'avatars' se existir
-                .upload(filePath, file, { cacheControl: '3600', upsert: true });
+                .from('vaquejadas')
+                .upload(fileName, file, { cacheControl: '3600', upsert: true });
 
             if (uploadError) throw uploadError;
 
             // Obter URL pública
             const { data: { publicUrl } } = supabase.storage
                 .from('vaquejadas')
-                .getPublicUrl(filePath);
+                .getPublicUrl(fileName);
 
             // Atualizar os dados do perfil localmente
             setProfileData((prev: any) => prev ? { ...prev, avatar_url: publicUrl } : null);
             
-            // Opcional: Salvar imediatamente no banco de dados se preferir fluxo direto
-            // Mas seguiremos o fluxo do modal (esperar clicar em Concluir)
+            // Salvamento imediato no banco de dados (estilo Instagram/WhatsApp)
+            const { error: updateError } = await supabase
+                .from('profiles')
+                .update({ avatar_url: publicUrl })
+                .eq('id', user.id);
+
+            if (updateError) throw updateError;
             
-            console.log('Foto carregada:', publicUrl);
+            if (onProfileUpdate) onProfileUpdate();
+            console.log('Foto atualizada com sucesso:', publicUrl);
         } catch (error: any) {
             console.error('Erro no upload da foto:', error);
             alert(`Erro ao processar imagem: ${error.message}`);
