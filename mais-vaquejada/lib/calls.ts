@@ -20,16 +20,16 @@ const configuration = {
 };
 
 class CallManager {
-    private pc: RTCPeerConnection | null = null;
+    private pcs: Map<string, RTCPeerConnection> = new Map();
     private localStream: MediaStream | null = null;
-    private remoteStream: MediaStream | null = null;
+    private remoteStreams: Map<string, MediaStream> = new Map();
     private currentSession: CallSession | null = null;
-    private onRemoteStreamCallback: ((stream: MediaStream) => void) | null = null;
+    private onRemoteStreamCallback: ((id: string, stream: MediaStream) => void) | null = null;
+    private onRemoteLeaveCallback: ((id: string) => void) | null = null;
     private onStatusChangeCallback: ((status: CallStatus) => void) | null = null;
 
     async initMedia(type: CallType) {
         try {
-            console.log(`[CallManager] Iniciando captura de mídia: ${type}`);
             const stream = await navigator.mediaDevices.getUserMedia({
                 audio: true,
                 video: type === 'video'
@@ -52,49 +52,35 @@ class CallManager {
             from_user: fromUserId,
             participants: participants,
             type: 'offer',
-            status: 'calling'
+            status: 'calling',
+            sdp: type // Usando campo sdp temporariamente para indicar tipo se necessário
         });
 
-        this.setupPeerConnection();
-
-        // 2. Criar Offer
-        const offer = await this.pc!.createOffer();
-        await this.pc!.setLocalDescription(offer);
-
-        // 3. Enviar SDP
-        await supabase.from('calls').insert({
-            call_id: callId,
-            from_user: fromUserId,
-            participants: participants,
-            type: 'offer',
-            sdp: JSON.stringify(offer),
-            status: 'calling'
-        });
+        // Para cada participante, criar uma conexão (Mesh Network simplificada)
+        for (const targetId of participants) {
+            await this.createPeer(targetId, true);
+        }
 
         return callId;
     }
 
-    private setupPeerConnection() {
-        this.pc = new RTCPeerConnection(configuration);
+    private async createPeer(targetId: string, isInitiator: boolean) {
+        const pc = new RTCPeerConnection(configuration);
+        this.pcs.set(targetId, pc);
 
-        // Adicionar tracks locais
         if (this.localStream) {
-            this.localStream.getTracks().forEach(track => {
-                this.pc!.addTrack(track, this.localStream!);
-            });
+            this.localStream.getTracks().forEach(track => pc.addTrack(track, this.localStream!));
         }
 
-        // Receber tracks remotos
-        this.pc.ontrack = (event) => {
-            console.log('[CallManager] Track remoto recebido');
-            this.remoteStream = event.streams[0];
+        pc.ontrack = (event) => {
+            console.log(`[CallManager] Track recebido de ${targetId}`);
+            this.remoteStreams.set(targetId, event.streams[0]);
             if (this.onRemoteStreamCallback) {
-                this.onRemoteStreamCallback(this.remoteStream);
+                this.onRemoteStreamCallback(targetId, event.streams[0]);
             }
         };
 
-        // ICE Candidates
-        this.pc.onicecandidate = async (event) => {
+        pc.onicecandidate = async (event) => {
             if (event.candidate && this.currentSession) {
                 await supabase.from('calls').insert({
                     call_id: this.currentSession.call_id,
@@ -107,74 +93,71 @@ class CallManager {
             }
         };
 
-        this.pc.onconnectionstatechange = () => {
-            console.log('[CallManager] Connection state:', this.pc?.connectionState);
-            if (this.pc?.connectionState === 'connected') {
-                this.updateStatus('connected');
-            } else if (this.pc?.connectionState === 'disconnected' || this.pc?.connectionState === 'failed') {
-                // Reconexão automática seria aqui
-            }
-        };
-    }
-
-    private async updateStatus(status: CallStatus) {
-        if (this.currentSession) {
-            this.currentSession.status = status;
-            if (this.onStatusChangeCallback) this.onStatusChangeCallback(status);
-            
-            await supabase.from('calls').update({ status })
-                .eq('call_id', this.currentSession.call_id);
+        if (isInitiator) {
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            await supabase.from('calls').insert({
+                call_id: this.currentSession!.call_id,
+                from_user: this.currentSession!.from_user,
+                participants: [targetId],
+                type: 'offer',
+                sdp: JSON.stringify(offer),
+                status: 'calling'
+            });
         }
-    }
 
-    async handleIncomingCall(callData: any) {
-        this.currentSession = {
-            call_id: callData.call_id,
-            from_user: callData.from_user,
-            participants: callData.participants,
-            type: callData.video ? 'video' : 'audio', 
-            status: 'ringing'
-        };
-        
-        // Notificar que está tocando
-        await supabase.from('calls').insert({
-            call_id: callData.call_id,
-            from_user: callData.from_user,
-            participants: callData.participants,
-            type: 'ringing',
-            status: 'ringing'
-        });
+        return pc;
     }
 
     async acceptCall() {
         if (!this.currentSession) return;
         
         await this.initMedia(this.currentSession.type);
-        this.setupPeerConnection();
-
-        // Buscar a offer original
-        const { data } = await supabase.from('calls')
-            .select('sdp')
+        
+        // Responder a todas as offers recebidas
+        const { data: offers } = await supabase.from('calls')
+            .select('*')
             .eq('call_id', this.currentSession.call_id)
-            .eq('type', 'offer')
-            .single();
+            .eq('type', 'offer');
 
-        if (data?.sdp) {
-            const offer = JSON.parse(data.sdp);
-            await this.pc!.setRemoteDescription(new RTCSessionDescription(offer));
-            
-            const answer = await this.pc!.createAnswer();
-            await this.pc!.setLocalDescription(answer);
-
-            await supabase.from('calls').insert({
-                call_id: this.currentSession.call_id,
-                from_user: this.currentSession.from_user,
-                participants: this.currentSession.participants,
-                type: 'answer',
-                sdp: JSON.stringify(answer),
-                status: 'accepted'
-            });
+        if (offers) {
+            for (const offerData of offers) {
+                if (offerData.from_user !== this.currentSession.from_user) {
+                    const pc = await this.createPeer(offerData.from_user, false);
+                    if (offerData.sdp) {
+                        await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(offerData.sdp)));
+                        const answer = await pc.createAnswer();
+                        await pc.setLocalDescription(answer);
+                        await supabase.from('calls').insert({
+                            call_id: this.currentSession.call_id,
+                            from_user: this.currentSession.from_user,
+                            participants: [offerData.from_user],
+                            type: 'answer',
+                            sdp: JSON.stringify(answer),
+                            status: 'accepted'
+                        });
+                    }
+                }
+            }
         }
+    }
+
+    toggleMute() {
+        if (this.localStream) {
+            const audioTrack = this.localStream.getAudioTracks()[0];
+            if (audioTrack) audioTrack.enabled = !audioTrack.enabled;
+            return audioTrack.enabled;
+        }
+        return false;
+    }
+
+    toggleVideo() {
+        if (this.localStream) {
+            const videoTrack = this.localStream.getVideoTracks()[0];
+            if (videoTrack) videoTrack.enabled = !videoTrack.enabled;
+            return videoTrack.enabled;
+        }
+        return false;
     }
 
     async endCall() {
@@ -188,20 +171,29 @@ class CallManager {
             });
         }
 
-        if (this.pc) {
-            this.pc.close();
-            this.pc = null;
-        }
+        this.pcs.forEach(pc => pc.close());
+        this.pcs.clear();
+        
         if (this.localStream) {
             this.localStream.getTracks().forEach(t => t.stop());
             this.localStream = null;
         }
-        this.remoteStream = null;
-        this.currentSession = null;
+    private async updateStatus(status: CallStatus) {
+        if (this.currentSession) {
+            this.currentSession.status = status;
+            if (this.onStatusChangeCallback) this.onStatusChangeCallback(status);
+            
+            await supabase.from('calls').update({ status })
+                .eq('call_id', this.currentSession.call_id);
+        }
     }
 
-    onRemoteStream(callback: (stream: MediaStream) => void) {
+    onRemoteStream(callback: (id: string, stream: MediaStream) => void) {
         this.onRemoteStreamCallback = callback;
+    }
+
+    onRemoteLeave(callback: (id: string) => void) {
+        this.onRemoteLeaveCallback = callback;
     }
 
     onStatusChange(callback: (status: CallStatus) => void) {

@@ -382,8 +382,22 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
             setActiveChatUser(e.detail.openDM);
         }
     };
+    const handleNewMessage = (e: any) => {
+        if (e.detail?.text && e.detail?.chatWith) {
+            setMessages(prev => [...prev, {
+                sender: e.detail.sender || 'me',
+                text: e.detail.text,
+                time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                chatWith: e.detail.chatWith
+            }]);
+        }
+    };
     window.addEventListener('arena_navigate', handleSocialNav);
-    return () => window.removeEventListener('arena_navigate', handleSocialNav);
+    window.addEventListener('arena_new_message', handleNewMessage);
+    return () => {
+        window.removeEventListener('arena_navigate', handleSocialNav);
+        window.removeEventListener('arena_new_message', handleNewMessage);
+    };
   }, []);
 
   const handleShare = (post: PostItem) => {
