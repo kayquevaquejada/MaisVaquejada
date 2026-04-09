@@ -324,6 +324,7 @@ const App: React.FC = () => {
               user={user}
               onBack={() => setCurrentView(View.PROFILE)}
               onLogout={handleLogout}
+              onAdminView={() => setCurrentView(View.ADMIN)}
               onProfileUpdate={() => user && fetchProfile(user.id)}
             />
           );

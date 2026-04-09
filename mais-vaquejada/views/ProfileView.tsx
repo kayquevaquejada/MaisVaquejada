@@ -450,7 +450,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                             >
                                 Editar Perfil
                             </button>
-                            {user?.role === 'ADMIN' && (
+                            {(user?.role === 'ADMIN' || user?.role === 'ADMIN_MASTER' || user?.isMaster) && (
                                 <button 
                                     onClick={onAdminView}
                                     className="flex-1 bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/30 py-2.5 rounded-lg font-black text-[11px] uppercase tracking-wider flex items-center justify-center hover:bg-[#D4AF37]/20 active:scale-95 transition-all"

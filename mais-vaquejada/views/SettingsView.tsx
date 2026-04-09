@@ -9,11 +9,12 @@ interface SettingsViewProps {
     onBack: () => void;
     onLogout: () => void;
     onProfileUpdate?: () => void;
+    onAdminView?: () => void;
 }
 
 type SettingsTab = 'MAIN' | 'EDIT_PROFILE' | 'PRIVACY' | 'SECURITY' | 'NOTIFICATIONS' | 'HELP' | 'ABOUT' | 'ACTIVITY' | 'BLOCKED' | 'LANGUAGE' | 'METRICS' | 'DATA_USAGE';
 
-const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onProfileUpdate }) => {
+const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onProfileUpdate, onAdminView }) => {
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const [activeTab, setActiveTab] = useState<SettingsTab>('MAIN');
     const [loading, setLoading] = useState(false);
@@ -222,7 +223,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
                 {(user?.isMaster || user?.role === 'ADMIN' || user?.role === 'ADMIN_MASTER' || user?.admin_mercado || user?.admin_social || user?.admin_eventos || user?.admin_noticias) && (
                     <>
                         <div className="px-6 py-6 bg-neutral-50 text-[10px] font-black text-[#D4AF37] uppercase tracking-[0.3em] border-b border-black/5">Administração</div>
-                        <SettingItem icon="security" label="Acesso Painel ADM" color="text-[#D4AF37]" onClick={() => window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'ADMIN' } }))} />
+                        <SettingItem icon="security" label="Acesso Painel ADM" color="text-[#D4AF37]" onClick={() => { if(onAdminView) onAdminView(); else window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'ADMIN' } })); }} />
                     </>
                 )}
 

@@ -219,7 +219,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
 
         setLoading(true);
         try {
-            const fileExt = file.name.split('.').pop();
+            const fileExt = file.name.split('.').pop() || 'png';
             const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
             const filePath = `${fileName}`;
 
@@ -229,23 +229,28 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
 
             if (uploadError) throw uploadError;
 
-            const { data: { publicUrl } } = supabase.storage
+            const { data } = supabase.storage
                 .from('vaquejadas')
                 .getPublicUrl(filePath);
 
+            const publicUrl = data.publicUrl;
+
             if (index === 'cover') {
-                setEventForm({ ...eventForm, image_url: publicUrl });
+                setEventForm((prev: any) => ({ ...prev, image_url: publicUrl }));
             } else {
-                const currentGallery = Array.isArray(eventForm.gallery) ? [...eventForm.gallery] : [];
-                // Fill with empty strings until the index if needed, though we usually work with 4 fixed slots
-                const newGallery = [...currentGallery];
-                newGallery[index] = publicUrl;
-                setEventForm({ ...eventForm, gallery: newGallery });
+                setEventForm((prev: any) => {
+                    const currentGallery = Array.isArray(prev.gallery) ? [...prev.gallery] : [];
+                    const newGallery = [...currentGallery];
+                    newGallery[index as number] = publicUrl;
+                    return { ...prev, gallery: newGallery };
+                });
             }
         } catch (error: any) {
-            alert('Erro no upload: ' + error.message);
+            alert('Falha interna ao anexar imagem: ' + (error?.message || 'Arquivo inválido ou bloqueado.'));
         } finally {
             setLoading(false);
+            // Reset input value to allow selecting same file again
+            e.target.value = '';
         }
     };
 
