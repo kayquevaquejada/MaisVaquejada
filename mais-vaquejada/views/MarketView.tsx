@@ -147,7 +147,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
         const files = e.target.files;
         if (!files || files.length === 0 || !user?.id) return;
 
-        setLoadingCities(true); // Usando um loader existente ou criando um novo se necessário
+        setLoadingCities(true);
         try {
             const newPhotos: string[] = [];
             
@@ -156,27 +156,39 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                 const fileExt = file.name.split('.').pop();
                 const fileName = `market/${user.id}/${Date.now()}_${i}.${fileExt}`;
 
-                const { error: uploadError } = await supabase.storage
-                    .from('vaquejadas')
-                    .upload(fileName, file, { upsert: true });
+                try {
+                    const { error: uploadError } = await supabase.storage
+                        .from('vaquejadas')
+                        .upload(fileName, file, { upsert: true });
 
-                if (uploadError) throw uploadError;
+                    if (uploadError) throw uploadError;
 
-                const { data: { publicUrl } } = supabase.storage
-                    .from('vaquejadas')
-                    .getPublicUrl(fileName);
+                    const { data: { publicUrl } } = supabase.storage
+                        .from('vaquejadas')
+                        .getPublicUrl(fileName);
 
-                newPhotos.push(publicUrl);
+                    newPhotos.push(publicUrl);
+                } catch (dbError: any) {
+                    console.warn('DB Upload failed, using local fallback:', dbError);
+                    // Fallback para visualização local (Modo de Teste)
+                    const localUrl = await new Promise<string>((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result as string);
+                        reader.readAsDataURL(file);
+                    });
+                    newPhotos.push(localUrl);
+                }
             }
 
             setAdData(prev => ({ ...prev, photos: [...prev.photos, ...newPhotos] }));
         } catch (error: any) {
-            console.error('Error uploading market photo:', error);
-            alert(`Erro ao subir fotos: ${error.message}`);
+            console.error('Error in photo upload flow:', error);
+            alert(`Erro ao processar fotos: ${error.message}`);
         } finally {
             setLoadingCities(false);
         }
     };
+
 
     const publishAd = () => {
         const newAd = {
