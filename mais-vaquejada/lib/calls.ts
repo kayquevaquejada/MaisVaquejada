@@ -28,6 +28,8 @@ class CallManager {
     private onRemoteLeaveCallback: ((id: string) => void) | null = null;
     private onStatusChangeCallback: ((status: CallStatus) => void) | null = null;
 
+    getLocalStream() { return this.localStream; }
+
     async initMedia(type: CallType) {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
@@ -46,17 +48,15 @@ class CallManager {
         const callId = Math.random().toString(36).substring(7);
         this.currentSession = { call_id: callId, from_user: fromUserId, participants, type, status: 'calling' };
 
-        // 1. Inserir chamada inicial
         await supabase.from('calls').insert({
             call_id: callId,
             from_user: fromUserId,
             participants: participants,
             type: 'offer',
             status: 'calling',
-            sdp: type // Usando campo sdp temporariamente para indicar tipo se necessário
+            sdp: type 
         });
 
-        // Para cada participante, criar uma conexão (Mesh Network simplificada)
         for (const targetId of participants) {
             await this.createPeer(targetId, true);
         }
@@ -73,7 +73,6 @@ class CallManager {
         }
 
         pc.ontrack = (event) => {
-            console.log(`[CallManager] Track recebido de ${targetId}`);
             this.remoteStreams.set(targetId, event.streams[0]);
             if (this.onRemoteStreamCallback) {
                 this.onRemoteStreamCallback(targetId, event.streams[0]);
@@ -110,11 +109,10 @@ class CallManager {
     }
 
     async acceptCall() {
-        if (!this.currentSession) return;
+        if (!this.currentSession) return null;
         
         await this.initMedia(this.currentSession.type);
         
-        // Responder a todas as offers recebidas
         const { data: offers } = await supabase.from('calls')
             .select('*')
             .eq('call_id', this.currentSession.call_id)
@@ -125,21 +123,24 @@ class CallManager {
                 if (offerData.from_user !== this.currentSession.from_user) {
                     const pc = await this.createPeer(offerData.from_user, false);
                     if (offerData.sdp) {
-                        await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(offerData.sdp)));
-                        const answer = await pc.createAnswer();
-                        await pc.setLocalDescription(answer);
-                        await supabase.from('calls').insert({
-                            call_id: this.currentSession.call_id,
-                            from_user: this.currentSession.from_user,
-                            participants: [offerData.from_user],
-                            type: 'answer',
-                            sdp: JSON.stringify(answer),
-                            status: 'accepted'
-                        });
+                        try {
+                            await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(offerData.sdp)));
+                            const answer = await pc.createAnswer();
+                            await pc.setLocalDescription(answer);
+                            await supabase.from('calls').insert({
+                                call_id: this.currentSession.call_id,
+                                from_user: this.currentSession.from_user,
+                                participants: [offerData.from_user],
+                                type: 'answer',
+                                sdp: JSON.stringify(answer),
+                                status: 'accepted'
+                            });
+                        } catch(e) { console.error(e); }
                     }
                 }
             }
         }
+        return this.localStream;
     }
 
     toggleMute() {

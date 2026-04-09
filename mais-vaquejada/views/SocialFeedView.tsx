@@ -3,7 +3,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { PostItem, StoryItem } from '../types';
 import { supabase } from '../lib/supabase';
 import { callManager } from '../lib/calls';
+import { useCall } from '../context/CallContext';
 import { ArenaNotification, fetchUserNotifications, getNotifText, timeAgo, createNotification } from '../lib/notifications';
+
+console.log("ARENA SOCIAL - VERSION CALLS-V4-FINAL");
 
 const STORY_GROUPS = [
   { id: '1', username: 'Seu Status', avatar: 'https://picsum.photos/seed/my/100', items: [], hasNew: false },
@@ -248,6 +251,8 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
   // Additional Social States (Comments & Notifications)
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [activeCommentsPost, setActiveCommentsPost] = useState<PostItem | null>(null);
+
+  const { startCall } = useCall();
   const [commentText, setCommentText] = useState('');
   const [postComments, setPostComments] = useState<{username: string, text: string, time: string}[]>([]);
   
@@ -950,6 +955,10 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
                 <span className="material-icons text-white">arrow_back</span>
               </button>
               
+              {!activeChatUser && (
+                <h3 className="text-xs font-black uppercase tracking-widest text-white ml-2">MENSAGENS (+)</h3>
+              )}
+              
               {activeChatUser && (
                 <div 
                   onClick={() => { setActiveChatUser(null); setIsDMScreenOpen(false); navigateToProfile(activeChatUser) }} 
@@ -968,41 +977,31 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ user, onMediaCreation }
               )}
             </div>
 
-            {activeChatUser ? (
-              <div className="flex items-center gap-2 pl-2">
+            {activeChatUser && (
+              <div className="flex items-center gap-5 pr-2">
                 <button 
                   onClick={() => {
-                    console.log('Botão Áudio clicado para:', activeChatProfile?.id);
+                    console.log('CALL AUDIO');
                     if (activeChatProfile?.id) {
-                      callManager.initMedia('audio').then(() => {
-                        callManager.startCall(user.id, [activeChatProfile.id], 'audio');
-                      });
+                      startCall([activeChatProfile.id], 'audio');
                     }
                   }}
-                  className="w-10 h-10 rounded-2xl bg-[#ECA413]/10 border border-[#ECA413]/20 flex items-center justify-center text-[#ECA413] hover:bg-[#ECA413]/20 active:scale-90 transition-all"
-                  title="Chamada de Áudio"
+                  className="p-1 active:scale-95 transition-all outline-none"
                 >
-                  <span className="material-icons text-xl">call</span>
+                  <span className="material-icons text-[#ECA413] text-2xl">call</span>
                 </button>
                 <button 
                   onClick={() => {
-                    console.log('Botão Vídeo clicado para:', activeChatProfile?.id);
+                    console.log('CALL VIDEO');
                     if (activeChatProfile?.id) {
-                      callManager.initMedia('video').then(() => {
-                        callManager.startCall(user.id, [activeChatProfile.id], 'video');
-                      });
+                      startCall([activeChatProfile.id], 'video');
                     }
                   }}
-                  className="w-10 h-10 rounded-2xl bg-[#ECA413] flex items-center justify-center text-black hover:bg-[#D4AF37] active:scale-90 transition-all font-bold shadow-lg shadow-[#ECA413]/20"
-                  title="Chamada de Vídeo"
+                  className="p-1 active:scale-95 transition-all outline-none"
                 >
-                  <span className="material-icons text-xl">videocam</span>
+                  <span className="material-icons text-[#ECA413] text-2xl">videocam</span>
                 </button>
               </div>
-            ) : (
-              <button className="w-10 h-10 rounded-full flex items-center justify-center text-white/40 hover:text-white transition-colors">
-                <span className="material-icons">edit_square</span>
-              </button>
             )}
           </header>
 

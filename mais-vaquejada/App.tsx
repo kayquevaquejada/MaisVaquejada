@@ -16,7 +16,9 @@ import AdminUsersView from './views/AdminUsersView';
 import BlockedAccountView from './views/BlockedAccountView';
 import RecoveryAssistedView from './views/RecoveryAssistedView';
 import Navbar from './components/Navbar';
-import CallOverlay from './components/CallOverlay';
+import { CallProvider } from './context/CallContext';
+import { CallBar } from './components/CallBar';
+import { CallScreen } from './components/CallScreen';
 import { supabase } from './lib/supabase';
 import { requestPushPermission } from './lib/notifications';
 
@@ -376,19 +378,22 @@ const App: React.FC = () => {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen flex flex-col bg-background-dark overflow-hidden">
-        <div className="relative w-full h-screen bg-background-dark overflow-hidden flex flex-col">
-          <div className="flex-1 overflow-y-auto hide-scrollbar relative">
-            <div key={navKey} className="max-w-7xl mx-auto w-full h-full">
-              {renderView()}
+      <CallProvider userId={user?.id}>
+        <div className="min-h-screen flex flex-col bg-background-dark overflow-hidden">
+          <div className="relative w-full h-screen bg-background-dark overflow-hidden flex flex-col">
+            <div className="flex-1 overflow-y-auto hide-scrollbar relative">
+              <div key={navKey} className="max-w-7xl mx-auto w-full h-full">
+                {renderView()}
+              </div>
             </div>
+            {showNavbar && (
+              <Navbar currentView={currentView} user={user} />
+            )}
+            <CallBar />
+            <CallScreen />
           </div>
-          {showNavbar && (
-            <Navbar currentView={currentView} user={user} />
-          )}
-          <CallOverlay user={user} />
         </div>
-      </div>
+      </CallProvider>
     </ErrorBoundary>
   );
 };
