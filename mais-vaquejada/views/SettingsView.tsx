@@ -149,7 +149,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
     const toggleSetting = async (key: keyof typeof toggles) => {
         if (key.startsWith('notifications')) {
             if (typeof Notification === 'undefined') {
-                alert('Notificações não suportadas');
+                alert(t('loading'));
                 return;
             }
 
@@ -293,6 +293,29 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
         </div>
     );
 
+    const renderPrivacy = () => (
+        <div className="absolute inset-0 bg-[#F8F5F2] dark:bg-[#12100a] flex flex-col z-[120]">
+            <SubHeader title={t('privacy')} />
+            <div className="flex-1 overflow-y-auto">
+                <div className="px-6 py-4"><h3 className="text-[10px] font-black text-leather/40 dark:text-white/30 uppercase tracking-[0.2em]">Visibilidade</h3></div>
+                <SettingItem icon="lock_outline" label="Conta Privada" isToggle toggleKey="privateAccount" />
+                <SettingItem icon="visibility" label="Status Online" isToggle toggleKey="showOnlineStatus" />
+                <div className="px-6 py-4"><h3 className="text-[10px] font-black text-leather/40 dark:text-white/30 uppercase tracking-[0.2em]">Interações</h3></div>
+                <SettingItem icon="block" label="Usuários Bloqueados" onClick={() => setActiveTab('BLOCKED')} />
+            </div>
+        </div>
+    );
+
+    const renderSecurity = () => (
+        <div className="absolute inset-0 bg-[#F8F5F2] dark:bg-[#12100a] flex flex-col z-[120]">
+            <SubHeader title={t('security')} />
+            <div className="flex-1 overflow-y-auto">
+                <div className="px-6 py-4"><h3 className="text-[10px] font-black text-leather/40 dark:text-white/30 uppercase tracking-[0.2em]">Login</h3></div>
+                <SettingItem icon="password" label="Alterar Senha" onClick={() => alert('Link enviado!')} />
+            </div>
+        </div>
+    );
+
     const renderLanguage = () => (
         <div className="absolute inset-0 bg-[#F8F5F2] dark:bg-[#12100a] flex flex-col z-[120]">
             <SubHeader title={t('language')} />
@@ -334,8 +357,27 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
                             <h4 className="text-xl font-black italic text-leather dark:text-white uppercase">{connectionType}</h4>
                         </div>
                     </div>
-                    <p className="text-xs text-leather/60 dark:text-white/60 font-medium">Estamos otimizando o carregamento de imagens para economizar seu plano de dados.</p>
+                    <p className="text-xs text-leather/60 dark:text-white/60 font-medium">Otimizado para sua conexão atual.</p>
                 </div>
+            </div>
+        </div>
+    );
+
+    const renderHelp = () => (
+        <div className="absolute inset-0 bg-[#F8F5F2] dark:bg-[#12100a] flex flex-col z-[120]">
+            <SubHeader title={t('help')} />
+            <div className="flex-1 overflow-y-auto">
+                <SettingItem icon="help_center" label="Central de Ajuda" onClick={() => {}} />
+            </div>
+        </div>
+    );
+
+    const renderAbout = () => (
+        <div className="absolute inset-0 bg-[#F8F5F2] dark:bg-[#12100a] flex flex-col z-[120]">
+            <SubHeader title={t('about')} />
+            <div className="flex-1 overflow-y-auto p-10 text-center space-y-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.4em]">+VAQUEJADA</p>
+                <p className="text-xs font-medium opacity-40 italic">2.4.0-GOLD</p>
             </div>
         </div>
     );
@@ -370,6 +412,10 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
 
     if (activeTab === 'EDIT_PROFILE') return renderEditProfile();
     if (activeTab === 'NOTIFICATIONS') return renderNotifications();
+    if (activeTab === 'PRIVACY') return renderPrivacy();
+    if (activeTab === 'SECURITY') return renderSecurity();
+    if (activeTab === 'HELP') return renderHelp();
+    if (activeTab === 'ABOUT') return renderAbout();
     if (activeTab === 'LANGUAGE') return renderLanguage();
     if (activeTab === 'DATA_USAGE') return renderDataUsage();
     if (activeTab === 'METRICS') return renderMetrics();
@@ -385,11 +431,29 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
                 <div className="px-6 py-4"><h3 className="text-[10px] font-black text-leather/40 dark:text-white/30 uppercase tracking-[0.2em]">Como você usa o +Vaquejada</h3></div>
                 <SettingItem icon="person_outline" label={t('editProfile')} value={user?.name} onClick={() => setActiveTab('EDIT_PROFILE')} />
                 <SettingItem icon="notifications_none" label={t('notifications')} onClick={() => setActiveTab('NOTIFICATIONS')} />
+                <SettingItem icon="history" label={t('activity')} onClick={() => alert('Buscando histórico...')} />
                 
+                <div className="px-6 py-4"><h3 className="text-[10px] font-black text-leather/40 dark:text-white/30 uppercase tracking-[0.2em]">Quem pode ver seu conteúdo</h3></div>
+                <SettingItem icon="lock_outline" label={t('privacy')} value={toggles.privateAccount ? "Privada" : "Pública"} onClick={() => setActiveTab('PRIVACY')} />
+                <SettingItem icon="stars" label="Amigos Próximos" onClick={() => {}} />
+                <SettingItem icon="block" label="Bloqueados" onClick={() => setActiveTab('PRIVACY')} />
+
                 <div className="px-6 py-4"><h3 className="text-[10px] font-black text-leather/40 dark:text-white/30 uppercase tracking-[0.2em]">Seu app e mídia</h3></div>
                 <SettingItem icon="language" label={t('language')} value={lang.toUpperCase()} onClick={() => setActiveTab('LANGUAGE')} />
                 <SettingItem icon="dark_mode" label={t('darkMode')} isToggle toggleKey="darkMode" />
                 <SettingItem icon="monitor_weight" label={t('dataUsage')} value={connectionType} onClick={() => setActiveTab('DATA_USAGE')} />
+
+                <div className="px-6 py-4"><h3 className="text-[10px] font-black text-leather/40 dark:text-white/30 uppercase tracking-[0.2em]">Mais informações</h3></div>
+                <SettingItem icon="help_outline" label={t('help')} onClick={() => setActiveTab('HELP')} />
+                <SettingItem icon="info_outline" label={t('about')} onClick={() => setActiveTab('ABOUT')} />
+
+                {(user?.isMaster || user?.admin_mercado || user?.admin_social || user?.admin_eventos || user?.admin_noticias || user?.role === 'ADMIN') && (
+                    <>
+                        <div className="px-6 py-4"><h3 className="text-[10px] font-black text-leather/40 dark:text-white/30 uppercase tracking-[0.2em]">Administração</h3></div>
+                        <SettingItem icon="admin_panel_settings" label="Painel de Controle (ADM)" color="text-[#D4AF37]" onClick={() => window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'ADMIN' } }))} />
+                        {user?.isMaster && <SettingItem icon="analytics" label={t('metrics')} color="text-[#D4AF37]" onClick={fetchMetrics} />}
+                    </>
+                )}
 
                 <div className="mt-8 px-6 space-y-4 text-center">
                     <button onClick={onLogout} className="w-full bg-red-50 dark:bg-red-950/20 text-red-500 font-black py-4 rounded-xl uppercase tracking-widest text-xs border border-red-100 dark:border-red-900/30 active:scale-95 transition-transform">{t('logout')}</button>
