@@ -19,7 +19,7 @@ export const SocialService = {
     query = query.or('is_hidden.is.null,is_hidden.eq.false');
 
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) { console.warn('Posts schema error:', error); return []; }
 
     return (data || []).map(p => ({
       id: p.id,
@@ -53,7 +53,7 @@ export const SocialService = {
     }
 
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) { console.warn('Stories schema error:', error); return []; }
 
     const grouped = (data || []).reduce((acc: any, s: any) => {
       const username = s.profiles?.username || 'vaqueiro';
@@ -84,7 +84,7 @@ export const SocialService = {
     const { error } = await supabase
       .from('post_likes')
       .upsert({ user_id: userId, post_id: postId });
-    if (error) throw error;
+    if (error) { console.warn('Likes schema error:', error); return; }
   },
 
   async fetchComments(postId: string): Promise<SocialComment[]> {
@@ -97,7 +97,7 @@ export const SocialService = {
       .eq('post_id', postId)
       .order('created_at', { ascending: false });
     
-    if (error) throw error;
+    if (error) { console.warn('Comments schema error:', error); return []; }
     return (data || []).map(c => ({
       id: c.id,
       post_id: c.post_id,
@@ -116,7 +116,7 @@ export const SocialService = {
       .select('following_id')
       .eq('follower_id', userId);
     
-    if (error) throw error;
+    if (error) { console.warn('Follows schema error:', error); return []; }
     return data?.map(f => f.following_id) || [];
   },
 
@@ -129,7 +129,7 @@ export const SocialService = {
        .select('*')
        .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
        .order('created_at', { ascending: false });
-     if (error) throw error;
+     if (error) { console.warn('Messages schema error:', error); return []; }
      return data;
   }
 };
