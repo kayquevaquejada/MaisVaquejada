@@ -1508,6 +1508,11 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                             label="Central de Publicidade" 
                             onClick={() => setActiveTab('ADS')} 
                         />
+                        <MenuItem 
+                            icon="view_day" 
+                            label="Midia Interna (Feed)" 
+                            onClick={() => window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: View.INTERNAL_ADS } }))} 
+                        />
 
                         {/* Trocar Fundo de Login */}
                         <div className="mx-4 mb-4">

@@ -1,7 +1,7 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { User } from '../types';
+import { useMediaUpload } from '../social/hooks/useMediaUpload';
 
 interface MediaCreationViewProps {
     user: User | null;
@@ -16,9 +16,8 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
     const [step, setStep] = useState<Step>('CAMERA');
     const [mode, setMode] = useState<Mode>('FEED');
     const [capturedMedia, setCapturedMedia] = useState<{ blob: Blob; url: string; type: 'image' | 'video' } | null>(null);
-    const [isCapturing, setIsCapturing] = useState(false);
     const [permissionError, setPermissionError] = useState<string | null>(null);
-    const [isUploading, setIsUploading] = useState(false);
+    const { uploadFile, uploading: isUploading } = useMediaUpload();
 
     // Form stats
     const [caption, setCaption] = useState('');
@@ -93,70 +92,49 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
     };
 
     const handlePublish = async () => {
-        if (!capturedMedia || !user) return;
+        if (!capturedMedia || !user || isUploading) return;
 
-        setIsUploading(true);
         try {
-            const fileName = `${user.id}/${Date.now()}.${capturedMedia.type === 'image' ? 'jpg' : 'mp4'}`;
-            const bucket = capturedMedia.type === 'image' ? 'posts_media' : 'stories_media';
+            // 1. Upload to Storage using our new hook
+            const bucket = mode === 'STORY' ? 'stories_media' : 'posts_media';
+            const publicUrl = await uploadFile(capturedMedia.blob as File, bucket);
 
-            let finalUrl = capturedMedia.url; // Default to local blob URL for mock
+            if (!publicUrl) throw new Error("Falha ao obter URL pública da mídia.");
 
-            try {
-                // 1. Upload to Storage
-                const { data: uploadData, error: uploadError } = await supabase.storage
-                    .from(bucket)
-                    .upload(fileName, capturedMedia.blob);
-
-                if (uploadError) throw uploadError;
-
-                const { data: { publicUrl } } = supabase.storage
-                    .from(bucket)
-                    .getPublicUrl(fileName);
-                
-                finalUrl = publicUrl;
-
-                // 2. Save to Database
-                if (mode === 'STORY') {
-                    const { error: dbError } = await supabase
-                        .from('stories')
-                        .insert({
-                            user_id: user.id,
-                            media_url: publicUrl,
-                            media_type: capturedMedia.type,
-                            expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-                        });
-                    if (dbError) throw dbError;
-                } else {
-                    const { error: dbError } = await supabase
-                        .from('posts')
-                        .insert({
-                            user_id: user.id,
-                            media_url: publicUrl,
-                            media_type: capturedMedia.type,
-                            caption,
-                            location,
-                            event_id: eventId || null
-                        });
-                    if (dbError) throw dbError;
-                }
-                onSuccess();
-            } catch (supaError: any) {
-                console.error('Supabase error:', supaError);
-                throw new Error(`Erro no Supabase: ${supaError.message}. Verifique se os buckets 'posts_media' e 'stories_media' foram criados no Dashboard.`);
+            // 2. Save to Database
+            if (mode === 'STORY') {
+                const { error: dbError } = await supabase
+                    .from('stories')
+                    .insert({
+                        user_id: user.id,
+                        media_url: publicUrl,
+                        media_type: capturedMedia.type,
+                        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+                    });
+                if (dbError) throw dbError;
+            } else {
+                const { error: dbError } = await supabase
+                    .from('posts')
+                    .insert({
+                        user_id: user.id,
+                        media_url: publicUrl,
+                        media_type: capturedMedia.type,
+                        caption,
+                        location,
+                        event_id: eventId || null
+                    });
+                if (dbError) throw dbError;
             }
+            onSuccess();
         } catch (err: any) {
             console.error('Final publish error:', err);
             alert(`Erro ao publicar: ${err.message}`);
-        } finally {
-            setIsUploading(false);
         }
     };
 
-    // Render Screens
+    // Rendering methods (keeping the UI as is)
     const renderCamera = () => (
         <div className="fixed inset-0 h-[100dvh] bg-black z-[200] overflow-hidden">
-            {/* Full Screen Camera Preview */}
             <div className="absolute inset-0 w-full h-full overflow-hidden">
                 {permissionError ? (
                     <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-neutral-900">
@@ -181,7 +159,6 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
                 )}
             </div>
 
-            {/* Top Bar - Floating */}
             <div className="absolute top-0 left-0 right-0 pt-[calc(env(safe-area-inset-top)+1.5rem)] px-6 pb-12 bg-gradient-to-b from-black/60 to-transparent flex justify-between items-start z-50 pointer-events-none">
                 <button onClick={onClose} className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center text-white border border-white/10 pointer-events-auto active:scale-95 transition-transform">
                     <span className="material-icons">close</span>
@@ -191,10 +168,7 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
                 </button>
             </div>
 
-            {/* Bottom Controls - Floating */}
             <div className="absolute bottom-0 left-0 right-0 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-24 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex flex-col items-center z-50">
-                
-                {/* Mode Selector */}
                 <div className="flex justify-center gap-8 items-center mb-8 px-8 py-3 bg-black/40 backdrop-blur-2xl rounded-full border border-white/5">
                     {(['FEED', 'FOTO', 'STORY'] as Mode[]).map((m) => (
                         <button
@@ -207,9 +181,7 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
                     ))}
                 </div>
 
-                {/* Capture Controls */}
                 <div className="flex justify-center items-center gap-14 w-full px-8">
-                    {/* Gallery Button */}
                     <button
                         onClick={() => fileInputRef.current?.click()}
                         className="w-14 h-14 rounded-2xl border-2 border-white/20 bg-black/40 backdrop-blur-xl flex items-center justify-center text-white overflow-hidden active:scale-95 transition-all"
@@ -218,7 +190,6 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
                         <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*,video/*" />
                     </button>
 
-                    {/* Main Capture Button */}
                     <button
                         onClick={capturePhoto}
                         className="w-[88px] h-[88px] rounded-full border-[4px] border-white/30 p-1.5 flex items-center justify-center active:scale-90 transition-transform duration-200"
@@ -226,12 +197,10 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
                         <div className={`w-full h-full rounded-full transition-colors duration-200 ${mode === 'STORY' ? 'bg-gradient-to-tr from-[#ECA413] to-red-500' : 'bg-white'}`}></div>
                     </button>
 
-                    {/* Flip Camera Button */}
                     <button className="w-14 h-14 rounded-full border-2 border-white/20 bg-black/40 backdrop-blur-xl flex items-center justify-center text-white active:scale-95 transition-all">
                         <span className="material-icons text-white/80">flip_camera_ios</span>
                     </button>
                 </div>
-
                 <p className="text-[9px] mt-8 font-bold text-white/30 uppercase tracking-widest">
                     {mode === 'STORY' ? 'Toque para story' : 'Toque para capturar'}
                 </p>
@@ -248,7 +217,6 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
                     <img src={capturedMedia?.url} className="w-full h-full object-cover" alt="Captured" />
                 )}
             </div>
-
             <div className="p-8 pb-12 bg-black flex gap-4">
                 <button
                     onClick={() => { setCapturedMedia(null); setStep('CAMERA'); }}
@@ -268,12 +236,10 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
 
     const renderPublish = () => (
         <div className="absolute inset-0 bg-background-dark flex flex-col z-[200]">
-            {/* Header */}
             <header className="px-6 py-4 flex items-center gap-4 border-b border-white/5">
                 <button onClick={() => setStep('PREVIEW')} className="material-icons text-white/60">arrow_back</button>
                 <h2 className="text-white font-black uppercase text-sm italic tracking-tight">Finalizar Postagem</h2>
             </header>
-
             <div className="flex-1 overflow-y-auto p-6 space-y-8">
                 <div className="flex gap-4">
                     <div className="w-24 h-32 rounded-xl overflow-hidden bg-neutral-900 border border-white/10 shrink-0">
@@ -290,7 +256,6 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
                         className="flex-1 bg-transparent text-white text-sm outline-none resize-none pt-2 placeholder:text-white/20"
                     />
                 </div>
-
                 <div className="space-y-4">
                     <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-3">
                         <span className="material-icons text-[#ECA413]">place</span>
@@ -301,25 +266,8 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
                             className="bg-transparent flex-1 text-xs text-white outline-none placeholder:text-white/20"
                         />
                     </div>
-
-                    <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-3">
-                        <span className="material-icons text-[#ECA413]">event</span>
-                        <input
-                            value={eventId}
-                            onChange={(e) => setEventId(e.target.value)}
-                            placeholder="Vincular a uma Vaquejada (ID)"
-                            className="bg-transparent flex-1 text-xs text-white outline-none placeholder:text-white/20"
-                        />
-                    </div>
-                </div>
-
-                <div className="p-6 bg-[#ECA413]/5 border border-[#ECA413]/20 rounded-2xl">
-                    <p className="text-[10px] font-black text-[#ECA413] uppercase tracking-widest mb-1 text-center">Configurações</p>
-                    <p className="text-[9px] text-white/40 text-center uppercase tracking-tighter">Seu post será visível para toda a comunidade do +Vaquejada.</p>
                 </div>
             </div>
-
-            {/* Publish Button */}
             <div className="p-6 bg-background-dark border-t border-white/5">
                 <button
                     onClick={handlePublish}

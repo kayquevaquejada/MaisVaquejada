@@ -68,7 +68,12 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
           <div className="inline-block px-4 py-1.5 rounded-full bg-[#ECA413]/10 border border-[#ECA413]/20 mb-6">
             <span className="text-[#ECA413] text-[10px] font-black uppercase tracking-[0.3em]">Arena Digital Oficial</span>
           </div>
-          <img src="/logo.png" className="w-48 h-auto mx-auto mb-4" alt="Arena +Vaquejada" />
+          <div className="flex justify-center mb-4">
+            <p className="font-black tracking-tighter italic leading-none flex items-baseline">
+              <span className="text-[#ECA413]" style={{ fontSize: '4rem', lineHeight: 1, marginRight: '-0.1em' }}>+V</span>
+              <span className="text-white text-[2.5rem] tracking-tight">AQUEJADA</span>
+            </p>
+          </div>
           <p className="text-white/40 text-xs font-bold uppercase tracking-widest italic">A maior paixão do Nordeste em um só lugar</p>
         </div>
 

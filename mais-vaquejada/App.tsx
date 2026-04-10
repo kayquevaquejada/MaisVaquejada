@@ -22,6 +22,7 @@ import { CallScreen } from './components/CallScreen';
 import { supabase } from './lib/supabase';
 import { requestPushPermission } from './lib/notifications';
 import UpdateManager from './components/UpdateManager';
+import { InternalAdManager } from './social/screens/InternalAdManager';
 
 // Escudo de Erros (ErrorBoundary)
 class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean, error: any}> {
@@ -50,7 +51,7 @@ class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean,
 }
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<View>(View.LOGIN);
+  const [currentView, setCurrentView] = useState<View>(View.EVENTS);
   const [navKey, setNavKey] = useState(0);
   const [profileUsername, setProfileUsername] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -88,8 +89,8 @@ const App: React.FC = () => {
               setCurrentView(View.EVENTS);
           } else if (path.startsWith('/perfil/')) {
               setCurrentView(View.LOGIN);
-          } else if (![View.LOGIN, View.SIGNUP, View.FORGOT_PASSWORD, View.RECOVERY_ASSISTED, View.EVENTS].includes(currentView)) {
-              setCurrentView(View.LOGIN);
+          } else if (![View.LOGIN, View.SIGNUP, View.FORGOT_PASSWORD, View.RECOVERY_ASSISTED, View.EVENTS, View.SOCIAL, View.NEWS].includes(currentView)) {
+              setCurrentView(View.EVENTS);
           }
           setInitializing(false);
         }
@@ -120,25 +121,32 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const handleNav = (e: any) => {
-      const view = e.detail?.view || currentView;
-      const username = e.detail?.username ?? null;
-      
-      setCurrentView(view);
-      setNavKey(Date.now());
-      if (username !== undefined) {
-          setProfileUsername(username);
-      }
+  const handleNav = (e: any) => {
+    const view = e.detail?.view || currentView;
+    const username = e.detail?.username ?? null;
+    
+    // Proteção: Redirecionar para Login se tentar acessar views restritas sem estar logado
+    const restrictedViews = [View.SOCIAL, View.MERCADO, View.PROFILE, View.MEDIA_CREATION, View.ADMIN, View.SETTINGS, View.AD_CREATION];
+    if (!user && restrictedViews.includes(view)) {
+        setCurrentView(View.LOGIN);
+        return;
+    }
 
-      const stateObj = { view, username };
-      if (username) {
-          window.history.pushState(stateObj, '', `/perfil/${username}`);
-      } else if (view === View.PROFILE) {
-          window.history.pushState(stateObj, '', `/perfil`);
-      } else {
-          window.history.pushState(stateObj, '', `/`);
-      }
-    };
+    setCurrentView(view);
+    setNavKey(Date.now());
+    if (username !== undefined) {
+        setProfileUsername(username);
+    }
+
+    const stateObj = { view, username };
+    if (username) {
+        window.history.pushState(stateObj, '', `/perfil/${username}`);
+    } else if (view === View.PROFILE) {
+        window.history.pushState(stateObj, '', `/perfil`);
+    } else {
+        window.history.pushState(stateObj, '', `/`);
+    }
+  };
 
     const handlePopState = (e: PopStateEvent) => {
         if (e.state) {
@@ -155,7 +163,7 @@ const App: React.FC = () => {
                 setProfileUsername(null);
                 setCurrentView(View.PROFILE);
             } else {
-                setCurrentView(View.SOCIAL);
+                setCurrentView(View.EVENTS);
             }
             setNavKey(Date.now());
         }
@@ -168,7 +176,7 @@ const App: React.FC = () => {
         window.removeEventListener('arena_navigate', handleNav);
         window.removeEventListener('popstate', handlePopState);
     };
-  }, [currentView]);
+  }, [currentView, user]);
 
   useEffect(() => {
     if (currentView !== View.LOGIN && currentView !== View.SIGNUP && currentView !== View.FORGOT_PASSWORD && currentView !== View.COMPLETE_PROFILE) {
@@ -331,6 +339,8 @@ const App: React.FC = () => {
           );
         case View.FORGOT_PASSWORD:
           return <ForgotPasswordView onBack={() => setCurrentView(View.LOGIN)} />;
+        case View.INTERNAL_ADS:
+          return <InternalAdManager user={user} onBack={() => setCurrentView(View.ADMIN)} />;
         default:
           return <EventsView />;
       }
@@ -354,7 +364,7 @@ const App: React.FC = () => {
     }
   };
 
-  const showNavbar = ![View.LOGIN, View.SIGNUP, View.FORGOT_PASSWORD, View.COMPLETE_PROFILE, View.BLOCKED_ACCOUNT, View.RECOVERY_ASSISTED, View.AD_CREATION].includes(currentView) && !!user;
+  const showNavbar = ![View.LOGIN, View.SIGNUP, View.FORGOT_PASSWORD, View.COMPLETE_PROFILE, View.BLOCKED_ACCOUNT, View.RECOVERY_ASSISTED, View.AD_CREATION].includes(currentView);
 
   if (initializing) {
     return (

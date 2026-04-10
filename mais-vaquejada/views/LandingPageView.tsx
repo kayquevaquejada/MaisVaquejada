@@ -34,14 +34,14 @@ const LandingPageView: React.FC<LandingPageViewProps> = ({ onEnterApp, apkUrl })
             <span className="text-[#ECA413] text-[10px] font-black uppercase tracking-[0.4em]">Arena Digital Oficial</span>
           </div>
           
-          <div className="relative group">
+          <div className="relative group mb-8">
             <div className="absolute inset-0 bg-[#ECA413]/10 blur-3xl rounded-full scale-125 group-hover:scale-150 transition-transform duration-1000" />
-            <img 
-              src="/logo.png" 
-              alt="Logo +Vaquejada" 
-              className="w-48 md:w-64 h-auto mb-8 relative z-10 drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]"
-            />
+            <p className="font-black tracking-tighter italic leading-none flex items-baseline justify-center relative z-10 drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+              <span className="text-[#ECA413]" style={{ fontSize: '5rem', lineHeight: 1, marginRight: '-0.1em' }}>+V</span>
+              <span className="text-white tracking-tight" style={{ fontSize: '3.5rem' }}>AQUEJADA</span>
+            </p>
           </div>
+
           
           <p className="text-white/60 text-lg md:text-xl font-medium max-w-2xl text-center leading-relaxed italic">
             A maior plataforma digital dedicada à paixão que move o Nordeste. 
@@ -124,7 +124,12 @@ const LandingPageView: React.FC<LandingPageViewProps> = ({ onEnterApp, apkUrl })
               <span className="material-icons">close</span>
             </button>
             <div className="text-center mb-8">
-              <img src="/logo.png" className="w-24 h-auto mx-auto mb-6" alt="Logo" />
+              <div className="flex justify-center mb-6">
+                <p className="font-black tracking-tighter italic leading-none flex items-baseline">
+                  <span className="text-[#ECA413]" style={{ fontSize: '3rem', lineHeight: 1, marginRight: '-0.1em' }}>+V</span>
+                  <span className="text-white text-[2rem] tracking-tight">AQUEJADA</span>
+                </p>
+              </div>
               <h3 className="text-2xl font-black uppercase italic tracking-tight mb-2">Instalar no iPhone</h3>
               <p className="text-white/40 text-xs font-bold">Tenha o app oficial na palma da mão sem usar a App Store.</p>
             </div>
