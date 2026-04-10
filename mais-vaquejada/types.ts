@@ -1,7 +1,6 @@
 export enum View {
   LOGIN = 'LOGIN',
   SIGNUP = 'SIGNUP',
-  LANDING = 'LANDING',
   NEWS = 'NEWS',
   EVENTS = 'EVENTS',
   SOCIAL = 'SOCIAL',
