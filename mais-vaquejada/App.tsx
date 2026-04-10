@@ -15,6 +15,7 @@ import CompleteProfileView from './views/CompleteProfileView';
 import AdminUsersView from './views/AdminUsersView';
 import BlockedAccountView from './views/BlockedAccountView';
 import RecoveryAssistedView from './views/RecoveryAssistedView';
+import LandingPageView from './views/LandingPageView';
 import Navbar from './components/Navbar';
 import { CallProvider } from './context/CallContext';
 import { CallBar } from './components/CallBar';
@@ -50,7 +51,7 @@ class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean,
 }
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<View>(View.LOGIN);
+  const [currentView, setCurrentView] = useState<View>(View.LANDING);
   const [navKey, setNavKey] = useState(0);
   const [profileUsername, setProfileUsername] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -88,8 +89,10 @@ const App: React.FC = () => {
               setCurrentView(View.EVENTS);
           } else if (path.startsWith('/perfil/')) {
               setCurrentView(View.LOGIN);
-          } else if (![View.LOGIN, View.SIGNUP, View.FORGOT_PASSWORD, View.RECOVERY_ASSISTED, View.EVENTS].includes(currentView)) {
-              setCurrentView(View.LOGIN);
+          } else if (path === '/baixar') {
+              setCurrentView(View.LANDING);
+          } else if (![View.LOGIN, View.SIGNUP, View.FORGOT_PASSWORD, View.RECOVERY_ASSISTED, View.EVENTS, View.LANDING].includes(currentView)) {
+              setCurrentView(View.LANDING);
           }
           setInitializing(false);
         }
@@ -274,6 +277,8 @@ const App: React.FC = () => {
   const renderView = () => {
     try {
       switch (currentView) {
+        case View.LANDING:
+          return <LandingPageView onEnterApp={() => setCurrentView(View.LOGIN)} apkUrl="/app/arena-vaquejada.apk" />;
         case View.LOGIN:
           return <LoginView onLogin={handleAuthSuccess} onSignUp={() => setCurrentView(View.SIGNUP)} onForgotPassword={() => setCurrentView(View.FORGOT_PASSWORD)} onRecoveryAssisted={() => setCurrentView(View.RECOVERY_ASSISTED)} />;
         case View.SIGNUP:
@@ -354,7 +359,7 @@ const App: React.FC = () => {
     }
   };
 
-  const showNavbar = ![View.LOGIN, View.SIGNUP, View.FORGOT_PASSWORD, View.COMPLETE_PROFILE, View.BLOCKED_ACCOUNT, View.RECOVERY_ASSISTED, View.AD_CREATION].includes(currentView) && !!user;
+  const showNavbar = ![View.LOGIN, View.SIGNUP, View.FORGOT_PASSWORD, View.COMPLETE_PROFILE, View.BLOCKED_ACCOUNT, View.RECOVERY_ASSISTED, View.AD_CREATION, View.LANDING].includes(currentView) && !!user;
 
   if (initializing) {
     return (
