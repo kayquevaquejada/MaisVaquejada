@@ -77,7 +77,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
   if (!currentUser || !currentItem) return null;
 
   return (
-    <div className="absolute inset-0 z-[100] bg-black flex flex-col animate-in fade-in duration-300 pointer-events-auto">
+    <div className="fixed inset-0 z-[500] bg-black flex flex-col animate-in fade-in duration-300 pointer-events-auto">
       {/* Progress Bars */}
       <div className="absolute top-4 left-0 right-0 px-2 flex gap-1 z-20">
         {currentUser.items.map((_, i) => (
@@ -113,13 +113,15 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
         <button onClick={onClose} className="material-icons text-white drop-shadow-md">close</button>
       </div>
 
-      {/* Story Content */}
-      <div className="flex-1 flex items-center justify-center bg-neutral-900">
+      {/* Story Content — Full screen cover */}
+      <div className="absolute inset-0">
         <img
           src={currentItem.url}
-          className="w-full max-h-full object-contain"
+          className="w-full h-full object-cover"
           alt="Story content"
         />
+        {/* Dark gradient top/bottom for readability */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60 pointer-events-none" />
       </div>
 
       {/* Navigation Tap Zones */}
