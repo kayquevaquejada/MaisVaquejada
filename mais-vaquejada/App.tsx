@@ -69,40 +69,15 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const initApp = async () => {
-      let timeoutId: any;
       try {
-        console.log('DEBUG: Current Browser URL:', window.location.href);
-        
-        timeoutId = setTimeout(() => {
-            setInitializing(false);
-        }, 6000); 
-
         const params = new URLSearchParams(window.location.search);
         const eventId = params.get('event');
-        
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.warn('Session check error:', sessionError.message);
-        }
-        
-        if (session?.user) {
-          await fetchProfile(session.user.id);
-        } else {
-          // No session found yet, but let's wait a tiny bit for onAuthStateChange to confirm
-          // before deciding to show Login.
-          setTimeout(() => {
-            if (!user) {
-              setCurrentView(View.LOGIN);
-              setInitializing(false);
-            }
-          }, 1000);
+        if (eventId) {
+          // Se tiver um evento no link, poderíamos salvar para abrir depois do login
+          sessionStorage.setItem('pending_event_id', eventId);
         }
       } catch (err) {
         console.error('Init Error:', err);
-        setInitializing(false);
-      } finally {
-        if (timeoutId) clearTimeout(timeoutId);
       }
     };
 
@@ -110,16 +85,15 @@ const App: React.FC = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('App Auth Change:', event, !!session);
+      
       if (session?.user) {
-        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
-          await fetchProfile(session.user.id);
-        }
+        // Se temos usuário, buscamos o perfil. fetchProfile vai setar initializing como false no final.
+        await fetchProfile(session.user.id);
       } else {
+        // Se não temos sessão (evento INITIAL_SESSION com session null ou SIGNED_OUT)
         setUser(null);
-        if (event === 'SIGNED_OUT') {
-           setCurrentView(View.LOGIN);
-           setInitializing(false);
-        }
+        setCurrentView(View.LOGIN);
+        setInitializing(false);
       }
     });
 
