@@ -79,7 +79,18 @@ const App: React.FC = () => {
         const params = new URLSearchParams(window.location.search);
         const eventId = params.get('event');
         
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.warn('Session check error, retrying...', sessionError.message);
+          // Retry once — sometimes PostgREST cache or network hiccup
+          const { data: { session: retrySession } } = await supabase.auth.getSession();
+          if (retrySession?.user) {
+            await fetchProfile(retrySession.user.id);
+            if (timeoutId) clearTimeout(timeoutId);
+            return;
+          }
+        }
         
         if (session?.user) {
           await fetchProfile(session.user.id);
@@ -96,8 +107,8 @@ const App: React.FC = () => {
         }
       } catch (err) {
         console.error('Init Error:', err);
+        // Don't force LOGIN on error — the onAuthStateChange listener will handle it
         setInitializing(false);
-        setCurrentView(View.LOGIN);
       } finally {
         if (timeoutId) clearTimeout(timeoutId);
       }
@@ -180,7 +191,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (currentView !== View.LOGIN && currentView !== View.SIGNUP && currentView !== View.FORGOT_PASSWORD && currentView !== View.COMPLETE_PROFILE) {
-      sessionStorage.setItem('arena_last_view', currentView);
+      localStorage.setItem('arena_last_view', currentView);
     }
   }, [currentView]);
 
@@ -244,7 +255,7 @@ const App: React.FC = () => {
         if (!mappedUser.profile_completed) {
           setCurrentView(View.COMPLETE_PROFILE);
         } else {
-          const savedView = sessionStorage.getItem('arena_last_view');
+          const savedView = localStorage.getItem('arena_last_view');
           setCurrentView((savedView as View) || View.EVENTS);
         }
       } else if (authUser) {
@@ -275,7 +286,7 @@ const App: React.FC = () => {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
-    sessionStorage.removeItem('arena_last_view');
+    localStorage.removeItem('arena_last_view');
     setCurrentView(View.LOGIN);
   };
 
