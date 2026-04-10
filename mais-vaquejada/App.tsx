@@ -51,7 +51,7 @@ class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean,
 }
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<View>(View.EVENTS);
+  const [currentView, setCurrentView] = useState<View>(View.LOGIN);
   const [navKey, setNavKey] = useState(0);
   const [profileUsername, setProfileUsername] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -95,14 +95,7 @@ const App: React.FC = () => {
         if (session?.user) {
           await fetchProfile(session.user.id);
         } else {
-          const path = window.location.pathname;
-          if (eventId) {
-              setCurrentView(View.EVENTS);
-          } else if (path.startsWith('/perfil/')) {
-              setCurrentView(View.LOGIN);
-          } else if (![View.LOGIN, View.SIGNUP, View.FORGOT_PASSWORD, View.RECOVERY_ASSISTED, View.EVENTS, View.SOCIAL, View.NEWS].includes(currentView)) {
-              setCurrentView(View.EVENTS);
-          }
+          setCurrentView(View.LOGIN);
           setInitializing(false);
         }
       } catch (err) {
@@ -137,8 +130,8 @@ const App: React.FC = () => {
     const username = e.detail?.username ?? null;
     
     // Proteção: Redirecionar para Login se tentar acessar views restritas sem estar logado
-    const restrictedViews = [View.SOCIAL, View.MERCADO, View.PROFILE, View.MEDIA_CREATION, View.ADMIN, View.SETTINGS, View.AD_CREATION];
-    if (!user && restrictedViews.includes(view)) {
+    const publicViews = [View.LOGIN, View.SIGNUP, View.FORGOT_PASSWORD, View.RECOVERY_ASSISTED];
+    if (!user && !publicViews.includes(view)) {
         setCurrentView(View.LOGIN);
         return;
     }
