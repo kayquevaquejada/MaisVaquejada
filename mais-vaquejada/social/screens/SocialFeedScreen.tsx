@@ -118,12 +118,13 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
         setSearchResults([]);
         return;
       }
+      const cleanQuery = searchQuery.replace('@', '').trim();
       const { data } = await supabase
         .from('profiles')
-        .select('id, username, name, avatar_url')
-        .or(`username.ilike.%${searchQuery}%,name.ilike.%${searchQuery}%`)
+        .select('id, username, name, full_name, avatar_url, role')
+        .or(`username.ilike.%${cleanQuery}%,name.ilike.%${cleanQuery}%,full_name.ilike.%${cleanQuery}%`)
         .neq('id', user?.id)
-        .limit(10);
+        .limit(15);
       setSearchResults(data || []);
     };
     const timer = setTimeout(search, 300);
@@ -285,6 +286,73 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
           onPostComment={(text) => handlePostComment(activeCommentPostId, text)}
           onNavigateToProfile={navigateToProfile}
         />
+      )}
+
+      {/* Search Overlay */}
+      {isSearchOpen && (
+        <div className="fixed inset-0 z-[300] bg-background-dark flex flex-col animate-in slide-in-from-top duration-300">
+          {/* Search Header */}
+          <header className="px-4 py-3 flex items-center gap-3 border-b border-white/5 bg-background-dark/95 backdrop-blur-md">
+            <button onClick={() => { setIsSearchOpen(false); setSearchQuery(''); setSearchResults([]); }} className="material-icons text-white shrink-0">arrow_back</button>
+            <div className="flex-1 flex items-center bg-white/10 rounded-full px-4 py-2.5 border border-white/10">
+              <span className="material-icons text-white/40 text-[20px] mr-2">search</span>
+              <input
+                autoFocus
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-transparent border-none outline-none text-white text-sm w-full placeholder:text-white/40"
+                placeholder="Buscar por @usuario ou nome..."
+              />
+              {searchQuery && (
+                <button onClick={() => { setSearchQuery(''); setSearchResults([]); }} className="material-icons text-white/30 text-[18px] hover:text-white">close</button>
+              )}
+            </div>
+          </header>
+
+          {/* Results */}
+          <div className="flex-1 overflow-y-auto">
+            {searchQuery.length < 2 ? (
+              <div className="flex flex-col items-center justify-center py-20 opacity-20">
+                <span className="material-icons text-5xl mb-4">person_search</span>
+                <p className="text-xs font-black uppercase tracking-widest text-white">Digite o @ ou nome</p>
+                <p className="text-[10px] text-white/40 mt-1">Mínimo 2 caracteres</p>
+              </div>
+            ) : searchResults.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 opacity-20">
+                <span className="material-icons text-5xl mb-4">search_off</span>
+                <p className="text-xs font-black uppercase tracking-widest text-white">Nenhum vaqueiro encontrado</p>
+                <p className="text-[10px] text-white/40 mt-1">Tente outro nome ou @</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-white/5">
+                {searchResults.map((result: any) => (
+                  <div
+                    key={result.id}
+                    onClick={() => { setIsSearchOpen(false); setSearchQuery(''); navigateToProfile(result.username || result.id); }}
+                    className="flex items-center gap-4 px-5 py-4 cursor-pointer hover:bg-white/5 active:bg-white/10 transition-colors"
+                  >
+                    <div className="w-12 h-12 rounded-full border border-[#ECA413]/30 p-0.5 shrink-0 bg-neutral-800 overflow-hidden">
+                      <img
+                        src={result.avatar_url || `https://ui-avatars.com/api/?name=${result.name || result.username}&background=random`}
+                        className="w-full h-full object-cover rounded-full"
+                        alt=""
+                        onError={(e) => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${result.username}&background=random`; }}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-black text-white text-sm truncate flex items-center gap-1">
+                        {result.name || result.username}
+                        {result.role?.includes('ADMIN') && <span className="material-icons text-[#ECA413] text-[14px]">verified</span>}
+                      </p>
+                      <p className="text-[12px] font-bold text-[#ECA413] truncate">@{result.username}</p>
+                    </div>
+                    <span className="material-icons text-white/20 text-[20px]">chevron_right</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
