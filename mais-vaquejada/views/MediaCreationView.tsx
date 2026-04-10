@@ -193,13 +193,16 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
         }, 800);
     };
 
+    const [publishError, setPublishError] = useState<string | null>(null);
+
     const handlePublish = async () => {
         if (!capturedMedia || !user || isUploading) return;
+        setPublishError(null);
 
         try {
-            // 1. Upload to Storage using our new hook
-            const bucket = mode === 'STORY' ? 'stories_media' : 'posts_media';
-            const publicUrl = await uploadFile(capturedMedia.blob as File, bucket);
+            // 1. Upload to Storage using our unified hook with folders
+            const folder = mode === 'STORY' ? 'stories_media' : 'posts_media';
+            const publicUrl = await uploadFile(capturedMedia.blob as File, folder);
 
             if (!publicUrl) throw new Error("Falha ao obter URL pública da mídia.");
 
@@ -230,7 +233,7 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
             onSuccess();
         } catch (err: any) {
             console.error('Final publish error:', err);
-            alert(`Erro ao publicar: ${err.message}`);
+            setPublishError(err.message || 'Ocorreu um erro ao enviar sua mídia. Tente novamente.');
         }
     };
 
@@ -430,7 +433,14 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
                     </div>
                 </div>
             </div>
-            <div className="p-6 bg-background-dark border-t border-white/5">
+            <div className="p-6 bg-background-dark border-t border-white/5 space-y-4">
+                {publishError && (
+                    <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl flex items-start gap-3">
+                        <span className="material-icons text-red-500 text-sm mt-0.5">error_outline</span>
+                        <p className="text-red-200 text-xs flex-1">{publishError}</p>
+                        <button onClick={() => setPublishError(null)} className="material-icons text-white/50 text-sm hover:text-white">close</button>
+                    </div>
+                )}
                 <button
                     onClick={handlePublish}
                     disabled={isUploading}
