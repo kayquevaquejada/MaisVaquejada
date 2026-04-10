@@ -29,10 +29,13 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
     const fileInputRef = useRef<HTMLInputElement>(null);
     let locationDebounceTimeout = useRef<NodeJS.Timeout | null>(null);
 
-    // Location States
     const [isLocating, setIsLocating] = useState(false);
     const [locationResults, setLocationResults] = useState<any[]>([]);
     const [isSearchingLocation, setIsSearchingLocation] = useState(false);
+    
+    // Premium FX States
+    const [isFlashing, setIsFlashing] = useState(false);
+    const [previewAnim, setPreviewAnim] = useState(false);
 
     useEffect(() => {
         if (step === 'CAMERA') {
@@ -40,8 +43,32 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
         } else {
             stopCamera();
         }
+        if (step === 'PREVIEW') {
+            setTimeout(() => setPreviewAnim(true), 10);
+        } else {
+            setPreviewAnim(false);
+        }
         return () => stopCamera();
     }, [step, mode]);
+
+    const playShutterSound = () => {
+        try {
+            const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+            if (!AudioContext) return;
+            const ctx = new AudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(800, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.5, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.1);
+        } catch (e) { /* silent fallback */ }
+    };
 
     const startCamera = async () => {
         try {
@@ -71,6 +98,16 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
     const capturePhoto = () => {
         if (!videoRef.current) return;
 
+        // Haptic Feedback
+        if (navigator.vibrate) navigator.vibrate([15, 30, 15]);
+        
+        // Shutter Sound
+        playShutterSound();
+
+        // Flash Effect
+        setIsFlashing(true);
+        setTimeout(() => setIsFlashing(false), 120);
+
         const canvas = document.createElement('canvas');
         canvas.width = videoRef.current.videoWidth;
         canvas.height = videoRef.current.videoHeight;
@@ -80,8 +117,10 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
             canvas.toBlob((blob) => {
                 if (blob) {
                     const url = URL.createObjectURL(blob);
-                    setCapturedMedia({ blob, url, type: 'image' });
-                    setStep('PREVIEW');
+                    setTimeout(() => {
+                        setCapturedMedia({ blob, url, type: 'image' });
+                        setStep('PREVIEW');
+                    }, 50);
                 }
             }, 'image/jpeg', 0.8);
         }
@@ -198,6 +237,14 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
     // Rendering methods (keeping the UI as is)
     const renderCamera = () => (
         <div className="fixed inset-0 h-[100dvh] bg-black z-[200] overflow-hidden">
+            {isFlashing && (
+                <div className="absolute inset-0 bg-white z-[300] transition-opacity duration-100 ease-out" style={{ opacity: isFlashing ? 0.8 : 0 }} />
+            )}
+
+            {/* Premium Depth Overlays */}
+            <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/80 to-transparent pointer-events-none z-10" />
+            <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none z-10" />
+
             <div className="absolute inset-0 w-full h-full overflow-hidden">
                 {permissionError ? (
                     <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-neutral-900">
@@ -222,49 +269,62 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
                 )}
             </div>
 
-            <div className="absolute top-0 left-0 right-0 pt-[calc(env(safe-area-inset-top)+1.5rem)] px-6 pb-12 bg-gradient-to-b from-black/60 to-transparent flex justify-between items-start z-50 pointer-events-none">
-                <button onClick={onClose} className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center text-white border border-white/10 pointer-events-auto active:scale-95 transition-transform">
+            <div className="absolute top-0 left-0 right-0 pt-[calc(env(safe-area-inset-top)+1.5rem)] px-6 pb-12 flex justify-between items-start z-50 pointer-events-none">
+                <button onClick={onClose} className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center text-white border border-white/20 pointer-events-auto active:scale-90 hover:bg-white/10 transition-all shadow-lg">
                     <span className="material-icons">close</span>
                 </button>
-                <button className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center text-white border border-white/10 pointer-events-auto active:scale-95 transition-transform">
+                <button className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center text-white border border-white/20 pointer-events-auto active:scale-90 hover:bg-white/10 transition-all shadow-lg">
                     <span className="material-icons">flash_off</span>
                 </button>
             </div>
 
-            <div className="absolute bottom-0 left-0 right-0 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-24 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex flex-col items-center z-50">
-                <div className="flex justify-center gap-8 items-center mb-8 px-8 py-3 bg-black/40 backdrop-blur-2xl rounded-full border border-white/5">
+            <div className="absolute bottom-0 left-0 right-0 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-24 flex flex-col items-center z-50">
+                <div className="flex justify-center gap-8 items-center mb-10 px-8 py-3 bg-black/30 backdrop-blur-2xl rounded-full border border-white/10 shadow-lg">
                     {(['FEED', 'FOTO', 'STORY'] as Mode[]).map((m) => (
                         <button
                             key={m}
-                            onClick={() => setMode(m)}
-                            className={`text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${mode === m ? 'text-[#ECA413] scale-110 drop-shadow-[0_0_8px_rgba(236,164,19,0.5)]' : 'text-white/40 hover:text-white/60'}`}
+                            onClick={() => {
+                                if (navigator.vibrate) navigator.vibrate(10);
+                                setMode(m);
+                            }}
+                            className={`text-[10px] font-black uppercase tracking-widest transition-all duration-300 relative ${mode === m ? 'text-white scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'text-white/40 hover:text-white/60'}`}
                         >
                             {m}
+                            {mode === m && <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-white shadow-[0_0_4px_white]"></div>}
                         </button>
                     ))}
                 </div>
 
                 <div className="flex justify-center items-center gap-14 w-full px-8">
                     <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-14 h-14 rounded-2xl border-2 border-white/20 bg-black/40 backdrop-blur-xl flex items-center justify-center text-white overflow-hidden active:scale-95 transition-all"
+                        onClick={() => {
+                            if (navigator.vibrate) navigator.vibrate(10);
+                            fileInputRef.current?.click();
+                        }}
+                        className="w-14 h-14 rounded-2xl border border-white/20 bg-black/30 backdrop-blur-md flex items-center justify-center text-white overflow-hidden active:scale-90 hover:bg-white/10 transition-all shadow-lg"
                     >
-                        <span className="material-icons text-white/80">photo_library</span>
+                        <span className="material-icons text-white/90">photo_library</span>
                         <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*,video/*" />
                     </button>
 
                     <button
                         onClick={capturePhoto}
-                        className="w-[88px] h-[88px] rounded-full border-[4px] border-white/30 p-1.5 flex items-center justify-center active:scale-90 transition-transform duration-200"
+                        className="relative w-[88px] h-[88px] rounded-full border-[4px] border-white/40 p-1.5 flex items-center justify-center active:scale-[0.92] transition-all duration-200 shadow-[0_0_20px_rgba(0,0,0,0.4)] group overflow-visible"
                     >
-                        <div className={`w-full h-full rounded-full transition-colors duration-200 ${mode === 'STORY' ? 'bg-gradient-to-tr from-[#ECA413] to-red-500' : 'bg-white'}`}></div>
+                        <div className="absolute inset-[-6px] rounded-full border border-white/20 animate-ping opacity-20 pointer-events-none"></div>
+                        <div className={`w-full h-full rounded-full transition-colors duration-200 shadow-inner ${mode === 'STORY' ? 'bg-gradient-to-tr from-[#ECA413] to-[#FF4500] shadow-[#ECA413]/50' : 'bg-white shadow-white/40'}`}></div>
                     </button>
 
-                    <button className="w-14 h-14 rounded-full border-2 border-white/20 bg-black/40 backdrop-blur-xl flex items-center justify-center text-white active:scale-95 transition-all">
-                        <span className="material-icons text-white/80">flip_camera_ios</span>
+                    <button 
+                        onClick={() => {
+                            if (navigator.vibrate) navigator.vibrate(10);
+                        }}
+                        className="w-14 h-14 rounded-full border border-white/20 bg-black/30 backdrop-blur-md flex items-center justify-center text-white active:scale-90 hover:bg-white/10 transition-all shadow-lg"
+                    >
+                        <span className="material-icons text-white/90">flip_camera_ios</span>
                     </button>
                 </div>
-                <p className="text-[9px] mt-8 font-bold text-white/30 uppercase tracking-widest">
+                <p className="text-[9px] mt-8 font-bold text-white/30 uppercase tracking-widest animate-pulse opacity-50">
                     {mode === 'STORY' ? 'Toque para story' : 'Toque para capturar'}
                 </p>
             </div>
@@ -272,13 +332,20 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
     );
 
     const renderPreview = () => (
-        <div className="absolute inset-0 bg-black flex flex-col z-[200]">
-            <div className="flex-1 relative flex items-center justify-center overflow-hidden">
-                {capturedMedia?.type === 'video' ? (
-                    <video src={capturedMedia.url} controls autoPlay loop className="w-full h-full object-cover" />
-                ) : (
-                    <img src={capturedMedia?.url} className="w-full h-full object-cover" alt="Captured" />
+        <div className={`absolute inset-0 bg-black flex flex-col z-[200] transition-all duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${previewAnim ? 'opacity-100 scale-100' : 'opacity-0 scale-105'}`}>
+            <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-neutral-900">
+                {/* Blur backdrop overlay */}
+                {capturedMedia?.type === 'image' && (
+                    <div className="absolute inset-0 opacity-50 blur-[40px] scale-125 saturate-150" style={{ backgroundImage: `url(${capturedMedia.url})`, backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
                 )}
+                
+                <div className={`relative z-10 w-full h-full flex items-center justify-center transition-transform duration-500 delay-100 ${previewAnim ? 'scale-100' : 'scale-95'}`}>
+                    {capturedMedia?.type === 'video' ? (
+                        <video src={capturedMedia.url} controls autoPlay loop className="w-full h-full object-cover shadow-2xl" />
+                    ) : (
+                        <img src={capturedMedia?.url} className="w-full h-full object-contain drop-shadow-2xl" alt="Captured" />
+                    )}
+                </div>
             </div>
             <div className="p-8 pb-12 bg-black flex gap-4">
                 <button
