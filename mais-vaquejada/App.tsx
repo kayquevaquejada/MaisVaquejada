@@ -65,6 +65,7 @@ const App: React.FC = () => {
   ];
   const [initializing, setInitializing] = useState(true);
   const [isBiometricLocked, setIsBiometricLocked] = useState(false);
+  const isFetchingProfile = React.useRef(false);
 
   useEffect(() => {
     const initApp = async () => {
@@ -82,25 +83,23 @@ const App: React.FC = () => {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
-          console.warn('Session check error, retrying...', sessionError.message);
-          // Retry once — sometimes PostgREST cache or network hiccup
-          const { data: { session: retrySession } } = await supabase.auth.getSession();
-          if (retrySession?.user) {
-            await fetchProfile(retrySession.user.id);
-            if (timeoutId) clearTimeout(timeoutId);
-            return;
-          }
+          console.warn('Session check error:', sessionError.message);
         }
         
         if (session?.user) {
           await fetchProfile(session.user.id);
         } else {
-          setCurrentView(View.LOGIN);
-          setInitializing(false);
+          // No session found yet, but let's wait a tiny bit for onAuthStateChange to confirm
+          // before deciding to show Login.
+          setTimeout(() => {
+            if (!user) {
+              setCurrentView(View.LOGIN);
+              setInitializing(false);
+            }
+          }, 1000);
         }
       } catch (err) {
         console.error('Init Error:', err);
-        // Don't force LOGIN on error — the onAuthStateChange listener will handle it
         setInitializing(false);
       } finally {
         if (timeoutId) clearTimeout(timeoutId);
@@ -112,12 +111,15 @@ const App: React.FC = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('App Auth Change:', event, !!session);
       if (session?.user) {
-        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
           await fetchProfile(session.user.id);
         }
       } else {
         setUser(null);
-        if (event === 'SIGNED_OUT') setCurrentView(View.LOGIN);
+        if (event === 'SIGNED_OUT') {
+           setCurrentView(View.LOGIN);
+           setInitializing(false);
+        }
       }
     });
 
@@ -189,7 +191,9 @@ const App: React.FC = () => {
   }, [currentView]);
 
   const fetchProfile = async (userId: string) => {
+    if (!userId || isFetchingProfile.current) return;
     try {
+      isFetchingProfile.current = true;
       const { data: authData } = await supabase.auth.getUser();
       const authUser = authData?.user;
       const userEmail = authUser?.email;
@@ -265,6 +269,7 @@ const App: React.FC = () => {
     } catch (err: any) {
       console.error('CRITICAL: Error in fetchProfile:', err);
     } finally {
+      isFetchingProfile.current = false;
       setInitializing(false);
     }
   };
