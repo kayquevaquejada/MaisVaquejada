@@ -4,6 +4,8 @@ import { SocialPost } from '../types';
 interface PostCardProps {
   post: SocialPost;
   isLiked: boolean;
+  likeCount: number;
+  commentCount: number;
   onLike: (post: SocialPost) => void;
   onComment: (post: SocialPost) => void;
   onShare: (post: SocialPost) => void;
@@ -14,6 +16,8 @@ interface PostCardProps {
 export const PostCard: React.FC<PostCardProps> = ({
   post,
   isLiked,
+  likeCount,
+  commentCount,
   onLike,
   onComment,
   onShare,
@@ -21,6 +25,16 @@ export const PostCard: React.FC<PostCardProps> = ({
   onOptions
 }) => {
   const [imgError, setImgError] = useState(false);
+  const [showLikeAnim, setShowLikeAnim] = useState(false);
+
+  // Double-tap to like
+  const handleDoubleTap = () => {
+    if (!isLiked) {
+      onLike(post);
+      setShowLikeAnim(true);
+      setTimeout(() => setShowLikeAnim(false), 800);
+    }
+  };
 
   return (
     <article className="mb-2 last:mb-0 border-t border-white/5 pt-2">
@@ -60,10 +74,13 @@ export const PostCard: React.FC<PostCardProps> = ({
       </div>
 
       {/* Post Media */}
-      <div className="relative w-full overflow-hidden bg-neutral-900 group min-h-[300px] flex items-center justify-center">
+      <div 
+        className="relative w-full overflow-hidden bg-neutral-900 group min-h-[300px] flex items-center justify-center"
+        onDoubleClick={handleDoubleTap}
+      >
         {!imgError ? (
           <img
-            className={`w-full ${post.id === '2' ? 'aspect-[4/5]' : 'aspect-square'} object-cover`}
+            className="w-full aspect-square object-cover"
             src={post.imageUrl}
             alt="Post content"
             onError={() => setImgError(true)}
@@ -72,6 +89,13 @@ export const PostCard: React.FC<PostCardProps> = ({
           <div className="flex flex-col items-center opacity-20">
             <span className="material-icons text-4xl mb-2">image_not_supported</span>
             <span className="text-[10px] font-black uppercase tracking-widest">Mídia não disponível</span>
+          </div>
+        )}
+
+        {/* Double-tap heart animation */}
+        {showLikeAnim && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+            <span className="material-icons text-white text-[80px] animate-ping drop-shadow-2xl">favorite</span>
           </div>
         )}
 
@@ -89,11 +113,11 @@ export const PostCard: React.FC<PostCardProps> = ({
             onClick={() => onLike(post)}
             className="flex items-center gap-2 group active:scale-125 transition-transform"
           >
-            <span className={`material-icons text-[26px] ${isLiked ? 'text-red-500' : 'text-white'}`}>
+            <span className={`material-icons text-[26px] transition-colors ${isLiked ? 'text-red-500' : 'text-white'}`}>
               {isLiked ? 'favorite' : 'favorite_border'}
             </span>
             <span className="text-[14px] font-black text-white/90 tracking-tight">
-              {isLiked ? (parseInt(post.likes.toString().replace(/k/g, '000')) + 1).toLocaleString() : post.likes}
+              {likeCount}
             </span>
           </button>
           <button
@@ -101,7 +125,7 @@ export const PostCard: React.FC<PostCardProps> = ({
             className="flex items-center gap-2"
           >
             <span className="material-icons text-[24px] text-white">chat_bubble_outline</span>
-            <span className="text-[14px] font-black text-white/90 tracking-tight">{post.comments}</span>
+            <span className="text-[14px] font-black text-white/90 tracking-tight">{commentCount}</span>
           </button>
           <button onClick={() => onShare(post)}>
             <span className="material-icons text-[24px] text-white">send</span>
@@ -109,9 +133,6 @@ export const PostCard: React.FC<PostCardProps> = ({
         </div>
 
         <div className="flex items-center gap-4">
-          {post.views && (
-            <span className="text-[11px] font-black text-[#ECA413] uppercase tracking-tighter">{post.views}</span>
-          )}
           <button>
             <span className="material-icons text-[24px] text-white/60">bookmark_border</span>
           </button>
@@ -120,6 +141,11 @@ export const PostCard: React.FC<PostCardProps> = ({
 
       {/* Post Content */}
       <div className="px-5 pb-6 space-y-1.5">
+        {likeCount > 0 && (
+          <p className="text-[13px] font-black text-white">
+            {likeCount} {likeCount === 1 ? 'curtida' : 'curtidas'}
+          </p>
+        )}
         <div className="flex flex-wrap gap-2">
           {post.hashtags.map(tag => (
             <span key={tag} className="text-[#ECA413] text-[11px] font-black uppercase tracking-wider">
@@ -136,12 +162,14 @@ export const PostCard: React.FC<PostCardProps> = ({
           </span>
           <span className="text-white/90 font-medium">{post.caption}</span>
         </p>
-        <button
-          onClick={() => onComment(post)}
-          className="text-[11px] font-black opacity-40 text-white uppercase tracking-widest block py-0.5 active:opacity-100"
-        >
-          VER TODOS OS {post.comments} COMENTÁRIOS
-        </button>
+        {commentCount > 0 && (
+          <button
+            onClick={() => onComment(post)}
+            className="text-[11px] font-black opacity-40 text-white uppercase tracking-widest block py-0.5 active:opacity-100"
+          >
+            Ver todos os {commentCount} comentários
+          </button>
+        )}
         <div className="text-[9px] font-black opacity-30 text-white uppercase tracking-[0.15em]">{post.timeAgo}</div>
       </div>
     </article>

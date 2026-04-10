@@ -24,7 +24,7 @@ interface SocialFeedScreenProps {
 const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreation }) => {
   const { posts, stories, loading, isRefreshing, error, refresh } = useFeed(user?.id);
   const { notifications, unreadCount, markAsRead } = useNotifications(user?.id);
-  const { likedPosts, toggleLike, commentsMap, loadComments } = useSocialInteractions(user);
+  const { likedPosts, likeCounts, toggleLike, commentsMap, commentCounts, loadComments, postComment, commentLoading, initFromFeed } = useSocialInteractions(user);
   const { conversations, activeMessages, fetchConversations, fetchMessages, sendMessage } = useDMs(user);
   const { injectAdsIntoFeed, trackImpression, trackClickAndAct } = useInternalAds({ 
     placement: 'social_feed_native', 
@@ -100,41 +100,14 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
     }
   };
 
+  // Initialize like/comment counts when posts arrive
+  React.useEffect(() => {
+    if (posts.length > 0) initFromFeed(posts);
+  }, [posts, initFromFeed]);
+
   const handlePostComment = async (postId: string, text: string) => {
-    if (!user?.id) return;
-    try {
-      const { data, error } = await supabase
-        .from('post_comments')
-        .insert({
-          post_id: postId,
-          user_id: user.id,
-          content: text
-        })
-        .select(`
-          *,
-          profiles:user_id (username, avatar_url)
-        `)
-        .single();
-      
-      if (error) throw error;
-      
-      // Update local comments
-      loadComments(postId);
-      
-      // Notify post owner
-      const post = posts.find(p => p.id === postId);
-      if (post && post.userId !== user.id) {
-         await supabase.from('notifications').insert({
-           user_id: post.userId,
-           actor_id: user.id,
-           type: 'comment',
-           reference_id: postId,
-           message: text
-         });
-      }
-    } catch (err) {
-      console.error('Comment error:', err);
-    }
+    const post = posts.find(p => p.id === postId);
+    await postComment(postId, text, post?.userId);
   };
 
 
@@ -234,6 +207,8 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
                 key={post.id}
                 post={post}
                 isLiked={likedPosts.has(post.id)}
+                likeCount={likeCounts[post.id] || 0}
+                commentCount={commentCounts[post.id] || 0}
                 onLike={toggleLike}
                 onComment={(p) => { setActiveCommentPostId(p.id); loadComments(p.id); }}
                 onShare={(p) => navigator.share?.({ title: '+Vaquejada', text: p.caption, url: window.location.href })}

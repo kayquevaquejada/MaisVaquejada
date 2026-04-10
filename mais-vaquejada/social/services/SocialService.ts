@@ -2,7 +2,7 @@ import { supabase } from '../../lib/supabase';
 import { SocialPost, Story, StoryMedia, SocialComment, ArenaNotification, ChatMessage } from '../types';
 
 export const SocialService = {
-  // Feed & Posts
+  // Feed & Posts — now with real like/comment counts
   async fetchFeed(userId: string, followingIds: string[] = []): Promise<SocialPost[]> {
     let query = supabase
       .from('posts')
@@ -13,13 +13,31 @@ export const SocialService = {
       .order('created_at', { ascending: false })
       .limit(50);
 
-    // If following someone, show their posts + own. Otherwise show all posts.
     if (followingIds.length > 0) {
       query = query.in('user_id', [...followingIds, userId]);
     }
 
     const { data, error } = await query;
     if (error) { console.error('fetchFeed error:', error.message); return []; }
+
+    // Fetch like + comment counts in parallel for all post IDs
+    const postIds = (data || []).map(p => p.id);
+    const [likesRes, commentsRes, myLikesRes] = await Promise.all([
+      supabase.from('post_likes').select('post_id').in('post_id', postIds),
+      supabase.from('post_comments').select('post_id').in('post_id', postIds),
+      userId ? supabase.from('post_likes').select('post_id').eq('user_id', userId).in('post_id', postIds) : Promise.resolve({ data: [] })
+    ]);
+
+    // Count likes per post
+    const likeCounts: Record<string, number> = {};
+    (likesRes.data || []).forEach(l => { likeCounts[l.post_id] = (likeCounts[l.post_id] || 0) + 1; });
+
+    // Count comments per post
+    const commentCounts: Record<string, number> = {};
+    (commentsRes.data || []).forEach(c => { commentCounts[c.post_id] = (commentCounts[c.post_id] || 0) + 1; });
+
+    // My liked posts
+    const myLikedSet = new Set((myLikesRes.data || []).map(l => l.post_id));
 
     return (data || []).map(p => ({
       id: p.id,
@@ -29,18 +47,18 @@ export const SocialService = {
       location: p.location || 'Brasil',
       imageUrl: p.media_url,
       avatarUrl: p.profiles?.avatar_url,
-      likes: '0',
-      comments: 0,
+      likes: likeCounts[p.id] || 0,
+      comments: commentCounts[p.id] || 0,
       caption: p.caption || '',
       hashtags: [],
-      timeAgo: 'RECENTE',
-      isFeature: false
+      timeAgo: getTimeAgo(p.created_at),
+      isFeature: false,
+      isLikedByMe: myLikedSet.has(p.id)
     }));
   },
 
   // Stories
   async fetchStories(userId: string, followingIds: string[] = []): Promise<Story[]> {
-    // Always include own stories + following. Never show strangers' stories.
     const authorizedIds = [...new Set([userId, ...followingIds])];
 
     const { data, error } = await supabase
@@ -79,14 +97,24 @@ export const SocialService = {
     return Object.values(grouped);
   },
 
-  // Interactions
+  // Like / Unlike
   async likePost(userId: string, postId: string) {
     const { error } = await supabase
       .from('post_likes')
-      .upsert({ user_id: userId, post_id: postId });
-    if (error) { console.warn('Likes schema error:', error); return; }
+      .insert({ user_id: userId, post_id: postId });
+    if (error) { console.error('Like error:', error.message); }
   },
 
+  async unlikePost(userId: string, postId: string) {
+    const { error } = await supabase
+      .from('post_likes')
+      .delete()
+      .eq('user_id', userId)
+      .eq('post_id', postId);
+    if (error) { console.error('Unlike error:', error.message); }
+  },
+
+  // Comments
   async fetchComments(postId: string): Promise<SocialComment[]> {
     const { data, error } = await supabase
       .from('post_comments')
@@ -95,9 +123,9 @@ export const SocialService = {
         profiles:user_id (username, avatar_url)
       `)
       .eq('post_id', postId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: true });
     
-    if (error) { console.warn('Comments schema error:', error); return []; }
+    if (error) { console.error('Comments error:', error.message); return []; }
     return (data || []).map(c => ({
       id: c.id,
       post_id: c.post_id,
@@ -107,6 +135,16 @@ export const SocialService = {
       created_at: c.created_at,
       avatar_url: c.profiles?.avatar_url
     }));
+  },
+
+  async postComment(userId: string, postId: string, content: string) {
+    const { data, error } = await supabase
+      .from('post_comments')
+      .insert({ user_id: userId, post_id: postId, content })
+      .select(`*, profiles:user_id (username, avatar_url)`)
+      .single();
+    if (error) { console.error('PostComment error:', error.message); return null; }
+    return data;
   },
 
   // Relationships
@@ -122,8 +160,6 @@ export const SocialService = {
 
   // DMs
   async fetchConversations(userId: string) {
-     // Ideally we'd have a conversations table, but based on current logic we might need to query messages
-     // and group them. For refactor, let's keep it robust.
      const { data, error } = await supabase
        .from('messages')
        .select('*')
@@ -133,3 +169,16 @@ export const SocialService = {
      return data;
   }
 };
+
+// Utility: human-readable time ago
+function getTimeAgo(isoDate: string): string {
+  const diff = Date.now() - new Date(isoDate).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'AGORA';
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d`;
+  return `${Math.floor(days / 7)}sem`;
+}
