@@ -21,6 +21,7 @@ import { CallBar } from './components/CallBar';
 import { CallScreen } from './components/CallScreen';
 import { supabase } from './lib/supabase';
 import { requestPushPermission } from './lib/notifications';
+import UpdateManager from './components/UpdateManager';
 
 // Escudo de Erros (ErrorBoundary)
 class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean, error: any}> {
@@ -383,6 +384,7 @@ const App: React.FC = () => {
       <CallProvider userId={user?.id}>
         <div className="min-h-screen flex flex-col bg-background-dark overflow-hidden">
           <div className="relative w-full h-screen bg-background-dark overflow-hidden flex flex-col">
+            <UpdateManager />
             <div className="flex-1 overflow-y-auto hide-scrollbar relative">
               <div key={navKey} className="max-w-7xl mx-auto w-full h-full">
                 {renderView()}
