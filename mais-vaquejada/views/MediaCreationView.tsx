@@ -27,6 +27,12 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
     const videoRef = useRef<HTMLVideoElement>(null);
     const mediaStreamRef = useRef<MediaStream | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    let locationDebounceTimeout = useRef<NodeJS.Timeout | null>(null);
+
+    // Location States
+    const [isLocating, setIsLocating] = useState(false);
+    const [locationResults, setLocationResults] = useState<any[]>([]);
+    const [isSearchingLocation, setIsSearchingLocation] = useState(false);
 
     useEffect(() => {
         if (step === 'CAMERA') {
@@ -89,6 +95,63 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
             setCapturedMedia({ blob: file, url, type });
             setStep('PREVIEW');
         }
+    };
+
+    const handleGetLocation = () => {
+        if (!navigator.geolocation) {
+            alert('Geolocalização não suportada no seu dispositivo.');
+            return;
+        }
+
+        setIsLocating(true);
+        navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+                const { latitude, longitude } = pos.coords;
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+                    const data = await res.json();
+                    const city = data.address.city || data.address.town || data.address.village;
+                    const state = data.address.state;
+                    
+                    if (city && state) {
+                        setLocation(`${city}, ${state}`);
+                    } else if (data.display_name) {
+                        setLocation(data.display_name.substring(0, 40));
+                    } else {
+                        setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+                    }
+                } catch (e) {
+                    setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+                }
+                setIsLocating(false);
+            },
+            (err) => {
+                setIsLocating(false);
+                alert('Não foi possível obter sua localização. Verifique as permissões de GPS.');
+            }
+        );
+    };
+
+    const handleLocationSearch = (query: string) => {
+        setLocation(query);
+        if (!query || query.length < 3) {
+            setLocationResults([]);
+            return;
+        }
+
+        if (locationDebounceTimeout.current) clearTimeout(locationDebounceTimeout.current);
+        
+        locationDebounceTimeout.current = setTimeout(async () => {
+            setIsSearchingLocation(true);
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=5&countrycodes=br`);
+                const data = await res.json();
+                setLocationResults(data || []);
+            } catch (err) {
+                console.error(err);
+            }
+            setIsSearchingLocation(false);
+        }, 800);
     };
 
     const handlePublish = async () => {
@@ -257,14 +320,46 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
                     />
                 </div>
                 <div className="space-y-4">
-                    <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-3">
-                        <span className="material-icons text-[#ECA413]">place</span>
-                        <input
-                            value={location}
-                            onChange={(e) => setLocation(e.target.value)}
-                            placeholder="Adicionar localização (opcional)"
-                            className="bg-transparent flex-1 text-xs text-white outline-none placeholder:text-white/20"
-                        />
+                    <div className="relative">
+                        <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-3">
+                            <span className="material-icons text-[#ECA413]">place</span>
+                            <input
+                                value={location}
+                                onChange={(e) => handleLocationSearch(e.target.value)}
+                                placeholder="Adicionar localização (opcional)"
+                                className="bg-transparent flex-1 text-xs text-white outline-none placeholder:text-white/20"
+                            />
+                            {!location && (
+                                <button 
+                                    onClick={handleGetLocation}
+                                    className={`material-icons text-white/40 hover:text-white active:scale-90 transition-transform ${isLocating ? 'animate-pulse text-[#ECA413]' : ''}`}
+                                >
+                                    my_location
+                                </button>
+                            )}
+                        </div>
+                        
+                        {locationResults.length > 0 && (
+                            <div className="absolute top-full left-0 right-0 mt-2 bg-neutral-900 border border-white/10 rounded-xl overflow-hidden z-[250] shadow-2xl max-h-48 overflow-y-auto">
+                                {isSearchingLocation && (
+                                    <div className="p-3 text-center text-xs text-white/50">Buscando...</div>
+                                )}
+                                {locationResults.map((loc: any, idx: number) => (
+                                    <button
+                                        key={idx}
+                                        onClick={() => {
+                                            const shortName = loc.display_name.split(',')[0];
+                                            setLocation(shortName);
+                                            setLocationResults([]);
+                                        }}
+                                        className="w-full text-left p-4 border-b border-white/5 hover:bg-white/5 active:bg-white/10 flex flex-col gap-1 transition-colors"
+                                    >
+                                        <span className="text-white text-xs font-bold line-clamp-1">{loc.display_name.split(',')[0]}</span>
+                                        <span className="text-white/40 text-[10px] line-clamp-1">{loc.display_name}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
