@@ -27,16 +27,22 @@ const LandingPageView: React.FC<LandingPageViewProps> = ({ onEnterApp, apkUrl })
         />
       </div>
 
-      <div className="relative z-20 max-w-7xl mx-auto px-6 pt-20 pb-20">
-        {/* Header/Logo */}
-        <div className="flex flex-col items-center mb-20 animate-in fade-in slide-in-from-top-10 duration-1000">
+      <div className="relative z-20 max-w-7xl mx-auto px-6 pt-12 pb-20">
+        {/* Header/Logo OFICIAL */}
+        <div className="flex flex-col items-center mb-16 animate-in fade-in slide-in-from-top-10 duration-1000">
           <div className="inline-block px-4 py-1.5 rounded-full bg-[#ECA413]/10 border border-[#ECA413]/20 mb-8">
-            <span className="text-[#ECA413] text-[10px] font-black uppercase tracking-[0.4em]">Official Digital Arena</span>
+            <span className="text-[#ECA413] text-[10px] font-black uppercase tracking-[0.4em]">Arena Digital Oficial</span>
           </div>
-          <h1 className="font-black italic tracking-tighter leading-none text-center mb-6">
-            <span className="text-[#ECA413] text-7xl md:text-9xl block mb-2" style={{ lineHeight: 0.8 }}>+V</span>
-            <span className="text-white text-4xl md:text-6xl tracking-widest uppercase">AQUEJADA</span>
-          </h1>
+          
+          <div className="relative group">
+            <div className="absolute inset-0 bg-[#ECA413]/10 blur-3xl rounded-full scale-125 group-hover:scale-150 transition-transform duration-1000" />
+            <img 
+              src="/logo.png" 
+              alt="Logo +Vaquejada" 
+              className="w-48 md:w-64 h-auto mb-8 relative z-10 drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]"
+            />
+          </div>
+          
           <p className="text-white/60 text-lg md:text-xl font-medium max-w-2xl text-center leading-relaxed italic">
             A maior plataforma digital dedicada à paixão que move o Nordeste. 
             Tudo o que você precisa em um só lugar.
@@ -118,9 +124,7 @@ const LandingPageView: React.FC<LandingPageViewProps> = ({ onEnterApp, apkUrl })
               <span className="material-icons">close</span>
             </button>
             <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-[#ECA413]/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                <span className="material-icons text-[#ECA413] text-3xl">share</span>
-              </div>
+              <img src="/logo.png" className="w-24 h-auto mx-auto mb-6" alt="Logo" />
               <h3 className="text-2xl font-black uppercase italic tracking-tight mb-2">Instalar no iPhone</h3>
               <p className="text-white/40 text-xs font-bold">Tenha o app oficial na palma da mão sem usar a App Store.</p>
             </div>
