@@ -1,6 +1,6 @@
 export const APP_VERSION = {
-  code: 2,
-  name: "1.1.0",
+  code: 3,
+  name: "1.2.0",
 };
 
 export interface RemoteConfig {
