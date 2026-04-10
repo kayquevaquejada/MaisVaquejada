@@ -40,20 +40,20 @@ export const SocialService = {
 
   // Stories
   async fetchStories(userId: string, followingIds: string[] = []): Promise<Story[]> {
-    let query = supabase
+    // Always include own stories + following. Never show strangers' stories.
+    const authorizedIds = [...new Set([userId, ...followingIds])];
+
+    const { data, error } = await supabase
       .from('stories')
       .select(`
         *,
         profiles:user_id (username, avatar_url)
       `)
-      .gt('expires_at', new Date().toISOString());
+      .gt('expires_at', new Date().toISOString())
+      .in('user_id', authorizedIds)
+      .order('created_at', { ascending: false });
 
-    if (followingIds.length > 0) {
-      query = query.in('user_id', [...followingIds, userId]);
-    }
-
-    const { data, error } = await query;
-    if (error) { console.warn('Stories schema error:', error); return []; }
+    if (error) { console.error('fetchStories error:', error.message); return []; }
 
     const grouped = (data || []).reduce((acc: any, s: any) => {
       const username = s.profiles?.username || 'vaqueiro';
@@ -69,7 +69,7 @@ export const SocialService = {
       acc[username].items.push({
         id: s.id,
         url: s.media_url,
-        type: s.type || 'image',
+        type: s.media_type || 'image',
         duration: 5000,
         created_at: s.created_at
       });

@@ -200,6 +200,15 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
         setPublishError(null);
 
         try {
+            // 0. Ensure profile exists (avoids FK violation on stories/posts)
+            await supabase.from('profiles').upsert({
+                id: user.id,
+                name: user.name || user.email || 'Vaqueiro',
+                email: user.email || null,
+                username: user.username || (user.email || 'vaqueiro').split('@')[0].toLowerCase().replace(/\W/g, ''),
+                role: user.role || 'USER',
+            }, { onConflict: 'id', ignoreDuplicates: true });
+
             // 1. Upload to Storage using our unified hook with folders
             const folder = mode === 'STORY' ? 'stories_media' : 'posts_media';
             const publicUrl = await uploadFile(capturedMedia.blob as File, folder);
