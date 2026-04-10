@@ -12,22 +12,8 @@ interface ProfileViewProps {
     onProfileUpdate?: () => void;
 }
 
-// -----------------------------------------------------------------------------
-// DADOS MOCKADOS
-// -----------------------------------------------------------------------------
-const MY_POSTS_MOCK = [
-    { id: '1', img: 'https://picsum.photos/seed/feed1/500', likes: 120, comments: 12 },
-    { id: '2', img: 'https://picsum.photos/seed/feed2/500', likes: 85, comments: 4 },
-    { id: '3', img: 'https://picsum.photos/seed/feed3/500', likes: 230, comments: 45 },
-    { id: '4', img: 'https://picsum.photos/seed/feed4/500', likes: 45, comments: 2 },
-    { id: '5', img: 'https://picsum.photos/seed/feed5/500', likes: 67, comments: 8 },
-    { id: '6', img: 'https://picsum.photos/seed/feed6/500', likes: 112, comments: 15 },
-];
+// No mock data — all posts come from the database
 
-const ADS_MOCK = [
-    { title: 'SELA PROFISSIONAL LUXO', price: 'R$ 1.500', loc: 'CG, PB', img: 'https://picsum.photos/seed/sela/400' },
-    { title: 'CAMINHÃO REBOQUE 2024', price: 'R$ 85.000', loc: 'JP, PB', img: 'https://picsum.photos/seed/truck/400' },
-];
 
 type TabType = 'POSTS' | 'ADS' | 'FAVORITES' | 'HIGHLIGHTS' | 'EVENTS';
 
@@ -511,19 +497,26 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                 {/* Tab Content */}
                 <div className="mt-1">
                     {activeTab === 'POSTS' && (
-                        <div className="grid grid-cols-3 gap-0.5 animate-in fade-in duration-300">
-                            {(isMyProfile ? profilePosts : MY_POSTS_MOCK).map((post: any) => (
-                                <div key={post.id} onClick={() => setSelectedPost(post)} className="aspect-square bg-white/5 relative group cursor-pointer overflow-hidden">
-                                    <img src={post.img} className="w-full h-full object-cover" alt="" />
-                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                                        <div className="flex items-center gap-1">
-                                            <span className="material-icons text-white text-sm">favorite</span>
-                                            <span className="text-white font-black text-xs">{post.likes}</span>
+                        profilePosts.length > 0 ? (
+                            <div className="grid grid-cols-3 gap-0.5 animate-in fade-in duration-300">
+                                {profilePosts.map((post: any) => (
+                                    <div key={post.id} onClick={() => setSelectedPost(post)} className="aspect-square bg-white/5 relative group cursor-pointer overflow-hidden">
+                                        <img src={post.img} className="w-full h-full object-cover" alt="" />
+                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                                            <div className="flex items-center gap-1">
+                                                <span className="material-icons text-white text-sm">favorite</span>
+                                                <span className="text-white font-black text-xs">{post.likes}</span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center py-16 opacity-20">
+                                <span className="material-icons text-5xl mb-3">photo_camera</span>
+                                <p className="text-xs font-black uppercase tracking-widest text-white">Nenhuma publicação ainda</p>
+                            </div>
+                        )
                     )}
                     {activeTab === 'ADS' && (
                         <div className="grid grid-cols-2 gap-2 animate-in fade-in duration-300 pt-2">
