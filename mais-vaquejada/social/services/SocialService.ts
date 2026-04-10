@@ -10,21 +10,21 @@ export const SocialService = {
         *,
         profiles:user_id (name, username, avatar_url, role)
       `)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(50);
 
+    // If following someone, show their posts + own. Otherwise show all posts.
     if (followingIds.length > 0) {
       query = query.in('user_id', [...followingIds, userId]);
     }
 
-    query = query.or('is_hidden.is.null,is_hidden.eq.false');
-
     const { data, error } = await query;
-    if (error) { console.warn('Posts schema error:', error); return []; }
+    if (error) { console.error('fetchFeed error:', error.message); return []; }
 
     return (data || []).map(p => ({
       id: p.id,
       userId: p.user_id,
-      username: p.profiles?.username || 'vaqueiro',
+      username: p.profiles?.username || p.profiles?.name || 'vaqueiro',
       isVerified: p.profiles?.role?.includes('ADMIN'),
       location: p.location || 'Brasil',
       imageUrl: p.media_url,
@@ -34,7 +34,7 @@ export const SocialService = {
       caption: p.caption || '',
       hashtags: [],
       timeAgo: 'RECENTE',
-      isFeature: p.is_feature
+      isFeature: false
     }));
   },
 
