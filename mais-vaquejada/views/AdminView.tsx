@@ -561,67 +561,93 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
 
     const PermissionManager = () => (
         <div className="p-6">
-            <h4 className="text-xs font-black text-leather uppercase tracking-widest mb-2">Classificar Administrativos</h4>
-            <p className="text-[10px] text-leather/60 mb-4 font-medium leading-relaxed">Localize usuários e selecione os módulos aos quais eles terão acesso administrativo restrito.</p>
+            <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-[#D4AF37]/10 rounded-xl flex items-center justify-center">
+                    <span className="material-icons text-[#D4AF37]">manage_accounts</span>
+                </div>
+                <div>
+                    <h4 className="text-sm font-black text-leather uppercase tracking-tighter italic">Classificar Administrativos</h4>
+                    <p className="text-[10px] text-leather/40 font-bold uppercase tracking-widest">Delegar poderes para a equipe</p>
+                </div>
+            </div>
             
-            <input 
-                type="text" 
-                placeholder="Buscar por @username, nome ou email..."
-                className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather mb-4 outline-none focus:border-[#D4AF37] shadow-sm"
-                value={searchQuery}
-                onChange={(e) => searchUsers(e.target.value)}
-            />
+            <div className="relative mb-6">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 material-icons text-leather/20">person_search</span>
+                <input 
+                    type="text" 
+                    placeholder="Pesquisar usuário para promover..."
+                    className="w-full bg-white border border-[#1A1108]/10 rounded-2xl py-4 pl-12 pr-6 text-sm text-leather font-bold outline-none focus:border-[#D4AF37] shadow-sm transition-all"
+                    value={searchQuery}
+                    onChange={(e) => searchUsers(e.target.value)}
+                />
+            </div>
 
-            {searchResults.length > 0 && (
-                <div className="space-y-3 mt-4">
+            {searchResults.length > 0 && searchQuery.trim() !== '' && (
+                <div className="space-y-4 mt-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                    <p className="text-[9px] font-black text-leather/20 uppercase tracking-[0.3em] px-2">Resultados da Busca</p>
                     {searchResults.map(result => (
-                        <div key={result.id} className="bg-white border border-[#1A1108]/5 p-4 rounded-2xl shadow-sm">
-                            <div className="flex items-center gap-3 mb-4">
-                                <img src={result.avatar_url || `https://ui-avatars.com/api/?name=${result.name || result.username}`} className="w-10 h-10 rounded-full border border-leather/5" />
-                                <div>
-                                    <p className="font-bold text-sm text-leather leading-tight">{result.name || result.full_name}</p>
-                                    <p className="text-[10px] text-[#D4AF37] font-black uppercase tracking-widest">@{result.username}</p>
+                        <div key={result.id} className="bg-white border border-[#1A1108]/10 p-5 rounded-[32px] shadow-sm relative overflow-hidden group">
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="w-14 h-14 rounded-2xl border border-leather/10 overflow-hidden shadow-sm relative">
+                                    <img src={result.avatar_url || `https://ui-avatars.com/api/?name=${result.name || result.username}`} className="w-full h-full object-cover" />
+                                    {result.role === 'ADMIN_MASTER' && <div className="absolute top-0 right-0 bg-[#D4AF37] p-0.5 rounded-bl-lg"><span className="material-icons text-white text-[10px]">stars</span></div>}
+                                </div>
+                                <div className="flex-1">
+                                    <h5 className="font-black text-base text-leather tracking-tight leading-none mb-1">{result.name || result.full_name || 'Sem Nome'}</h5>
+                                    <p className="text-[10px] text-[#D4AF37] font-black uppercase tracking-widest leading-none">@{result.username || 'user'}</p>
+                                    <div className="flex gap-2 mt-2">
+                                        <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter ${result.role === 'ADMIN_MASTER' ? 'bg-[#D4AF37] text-white' : 'bg-leather/5 text-leather/40'}`}>
+                                            Cargo: {result.role}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                             
                             <div className="grid grid-cols-2 gap-2">
                                 <button 
                                     onClick={() => toggleSubAdminPermission(result.id, 'admin_mercado', result.admin_mercado)}
-                                    className={`py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-tighter flex items-center justify-center gap-1.5 transition-all border ${
-                                        result.admin_mercado ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/20' : 'bg-neutral-50 text-neutral-400 border-neutral-100'
+                                    className={`py-3 px-3 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all border-2 ${
+                                        result.admin_mercado ? 'bg-[#D4AF37] border-[#D4AF37] text-white shadow-lg shadow-[#D4AF37]/20' : 'bg-neutral-50 text-leather/20 border-neutral-100 hover:border-leather/10'
                                     }`}
                                 >
-                                    <span className="material-icons text-sm">{result.admin_mercado ? 'check_circle' : 'add'}</span>
+                                    <span className="material-icons text-sm">{result.admin_mercado ? 'storefront' : 'add'}</span>
                                     Mercado
                                 </button>
                                 <button 
                                     onClick={() => toggleSubAdminPermission(result.id, 'admin_social', result.admin_social)}
-                                    className={`py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-tighter flex items-center justify-center gap-1.5 transition-all border ${
-                                        result.admin_social ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/20' : 'bg-neutral-50 text-neutral-400 border-neutral-100'
+                                    className={`py-3 px-3 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all border-2 ${
+                                        result.admin_social ? 'bg-[#4CAF50] border-[#4CAF50] text-white shadow-lg shadow-[#4CAF50]/20' : 'bg-neutral-50 text-leather/20 border-neutral-100 hover:border-leather/10'
                                     }`}
                                 >
-                                    <span className="material-icons text-sm">{result.admin_social ? 'check_circle' : 'add'}</span>
+                                    <span className="material-icons text-sm">{result.admin_social ? 'campaign' : 'add'}</span>
                                     Propaganda
                                 </button>
                                 <button 
                                     onClick={() => toggleSubAdminPermission(result.id, 'admin_eventos', result.admin_eventos)}
-                                    className={`py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-tighter flex items-center justify-center gap-1.5 transition-all border ${
-                                        result.admin_eventos ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/20' : 'bg-neutral-50 text-neutral-400 border-neutral-100'
+                                    className={`py-3 px-3 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all border-2 ${
+                                        result.admin_eventos ? 'bg-[#FF9B05] border-[#FF9B05] text-white shadow-lg shadow-[#FF9B05]/20' : 'bg-neutral-50 text-leather/20 border-neutral-100 hover:border-leather/10'
                                     }`}
                                 >
-                                    <span className="material-icons text-sm">{result.admin_eventos ? 'check_circle' : 'add'}</span>
+                                    <span className="material-icons text-sm">{result.admin_eventos ? 'emoji_events' : 'add'}</span>
                                     Vaquejadas
                                 </button>
                                 <button 
                                     onClick={() => toggleSubAdminPermission(result.id, 'admin_noticias', result.admin_noticias)}
-                                    className={`py-2 px-3 rounded-lg text-[9px] font-black uppercase tracking-tighter flex items-center justify-center gap-1.5 transition-all border ${
-                                        result.admin_noticias ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/20' : 'bg-neutral-50 text-neutral-400 border-neutral-100'
+                                    className={`py-3 px-3 rounded-2xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all border-2 ${
+                                        result.admin_noticias ? 'bg-[#FF4181] border-[#FF4181] text-white shadow-lg shadow-[#FF4181]/20' : 'bg-neutral-50 text-leather/20 border-neutral-100 hover:border-leather/10'
                                     }`}
                                 >
-                                    <span className="material-icons text-sm">{result.admin_noticias ? 'check_circle' : 'add'}</span>
+                                    <span className="material-icons text-sm">{result.admin_noticias ? 'newspaper' : 'add'}</span>
                                     Notícias
                                 </button>
                             </div>
+
+                            {/* Dica informativa aparecer apenas ao master */}
+                            <p className="mt-4 text-[8px] text-leather/20 font-bold uppercase text-center tracking-widest">
+                                {result.admin_mercado || result.admin_social || result.admin_eventos || result.admin_noticias 
+                                    ? "Este usuário agora tem chaves de acesso modular." 
+                                    : "Clique acima para promover a um cargo específico."}
+                            </p>
                         </div>
                     ))}
                 </div>

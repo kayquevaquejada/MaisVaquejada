@@ -261,11 +261,26 @@ const App: React.FC = () => {
         
         setUser(mappedUser);
 
-        if (!mappedUser.profile_completed) {
+        // REGRA DE OURO REFORÇADA: Se já tem username, NÃO redireciona. 
+        // Se estiver em uma tela principal (Feed, Eventos, etc), nunca joga para o Quase Lá.
+        const hasUsername = (profile.username && profile.username.length > 2);
+        const isActuallyComplete = profile.profile_completed || hasUsername;
+        const isAlreadyOnMainView = [View.SOCIAL, View.EVENTS, View.MERCADO, View.NEWS, View.PROFILE].includes(currentView);
+
+        if (!isActuallyComplete && !isAlreadyOnMainView) {
           setCurrentView(View.COMPLETE_PROFILE);
         } else {
-          const savedView = localStorage.getItem('arena_last_view');
-          setCurrentView((savedView as View) || View.EVENTS);
+          // Se tem username mas a flag está false, corrige no background
+          if (hasUsername && !profile.profile_completed) {
+            supabase.from('profiles').update({ profile_completed: true }).eq('id', profile.id)
+              .then(() => console.log('✓ Perfil sincronizado como completo via background'));
+          }
+          
+          // Só redireciona se estiver no Login/SignUp ou se não houver tela salva
+          if (currentView === View.LOGIN || currentView === View.SIGNUP || currentView === View.COMPLETE_PROFILE) {
+             const savedView = localStorage.getItem('arena_last_view');
+             setCurrentView((savedView as View) || View.EVENTS);
+          }
         }
       } else if (authUser) {
         setUser({
