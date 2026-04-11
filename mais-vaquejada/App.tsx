@@ -56,6 +56,11 @@ const App: React.FC = () => {
   const [navKey, setNavKey] = useState(0);
   const [profileUsername, setProfileUsername] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const currentViewRef = React.useRef<View>(currentView);
+
+  useEffect(() => {
+    currentViewRef.current = currentView;
+  }, [currentView]);
   
   const MASTER_EMAILS = [
     'kayquegusmao@icloud.com',
@@ -261,28 +266,39 @@ const App: React.FC = () => {
         
         setUser(mappedUser);
 
-        // REGRA DE OURO REFORÇADA: Se já tem username, NÃO redireciona. 
-        // Se estiver em uma tela principal (Feed, Eventos, etc), nunca joga para o Quase Lá.
-        const hasUsername = (profile.username && profile.username.length > 2);
-        const isActuallyComplete = profile.profile_completed || hasUsername;
-        const isAlreadyOnMainView = [View.SOCIAL, View.EVENTS, View.MERCADO, View.NEWS, View.PROFILE].includes(currentView);
+        // REGRA DE OURO REFORÇADA: Se já tem username ou flag de completo, NÃO redireciona. 
+        // Se estiver em uma tela principal ou de configuração, nunca joga para o Quase Lá.
+        const hasUsername = !!(profile.username && profile.username.length >= 2);
+        const hasBasicData = !!(profile.city_id || profile.phone || profile.state_id);
+        const isActuallyComplete = profile.profile_completed || hasUsername || hasBasicData;
+        
+        // Usamos a Ref para evitar closures obsoletas (stale closures)
+        const activeView = currentViewRef.current;
+
+        // Incluímos SETTINGS e ADMIN na lista de views seguras para evitar "ejeção" durante navegação
+        const isAlreadyOnMainView = [
+          View.SOCIAL, View.EVENTS, View.MERCADO, View.NEWS, View.PROFILE, 
+          View.SETTINGS, View.ADMIN, View.AD_CREATION, View.INTERNAL_ADS, View.ADMIN_USERS,
+          View.MEDIA_CREATION
+        ].includes(activeView);
 
         if (!isActuallyComplete && !isAlreadyOnMainView) {
           setCurrentView(View.COMPLETE_PROFILE);
         } else {
-          // Se tem username mas a flag está false, corrige no background
-          if (hasUsername && !profile.profile_completed) {
+          // Se tem username mas a flag está false, corrige no background para futuras sessões
+          if (isActuallyComplete && !profile.profile_completed) {
             supabase.from('profiles').update({ profile_completed: true }).eq('id', profile.id)
               .then(() => console.log('✓ Perfil sincronizado como completo via background'));
           }
           
-          // Só redireciona se estiver no Login/SignUp ou se não houver tela salva
-          if (currentView === View.LOGIN || currentView === View.SIGNUP || currentView === View.COMPLETE_PROFILE) {
+          // Só redireciona se estiver no Login/SignUp ou explicitamente na tela de completar (e já estar completo)
+          if (activeView === View.LOGIN || activeView === View.SIGNUP || activeView === View.COMPLETE_PROFILE) {
              const savedView = localStorage.getItem('arena_last_view');
              setCurrentView((savedView as View) || View.EVENTS);
           }
         }
-      } else if (authUser) {
+      } else if (authUser && !error) {
+        // Fallback apenas se NÃO houve erro de conexão/banco e o perfil realmente não existe
         setUser({
           id: userId,
           email: authUser.email || '',

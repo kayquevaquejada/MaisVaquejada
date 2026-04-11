@@ -41,6 +41,8 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
         return saved ? JSON.parse(saved) : [];
     });
     const [adIndex, setAdIndex] = useState(0);
+    const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+    const [currentPhotoIdx, setCurrentPhotoIdx] = useState(0);
     const [publishedAds, setPublishedAds] = useState<any[]>([]);
     const [loadingAds, setLoadingAds] = useState(true);
     const [activeCategoryId, setActiveCategoryId] = useState('all');
@@ -345,124 +347,147 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
     };
 
     if (viewingAd) {
+        const seller = viewingAd.profiles || { name: 'Vendedor', username: 'vendedor', avatar_url: '' };
+        
         return (
-            <div className="absolute inset-0 z-[100] bg-[#F5F1E9] flex flex-col animate-in slide-in-from-right duration-300 overflow-y-auto">
-                {/* Header Navigation relative for back button */}
-                <div className="relative">
-                    <div className="absolute top-6 left-6 z-20">
-                        <button onClick={() => setViewingAd(null)} className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-lg">
-                            <span className="material-icons">arrow_back</span>
-                        </button>
-                    </div>
-
-                    {(user?.id === viewingAd.user_id || user?.role === 'ADMIN' || user?.role === 'ADMIN_MASTER' || user?.isMaster) && (
-                        <div className="absolute top-6 right-6 z-20">
-                            <button 
-                                onClick={async () => {
-                                    await deleteAdDirectly(viewingAd);
-                                    setViewingAd(null);
-                                }}
-                                className="w-10 h-10 rounded-full bg-red-500/80 backdrop-blur-md flex items-center justify-center text-white shadow-lg active:scale-90"
-                            >
-                                <span className="material-icons text-xl">delete</span>
+            <div className="absolute inset-0 z-[100] bg-[#F5F1E9] flex flex-col animate-in slide-in-from-right duration-300">
+                {/* Scrollable Content Area */}
+                <div className="flex-1 overflow-y-auto pb-32">
+                    <div className="relative">
+                        <div className="absolute top-6 left-6 z-20">
+                            <button onClick={() => setViewingAd(null)} className="w-10 h-10 rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center text-white shadow-lg">
+                                <span className="material-icons">arrow_back</span>
                             </button>
                         </div>
-                    )}
 
-
-                    {/* Main Image Gallery / Carousel */}
-                    <div className="h-[350px] relative bg-neutral-900 group">
-                        {Array.isArray(viewingAd.photos) && viewingAd.photos.length > 1 ? (
-                            <div className="flex w-full h-full overflow-x-auto snap-x snap-mandatory hide-scrollbar">
-                                {viewingAd.photos.map((ph: string, idx: number) => (
-                                    <div key={idx} className="w-full h-full shrink-0 snap-center">
-                                        <img src={ph} className="w-full h-full object-cover" alt={`${viewingAd.title} - ${idx + 1}`} />
-                                    </div>
-                                ))}
-                                {/* Indicator dots */}
-                                <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-1.5 z-10 bg-black/20 px-2 py-1 rounded-full backdrop-blur-sm">
-                                    {viewingAd.photos.map((_: any, idx: number) => (
-                                        <div key={idx} className="w-1.5 h-1.5 rounded-full bg-white/30" />
-                                    ))}
-                                </div>
+                        {(user?.id === viewingAd.user_id || user?.role === 'ADMIN' || user?.role === 'ADMIN_MASTER' || user?.isMaster) && (
+                            <div className="absolute top-6 right-6 z-20">
+                                <button 
+                                    onClick={async () => {
+                                        await deleteAdDirectly(viewingAd);
+                                        setViewingAd(null);
+                                    }}
+                                    className="w-10 h-10 rounded-full bg-red-500/80 backdrop-blur-md flex items-center justify-center text-white shadow-lg active:scale-90"
+                                >
+                                    <span className="material-icons text-xl">delete</span>
+                                </button>
                             </div>
-                        ) : (
-                            <img src={viewingAd.img || viewingAd.photos?.[0]} className="w-full h-full object-cover" alt={viewingAd.title} />
                         )}
-                        
-                        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#1A1108] to-transparent"></div>
-                        <div className="absolute bottom-6 left-6 right-6 flex justify-between items-end">
-                            <div>
-                                <span className="bg-[#D4AF37] text-white text-[10px] font-black px-2 py-1 rounded uppercase tracking-widest mb-2 inline-block shadow-lg">
-                                    {viewingAd.isNew || viewingAd.is_new ? 'NOVO' : 'OPORTUNIDADE'}
-                                </span>
-                                <h2 className="text-white text-2xl font-black uppercase leading-tight shadow-black drop-shadow-md">{viewingAd.title}</h2>
-                            </div>
-                        </div>
-                    </div>
 
-                </div>
-
-                <div className="flex-1 -mt-4 bg-[#F5F1E9] rounded-t-[32px] px-6 pt-8 relative z-0">
-                    <div className="flex justify-between items-start mb-6">
-                        <div>
-                            <p className="text-[10px] font-black text-[#1A1108]/40 uppercase tracking-widest mb-1">VALOR</p>
-                            <p className="text-3xl font-black text-[#D4AF37]">{viewingAd.price}</p>
-                        </div>
-                        <div className="flex flex-col items-end">
-                            <div className="flex items-center gap-1 text-[#1A1108]/60 mb-1">
-                                <span className="material-icons text-sm">place</span>
-                                <span className="text-xs font-bold uppercase">{viewingAd.loc}</span>
-                            </div>
-                            <p className="text-[10px] font-bold text-[#1A1108]/30 italic">Publicado há 2 dias</p>
-                        </div>
-                    </div>
-
-                    <div className="space-y-6">
-                        {/* Seller Info */}
-                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-[#1A1108]/5 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div onClick={() => navigateToProfile('joao_vendedor')} className="w-10 h-10 rounded-full bg-neutral-200 overflow-hidden border border-[#D4AF37]/30 cursor-pointer active:scale-95 transition-transform">
-                                    <img src="https://picsum.photos/seed/seller/100" className="w-full h-full object-cover" />
+                        {/* Main Image Gallery / Carousel */}
+                        <div className="h-[380px] relative bg-neutral-900 group">
+                            {Array.isArray(viewingAd.photos) && viewingAd.photos.length > 1 ? (
+                                <div 
+                                    className="flex w-full h-full overflow-x-auto snap-x snap-mandatory hide-scrollbar"
+                                    onScroll={(e: any) => {
+                                        const idx = Math.round(e.target.scrollLeft / e.target.offsetWidth);
+                                        setCurrentPhotoIdx(idx);
+                                    }}
+                                >
+                                    {viewingAd.photos.map((ph: string, idx: number) => (
+                                        <div key={idx} className="w-full h-full shrink-0 snap-center" onClick={() => setFullscreenImage(ph)}>
+                                            <img src={ph} className="w-full h-full object-cover" alt={`${viewingAd.title} - ${idx + 1}`} />
+                                        </div>
+                                    ))}
+                                    {/* Indicator dots */}
+                                    <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-2 z-10 bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-md">
+                                        {viewingAd.photos.map((_: any, idx: number) => (
+                                            <button 
+                                                key={idx} 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const container = e.currentTarget.parentElement?.parentElement;
+                                                    if (container) {
+                                                        container.scrollTo({ left: container.offsetWidth * idx, behavior: 'smooth' });
+                                                    }
+                                                }}
+                                                className={`w-2 h-2 rounded-full transition-all duration-300 ${idx === currentPhotoIdx ? 'bg-[#D4AF37] w-4' : 'bg-white/40'}`} 
+                                            />
+                                        ))}
+                                    </div>
                                 </div>
+                            ) : (
+                                <img 
+                                    src={viewingAd.img || viewingAd.photos?.[0]} 
+                                    className="w-full h-full object-cover" 
+                                    alt={viewingAd.title} 
+                                    onClick={() => setFullscreenImage(viewingAd.img || viewingAd.photos?.[0])}
+                                />
+                            )}
+                            
+                            <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#F5F1E9] to-transparent"></div>
+                            <div className="absolute bottom-6 left-6 right-6 flex justify-between items-end">
                                 <div>
-                                    <p onClick={() => navigateToProfile('joao_vendedor')} className="text-[11px] font-black uppercase text-[#1A1108] tracking-wide cursor-pointer hover:underline">João Vendedor</p>
-                                    <div className="flex items-center gap-1">
-                                        <span className="material-icons text-[10px] text-green-500">verified</span>
-                                        <p className="text-[9px] font-bold text-[#1A1108]/40">Identidade verificada</p>
+                                    <span className="bg-[#D4AF37] text-white text-[10px] font-black px-2 py-1 rounded uppercase tracking-widest mb-2 inline-block shadow-lg">
+                                        {viewingAd.isNew || viewingAd.is_new ? 'NOVO' : 'OPORTUNIDADE'}
+                                    </span>
+                                    <h2 className="text-[#1A1108] text-2xl font-black uppercase leading-tight">{viewingAd.title}</h2>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="px-6 pt-2">
+                        <div className="flex justify-between items-start mb-6">
+                            <div>
+                                <p className="text-[10px] font-black text-[#1A1108]/40 uppercase tracking-widest mb-1">VALOR</p>
+                                <p className="text-3xl font-black text-[#D4AF37]">{viewingAd.price}</p>
+                            </div>
+                            <div className="flex flex-col items-end">
+                                <div className="flex items-center gap-1 text-[#1A1108]/60 mb-1">
+                                    <span className="material-icons text-sm">place</span>
+                                    <span className="text-xs font-bold uppercase">{viewingAd.loc}</span>
+                                </div>
+                                <p className="text-[10px] font-bold text-[#1A1108]/30 italic">Publicado há 2 dias</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-6">
+                            {/* Seller Info */}
+                            <div className="bg-white p-4 rounded-2xl shadow-sm border border-[#1A1108]/5 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div onClick={() => navigateToProfile(seller.username)} className="w-12 h-12 rounded-full bg-neutral-200 overflow-hidden border border-[#D4AF37]/30 cursor-pointer active:scale-95 transition-transform flex-shrink-0">
+                                        <img src={seller.avatar_url || `https://ui-avatars.com/api/?name=${seller.name}&background=random`} className="w-full h-full object-cover" />
+                                    </div>
+                                    <div>
+                                        <p onClick={() => navigateToProfile(seller.username)} className="text-sm font-black uppercase text-[#1A1108] tracking-wide cursor-pointer hover:underline">{seller.name || 'Anunciante'}</p>
+                                        <div className="flex items-center gap-1">
+                                            <span className="material-icons text-[10px] text-green-500">verified</span>
+                                            <p className="text-[9px] font-bold text-[#1A1108]/40">Identidade verificada</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button onClick={() => navigateToProfile(seller.username)} className="text-[10px] font-black text-[#1A1108]/40 uppercase tracking-widest border border-[#1A1108]/10 px-3 py-1.5 rounded-lg active:scale-95 transition-transform hover:bg-black/5">Ver Perfil</button>
+                            </div>
+
+                            {/* Details Grid */}
+                            <div>
+                                <h3 className="text-sm font-black text-[#1A1108] uppercase tracking-wide mb-3 border-l-4 border-[#D4AF37] pl-3">Detalhes</h3>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="bg-white p-3 rounded-xl border border-[#1A1108]/5">
+                                        <p className="text-[9px] font-black text-[#1A1108]/30 uppercase tracking-widest mb-1">CATEGORIA</p>
+                                        <p className="text-xs font-bold text-[#1A1108]">{viewingAd.category?.toUpperCase() || 'EQUIPAMENTOS'}</p>
+                                    </div>
+                                    <div className="bg-white p-3 rounded-xl border border-[#1A1108]/5">
+                                        <p className="text-[9px] font-black text-[#1A1108]/30 uppercase tracking-widest mb-1">CONDIÇÃO</p>
+                                        <p className="text-xs font-bold text-[#1A1108]">{viewingAd.isNew || viewingAd.is_new ? 'NOVO' : 'USADO'}</p>
                                     </div>
                                 </div>
                             </div>
-                            <button onClick={() => navigateToProfile('joao_vendedor')} className="text-[10px] font-black text-[#1A1108]/40 uppercase tracking-widest border border-[#1A1108]/10 px-3 py-1.5 rounded-lg active:scale-95 transition-transform hover:bg-black/5">Ver Perfil</button>
-                        </div>
 
-                        {/* Details Grid */}
-                        <div>
-                            <h3 className="text-sm font-black text-[#1A1108] uppercase tracking-wide mb-3 border-l-4 border-[#D4AF37] pl-3">Detalhes</h3>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-white p-3 rounded-xl border border-[#1A1108]/5">
-                                    <p className="text-[9px] font-black text-[#1A1108]/30 uppercase tracking-widest mb-1">CATEGORIA</p>
-                                    <p className="text-xs font-bold text-[#1A1108]">EQUIPAMENTOS</p>
-                                </div>
-                                <div className="bg-white p-3 rounded-xl border border-[#1A1108]/5">
-                                    <p className="text-[9px] font-black text-[#1A1108]/30 uppercase tracking-widest mb-1">CONDIÇÃO</p>
-                                    <p className="text-xs font-bold text-[#1A1108]">{viewingAd.isNew ? 'NOVO' : 'USADO'}</p>
-                                </div>
+                            {/* Description */}
+                            <div className="pb-10">
+                                <h3 className="text-sm font-black text-[#1A1108] uppercase tracking-wide mb-3 border-l-4 border-[#D4AF37] pl-3">Descrição</h3>
+                                <p className="text-sm text-[#1A1108]/70 leading-relaxed font-medium">
+                                    {viewingAd.description || 'Produto de altíssima qualidade, ideal para vaqueiros exigentes. Estou vendendo pois adquiri um modelo mais novo. Aceito propostas decentes e trocas por algo do meu interesse. Entre em contato para mais detalhes.'}
+                                </p>
                             </div>
-                        </div>
-
-                        {/* Description */}
-                        <div>
-                            <h3 className="text-sm font-black text-[#1A1108] uppercase tracking-wide mb-3 border-l-4 border-[#D4AF37] pl-3">Descrição</h3>
-                            <p className="text-sm text-[#1A1108]/70 leading-relaxed font-medium">
-                                {viewingAd.description || 'Produto de altíssima qualidade, ideal para vaqueiros exigentes. Estou vendendo pois adquiri um modelo mais novo. Aceito propostas decentes e trocas por algo do meu interesse. Entre em contato para mais detalhes.'}
-                            </p>
                         </div>
                     </div>
                 </div>
 
-                {/* Fixed Action Bar */}
-                <div className="absolute bottom-0 left-0 right-0 p-6 bg-white border-t border-[#1A1108]/5 flex gap-3 z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+                {/* Fixed Action Bar at the very bottom */}
+                <div className="p-6 pb-8 bg-white border-t border-[#1A1108]/5 flex gap-3 z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
                     <button className="w-14 h-14 rounded-xl bg-[#1A1108]/5 flex items-center justify-center text-[#1A1108]/40 active:scale-95 transition-transform">
                         <span className="material-icons">share</span>
                     </button>
@@ -474,7 +499,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                             window.dispatchEvent(new CustomEvent('arena_navigate', { 
                                 detail: { 
                                     view: 'SOCIAL', 
-                                    openDM: viewingAd.sellerUsername || 'joao_vendedor' 
+                                    openDM: seller.username 
                                 } 
                             }));
                         }}
@@ -484,9 +509,24 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                         <span className="text-xs">Negociar no Chat</span>
                     </button>
                 </div>
+
+                {/* Fullscreen Image Zoom Overlay */}
+                {fullscreenImage && (
+                    <div 
+                        className="fixed inset-0 z-[1000] bg-black/95 flex flex-col items-center justify-center animate-in fade-in duration-300"
+                        onClick={() => setFullscreenImage(null)}
+                    >
+                        <button className="absolute top-10 right-10 text-white p-2">
+                            <span className="material-icons text-3xl">close</span>
+                        </button>
+                        <img src={fullscreenImage} className="max-w-full max-h-[85vh] object-contain shadow-2xl" />
+                        <p className="mt-8 text-white/40 text-[10px] font-black uppercase tracking-[0.4em]">Toque para fechar</p>
+                    </div>
+                )}
             </div>
         );
     }
+
 
     if (showSuccess) {
         return (
