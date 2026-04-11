@@ -15,7 +15,8 @@ export enum View {
   BLOCKED_ACCOUNT = 'BLOCKED_ACCOUNT',
   RECOVERY_ASSISTED = 'RECOVERY_ASSISTED',
   AD_CREATION = 'AD_CREATION',
-  INTERNAL_ADS = 'INTERNAL_ADS'
+  INTERNAL_ADS = 'INTERNAL_ADS',
+  TERMS = 'TERMS'
 }
 
 export type UserType = 'common' | 'seller' | 'organizer' | 'admin';

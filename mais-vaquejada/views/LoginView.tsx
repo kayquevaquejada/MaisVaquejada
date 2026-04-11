@@ -6,9 +6,10 @@ interface LoginViewProps {
   onSignUp: () => void;
   onForgotPassword: () => void;
   onRecoveryAssisted: () => void;
+  onTerms: () => void;
 }
 
-const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPassword, onRecoveryAssisted }) => {
+const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPassword, onRecoveryAssisted, onTerms }) => {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -104,33 +105,55 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
               )}
             </button>
 
-            {/* Botões ocultos por solicitação do administrador */}
+            {/* Botão Apple Oculto (Habilitar apenas quando as chaves .p8 estiverem prontas) */}
             {/* 
             <button
-              onClick={handleDevLogin}
-              className="w-full bg-[#ECA413] text-black py-4 rounded-3xl font-black text-xs uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3"
+              onClick={async () => {
+                setLoading(true);
+                try {
+                  const { error } = await supabase.auth.signInWithOAuth({
+                    provider: 'apple',
+                    options: { redirectTo: window.location.origin }
+                  });
+                  if (error) throw error;
+                } catch (err: any) {
+                  setError(err.message);
+                  setLoading(false);
+                }
+              }}
+              className="w-full bg-black text-white border border-white/10 py-4 rounded-3xl font-black text-xs uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3"
             >
-              <span className="material-icons">terminal</span>
-              ENTRAR COMO DESENVOLVEDOR (LOCAL)
-            </button>
-
-            <div className="flex items-center gap-4 my-2">
-              <div className="flex-1 h-[1px] bg-white/5" />
-              <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">OU</span>
-              <div className="flex-1 h-[1px] bg-white/5" />
-            </div>
-
-            <button
-              onClick={onSignUp}
-              className="w-full bg-white/5 border border-white/10 text-white py-4 rounded-3xl font-black text-xs uppercase tracking-[0.2em] hover:bg-white/10 active:scale-95 transition-all"
-            >
-              CRIAR CONTA NA ARENA
+              <span className="material-icons text-lg">apple</span>
+              ENTRAR COM APPLE
             </button>
             */}
+
+            <button
+              onClick={async () => {
+                setError(null);
+                try {
+                  const { error } = await supabase.auth.signInWithOAuth({
+                    provider: 'facebook',
+                    options: { redirectTo: window.location.origin }
+                  });
+                  if (error) throw error;
+                } catch (err: any) {
+                  setError(err.message || 'Erro ao entrar com Facebook');
+                }
+              }}
+              className="w-full bg-[#1877F2] text-white py-4 rounded-3xl font-black text-xs uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3"
+            >
+              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/facebook.svg" alt="Facebook" className="w-5 h-5 brightness-0 invert" />
+              CONTINUAR COM FACEBOOK
+            </button>
 
           </div>
 
           <div className="mt-8 flex flex-col gap-4">
+            <p className="text-[9px] text-white/30 text-center font-bold uppercase tracking-widest leading-relaxed px-4">
+              Ao entrar, você concorda com nossos <br />
+              <button onClick={onTerms} className="underline text-white/50">Termos de Uso</button> e <button onClick={onTerms} className="underline text-white/50">EULA</button>
+            </p>
             
             <button
               onClick={onRecoveryAssisted}

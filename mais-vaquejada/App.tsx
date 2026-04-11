@@ -15,6 +15,7 @@ import CompleteProfileView from './views/CompleteProfileView';
 import AdminUsersView from './views/AdminUsersView';
 import BlockedAccountView from './views/BlockedAccountView';
 import RecoveryAssistedView from './views/RecoveryAssistedView';
+import EULAView from './views/EULAView';
 import Navbar from './components/Navbar';
 import { CallProvider } from './context/CallContext';
 import { CallBar } from './components/CallBar';
@@ -73,11 +74,26 @@ const App: React.FC = () => {
         const params = new URLSearchParams(window.location.search);
         const eventId = params.get('event');
         if (eventId) {
-          // Se tiver um evento no link, poderíamos salvar para abrir depois do login
           sessionStorage.setItem('pending_event_id', eventId);
+        }
+
+        // Verificação manual imediata para destravar o carregamento
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          await fetchProfile(session.user.id, session.user);
+        } else if (!session) {
+          // Se não houver sessão logo de cara, espera um pouco para ver se o evento chega
+          // ou destrava no Login em 1.5 segundos
+          setTimeout(() => {
+            if (initializing) {
+              setInitializing(false);
+              setCurrentView(View.LOGIN);
+            }
+          }, 1500);
         }
       } catch (err) {
         console.error('Init Error:', err);
+        setInitializing(false);
       }
     };
 
@@ -88,7 +104,7 @@ const App: React.FC = () => {
       
       if (session?.user) {
         // Se temos usuário, buscamos o perfil. fetchProfile vai setar initializing como false no final.
-        await fetchProfile(session.user.id);
+        await fetchProfile(session.user.id, session.user);
       } else {
         // Se não temos sessão (evento INITIAL_SESSION com session null ou SIGNED_OUT)
         setUser(null);
@@ -164,20 +180,42 @@ const App: React.FC = () => {
     }
   }, [currentView]);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string, authUserFromSession?: any) => {
     if (!userId || isFetchingProfile.current) return;
+    
     try {
       isFetchingProfile.current = true;
-      const { data: authData } = await supabase.auth.getUser();
-      const authUser = authData?.user;
+      
+      let authUser = authUserFromSession;
+      if (!authUser) {
+        const { data: authData } = await supabase.auth.getUser();
+        authUser = authData?.user;
+      }
+      
       const userEmail = authUser?.email;
       const isMasterEmail = userEmail && MASTER_EMAILS.some(e => e.toLowerCase() === userEmail.toLowerCase());
 
-      let { data: profile, error } = await supabase
+      const queryPromise = supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .maybeSingle();
+
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('TIMEOUT_QUERY_PROFILES')), 10000)
+      );
+
+      let profile = null;
+      let error = null;
+
+      try {
+        const result: any = await Promise.race([queryPromise, timeoutPromise]);
+        profile = result.data;
+        error = result.error;
+      } catch (e: any) {
+        console.error('Profile query failed or timed out:', e);
+        error = e;
+      }
 
       if (!profile && !error && authUser) {
         const isMaster = authUser.email && MASTER_EMAILS.some(e => e.toLowerCase() === authUser.email?.toLowerCase());
@@ -251,7 +289,7 @@ const App: React.FC = () => {
   const handleAuthSuccess = async (userData: any) => {
     setInitializing(true);
     if (userData?.id) {
-      fetchProfile(userData.id);
+      fetchProfile(userData.id, userData);
     }
   };
 
@@ -266,7 +304,15 @@ const App: React.FC = () => {
     try {
       switch (currentView) {
         case View.LOGIN:
-          return <LoginView onLogin={handleAuthSuccess} onSignUp={() => setCurrentView(View.SIGNUP)} onForgotPassword={() => setCurrentView(View.FORGOT_PASSWORD)} onRecoveryAssisted={() => setCurrentView(View.RECOVERY_ASSISTED)} />;
+          return (
+            <LoginView 
+              onLogin={handleAuthSuccess} 
+              onSignUp={() => setCurrentView(View.SIGNUP)} 
+              onForgotPassword={() => setCurrentView(View.FORGOT_PASSWORD)} 
+              onRecoveryAssisted={() => setCurrentView(View.RECOVERY_ASSISTED)}
+              onTerms={() => setCurrentView(View.TERMS)}
+            />
+          );
         case View.SIGNUP:
           return <SignUpView onBack={() => setCurrentView(View.LOGIN)} onSuccess={handleAuthSuccess} />;
         case View.COMPLETE_PROFILE:
@@ -324,6 +370,8 @@ const App: React.FC = () => {
           return <ForgotPasswordView onBack={() => setCurrentView(View.LOGIN)} />;
         case View.INTERNAL_ADS:
           return <InternalAdManager user={user} onBack={() => setCurrentView(View.ADMIN)} />;
+        case View.TERMS:
+          return <EULAView onBack={() => setCurrentView(View.LOGIN)} />;
         default:
           return <EventsView />;
       }
