@@ -766,10 +766,11 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-2">Username</label>
                                 <input 
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm font-bold focus:border-[#ECA413] outline-none transition-all"
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm font-bold opacity-50 outline-none transition-all cursor-not-allowed"
                                     value={profileData.username}
-                                    onChange={(e) => setProfileData((prev: any) => prev ? {...prev, username: e.target.value.toLowerCase().replace(/\s+/g, '')} : null)}
+                                    readOnly={true}
                                 />
+                                <p className="text-[8px] text-white/20 font-bold uppercase tracking-widest ml-2">O username é único e não pode ser alterado.</p>
                             </div>
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-2">Bio</label>
