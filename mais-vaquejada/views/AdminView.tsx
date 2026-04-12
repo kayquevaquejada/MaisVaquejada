@@ -392,21 +392,30 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
     };
 
     const deleteMarketItem = async (ad: any) => {
+        if (!ad?.id) {
+            alert('Erro: ID do anúncio não encontrado.');
+            return;
+        }
+
         if (!confirm(`Deseja EXCLUIR permanentemente o anúncio "${ad.title}"?`)) return;
         
         setLoading(true);
         try {
-            // 1. Deletar o anúncio direto (Usando match para ser mais preciso)
-            const { error: delError } = await supabase.from('market_items').delete().match({ id: ad.id });
+            // 1. O CAMINHO DO BOTÃO: Deletar primeiro, perguntar depois
+            const { error: delError } = await supabase
+                .from('market_items')
+                .delete()
+                .eq('id', ad.id);
             
             if (delError) {
-                alert('Erro do banco: ' + delError.message);
+                alert('Erro na Engenharia do Banco: ' + delError.message);
                 return;
             }
 
-            // 2. Tentar notificar (mas se falhar, o anúncio já foi apagado)
+            // 2. CAMINHO INVERSO: Tentar notificar o dono (Modo Seguro)
             try {
-                if (ad.user_id) {
+                // Só tenta notificar se tivermos os dados necessários
+                if (ad.user_id && user?.id) {
                     await supabase.from('notifications').insert({
                         user_id: ad.user_id,
                         actor_id: user.id,
@@ -414,12 +423,14 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                         message: `O +Vaquejada retirou do mercado o seu produto "${ad.title}" por não condizer com a política do aplicativo.`
                     });
                 }
-            } catch (e) { /* silent fail for notification */ }
+            } catch (notifyErr) {
+                console.warn("Falha na notificação, mas o anúncio foi apagado.");
+            }
 
             alert('Anúncio excluído com sucesso!');
             await fetchMarket();
         } catch (err: any) {
-            alert('Erro ao excluir: ' + err.message);
+            alert('Erro no Caminho da Exclusão: ' + (err.message || 'Erro desconhecido'));
         } finally {
             setLoading(false);
         }
