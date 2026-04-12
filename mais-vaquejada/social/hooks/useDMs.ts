@@ -102,8 +102,9 @@ export function useDMs(user: any) {
       .single();
     
     if (error) {
-        console.error('sendMessage error:', error);
-        // Rollback or show error
+        console.error('ERRO CRÍTICO NO CHAT:', error);
+        alert('O banco recusou sua mensagem: ' + error.message);
+        // Rollback
         setActiveMessages(prev => prev.filter(m => m.id !== tempId));
     } else {
         setActiveMessages(prev => prev.map(m => m.id === tempId ? data : m));
