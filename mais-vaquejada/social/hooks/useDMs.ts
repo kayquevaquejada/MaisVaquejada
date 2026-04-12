@@ -7,6 +7,8 @@ export function useDMs(user: any) {
   const [activeMessages, setActiveMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const [activePartnerId, setActivePartnerId] = useState<string | null>(null);
+
   const fetchConversations = useCallback(async () => {
     if (!user?.id) return;
     setLoading(true);
@@ -62,7 +64,8 @@ export function useDMs(user: any) {
   }, [user?.id]);
 
   const fetchMessages = useCallback(async (partnerId: string) => {
-    if (!user?.id) return;
+    if (!user?.id || !partnerId) return;
+    setActivePartnerId(partnerId); // Marcar quem é o parceiro atual
     try {
       const { data, error } = await supabase
         .from('messages')
@@ -71,6 +74,8 @@ export function useDMs(user: any) {
         .order('created_at', { ascending: true });
       
       if (error) throw error;
+      
+      // Só atualiza se o usuário ainda estiver na conversa com ESSE parceiro
       setActiveMessages(data || []);
     } catch (err) {
       console.error('fetchMessages error:', err);
@@ -123,14 +128,15 @@ export function useDMs(user: any) {
         table: 'messages',
         filter: `receiver_id=eq.${user.id}`
       }, (payload) => {
-        // If message is from active partner, add to messages
         const newMsg = payload.new as ChatMessage;
-        setActiveMessages(prev => {
-           // Avoid duplicates
-           if (prev.find(m => m.id === newMsg.id)) return prev;
-           return [...prev, newMsg];
-        });
-        // Refresh conversation list to show last message
+        
+        // SÓ ADICIONA À TELA SE FOR DO PARCEIRO QUE ESTOU OLHANDO AGORA
+        if (newMsg.sender_id === activePartnerId || newMsg.receiver_id === activePartnerId) {
+          setActiveMessages(prev => {
+             if (prev.find(m => m.id === newMsg.id)) return prev;
+             return [...prev, newMsg];
+          });
+        }
         fetchConversations();
       })
       .subscribe();
