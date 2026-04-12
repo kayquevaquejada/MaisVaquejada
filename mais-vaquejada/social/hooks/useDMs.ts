@@ -67,8 +67,7 @@ export function useDMs(user: any) {
       const { data, error } = await supabase
         .from('messages')
         .select('*')
-        .or(`sender_id.eq.${user.id},receiver_id.eq.${partnerId}`)
-        .or(`sender_id.eq.${partnerId},receiver_id.eq.${user.id}`)
+        .or(`and(sender_id.eq.${user.id},receiver_id.eq.${partnerId}),and(sender_id.eq.${partnerId},receiver_id.eq.${user.id})`)
         .order('created_at', { ascending: true });
       
       if (error) throw error;
