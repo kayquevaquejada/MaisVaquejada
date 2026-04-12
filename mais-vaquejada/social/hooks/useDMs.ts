@@ -110,6 +110,35 @@ export function useDMs(user: any) {
     }
   };
 
+  // Realtime subscription for messages
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel(`db-messages-${user.id}`)
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'messages',
+        filter: `receiver_id=eq.${user.id}`
+      }, (payload) => {
+        // If message is from active partner, add to messages
+        const newMsg = payload.new as ChatMessage;
+        setActiveMessages(prev => {
+           // Avoid duplicates
+           if (prev.find(m => m.id === newMsg.id)) return prev;
+           return [...prev, newMsg];
+        });
+        // Refresh conversation list to show last message
+        fetchConversations();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, fetchConversations]);
+
   return {
     conversations,
     activeMessages,
