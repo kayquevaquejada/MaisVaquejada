@@ -60,10 +60,10 @@ export const CallScreen: React.FC = () => {
     return (
         <div className="fixed inset-0 z-[400] bg-[#0F0A06] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-300">
             {/* Sponsorship Background - Only during pre-connection */}
-            {state.status !== 'connected' && preCallAd?.main_media_url && (
+            {state.status !== 'connected' && preCallAd?.image_url && (
                 <div className="absolute inset-0 z-0 animate-in fade-in duration-700">
                     <img 
-                        src={preCallAd.main_media_url} 
+                        src={preCallAd.image_url} 
                         className="w-full h-full object-cover" 
                         alt="Patrocínio"
                     />
