@@ -182,6 +182,7 @@ export const InternalAdManager: React.FC<{ user: any; onBack: () => void }> = ({
               <option value="social_feed_native">Feed Social (Nativo)</option>
               <option value="story_sponsored">Stories (Status Patrocinado)</option>
               <option value="dm_sponsored_slot">Direct Messages (Inbox Ads)</option>
+              <option value="video_call_waiting">Chamada de Vídeo (Fundo)</option>
             </select>
           </div>
           <div>

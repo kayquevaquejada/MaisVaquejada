@@ -18,7 +18,8 @@ export type InternalAdPlacement =
   | 'profile_highlight_ad'
   | 'fullscreen_campaign'
   | 'explore_sponsored'
-  | 'event_sponsored_card';
+  | 'event_sponsored_card'
+  | 'video_call_waiting';
 
 export type InternalAdActionType =
   | 'open_internal_route'

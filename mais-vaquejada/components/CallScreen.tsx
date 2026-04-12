@@ -1,12 +1,29 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useCall } from '../context/CallContext';
 import { CallControls } from './CallControls';
+import { InternalAdsService } from '../social/services/InternalAdsService';
+import { InternalAdCampaign } from '../social/types/ads';
 
 export const CallScreen: React.FC = () => {
     const { state, setMinimized, acceptCall, rejectCall } = useCall();
     const [duration, setDuration] = useState('00:00');
+    const [preCallAd, setPreCallAd] = useState<InternalAdCampaign | null>(null);
     const localVideoRef = useRef<HTMLVideoElement>(null);
+
+    // Fetch Pre-call sponsorship ad
+    useEffect(() => {
+        const fetchAd = async () => {
+            if (state.active && state.status !== 'connected') {
+                const ads = await InternalAdsService.getEligibleCampaigns('video_call_waiting');
+                if (ads && ads.length > 0) {
+                    setPreCallAd(ads[0]);
+                    // Track impression
+                    InternalAdsService.trackImpression(ads[0].id, (state as any).userId, 'video_call_waiting');
+                }
+            }
+        };
+        fetchAd();
+    }, [state.active]);
 
     useEffect(() => {
         if (!state.active || !state.startTime) return;
@@ -34,6 +51,18 @@ export const CallScreen: React.FC = () => {
 
     return (
         <div className="fixed inset-0 z-[400] bg-[#0F0A06] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-300">
+            {/* Sponsorship Background - Only during pre-connection */}
+            {state.status !== 'connected' && preCallAd?.main_media_url && (
+                <div className="absolute inset-0 z-0 animate-in fade-in duration-700">
+                    <img 
+                        src={preCallAd.main_media_url} 
+                        className="w-full h-full object-cover" 
+                        alt="Patrocínio"
+                    />
+                    {/* Dark overlay for readability */}
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
+                </div>
+            )}
             {/* Header: Status and Minimize */}
             <header className="absolute top-0 left-0 right-0 p-8 flex justify-between items-center z-10">
                 <button 
