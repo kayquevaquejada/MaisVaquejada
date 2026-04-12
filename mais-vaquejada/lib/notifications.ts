@@ -1,5 +1,5 @@
 /**
- * Arena +Vaquejada — Sistema de Notificações
+ * Arena Vaquerama — Sistema de Notificações
  * Gerencia push notifications nativas + notificações Supabase
  */
 
@@ -79,7 +79,7 @@ export async function createNotification(params: {
   // mas aqui estamos no lado de quem ENVIA, então o receptor não vai receber via JS 
   // a menos que esteja usando Realtime ou Service Workers).
   // Para fins de demonstração imediata no navegador do próprio usuário (feedback):
-  // sendPushNotification('Arena +Vaquejada', 'Sua ação foi registrada!');
+  // sendPushNotification('Arena Vaquerama', 'Sua ação foi registrada!');
 }
 
 // ─── Buscar Notificações do Usuário ─────────────────────────────────────────
@@ -135,7 +135,7 @@ export function getNotifText(notif: ArenaNotification): string {
     case 'comment': return notif.message ? `${actor} comentou: "${notif.message}"` : `${actor} comentou em sua publicação.`;
     case 'message': return notif.message ? `${actor}: ${notif.message}` : `${actor} te enviou uma mensagem.`;
     case 'mention': return `${actor} te mencionou em um comentário.`;
-    case 'system':  return notif.message || 'O +Vaquejada enviou um alerta sobre sua conta.';
+    case 'system':  return notif.message || 'O Vaquerama enviou um alerta sobre sua conta.';
     default:        return `${actor} interagiu com você.`;
 
   }

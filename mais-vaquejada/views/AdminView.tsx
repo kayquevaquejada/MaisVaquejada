@@ -351,7 +351,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                 ...transmissionForm,
                 youtube_video_id: videoId || transmissionForm.youtube_video_id,
                 thumbnail_url: thumbnail,
-                channel_name: transmissionForm.channel_name || '+Vaquejada Oficial',
+                channel_name: transmissionForm.channel_name || 'Vaquerama Oficial',
                 active: true,
             };
             let error;
@@ -361,7 +361,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                 ({ error } = await supabase.from('transmissions').insert([payload]));
             }
             if (error) throw error;
-            alert(transmissionForm.id ? 'Transmissão atualizada!' : '✅ Transmissão publicada na TV +Vaquejada!');
+            alert(transmissionForm.id ? 'Transmissão atualizada!' : '✅ Transmissão publicada na TV Vaquerama!');
             setTransmissionForm({});
             fetchTransmissions();
         } catch (err: any) { alert(err.message); }
@@ -420,7 +420,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                         user_id: ad.user_id,
                         actor_id: user.id,
                         type: 'system',
-                        message: `O +Vaquejada retirou do mercado o seu produto "${ad.title}" por não condizer com a política do aplicativo.`
+                        message: `O Vaquerama retirou do mercado o seu produto "${ad.title}" por não condizer com a política do aplicativo.`
                     });
                 }
             } catch (notifyErr) {
@@ -1304,7 +1304,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                                 <span className="material-icons text-white text-lg">live_tv</span>
                             </div>
                             <div>
-                                <h2 className="text-lg font-black uppercase italic tracking-tight text-white">TV +VAQUEJADA</h2>
+                                <h2 className="text-lg font-black uppercase italic tracking-tight text-white">TV VAQUERAMA</h2>
                                 <p className="text-[9px] font-bold uppercase tracking-widest text-white/40">Gerenciar Transmissões</p>
                             </div>
                         </div>
@@ -1370,7 +1370,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                                 </div>
                                 <input 
                                     className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-4 text-sm font-bold text-leather outline-none focus:border-[#D4AF37] placeholder:text-leather/30" 
-                                    placeholder="Canal (ex: +Vaquejada Oficial)" 
+                                    placeholder="Canal (ex: Vaquerama Oficial)" 
                                     value={transmissionForm.channel_name || ''} 
                                     onChange={(e) => setTransmissionForm({...transmissionForm, channel_name: e.target.value})} 
                                 />
@@ -1410,7 +1410,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
 
                             <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-red-700 to-red-600 text-white p-5 rounded-2xl font-black uppercase text-sm tracking-widest active:scale-95 transition-transform shadow-xl shadow-red-600/20 flex items-center justify-center gap-2 disabled:opacity-50">
                                  {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <span className="material-icons">live_tv</span>}
-                                 {transmissionForm.id ? 'Atualizar Transmissão' : 'Publicar na TV +Vaquejada'}
+                                 {transmissionForm.id ? 'Atualizar Transmissão' : 'Publicar na TV Vaquerama'}
                             </button>
                             {transmissionForm.id && (
                                 <button type="button" onClick={() => setTransmissionForm({})} className="w-full text-[10px] font-black uppercase tracking-widest text-leather/40 py-2">Cancelar Edição</button>
@@ -1442,7 +1442,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-[11px] font-black uppercase text-leather leading-tight truncate">{t.title}</p>
-                                                <p className="text-[9px] font-bold text-[#D4AF37] truncate mt-0.5">{t.channel_name || '+Vaquejada'}</p>
+                                                <p className="text-[9px] font-bold text-[#D4AF37] truncate mt-0.5">{t.channel_name || 'Vaquerama'}</p>
                                                 <p className="text-[8px] text-leather/30 truncate font-mono">{t.youtube_url}</p>
                                             </div>
                                             <div className="flex flex-col gap-1 shrink-0">
@@ -1480,7 +1480,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                                 <span className="material-icons text-white text-2xl group-hover:scale-110 transition-transform">live_tv</span>
                             </div>
                             <div className="text-left">
-                                <h4 className="text-white font-black uppercase text-lg italic leading-none tracking-tighter">TV +VAQUEJADA</h4>
+                                <h4 className="text-white font-black uppercase text-lg italic leading-none tracking-tighter">TV VAQUERAMA</h4>
                                 <p className="text-white/60 text-[9px] font-bold uppercase tracking-widest mt-1">Gerenciar Transmissões Youtube</p>
                             </div>
                             <span className="material-icons text-white/40 ml-auto">settings</span>

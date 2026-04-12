@@ -112,7 +112,7 @@ const LandingPageView: React.FC<LandingPageViewProps> = ({ onEnterApp, apkUrl })
 
         {/* Footer */}
         <div className="text-center">
-          <p className="text-white/20 text-[10px] font-black uppercase tracking-[0.5em]">Arena +Vaquejada © 2026 - Todos os Direitos Reservados</p>
+          <p className="text-white/20 text-[10px] font-black uppercase tracking-[0.5em]">Arena Vaquerama © 2026 - Todos os Direitos Reservados</p>
         </div>
       </div>
 

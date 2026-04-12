@@ -144,14 +144,14 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
   return (
     <div className="pb-24">
 
-      {/* ===== BOTÃO TV +VAQUEJADA — FIXO E EM DESTAQUE ===== */}
+      {/* ===== BOTÃO TV VAQUERAMA — FIXO E EM DESTAQUE ===== */}
       <div className="sticky top-0 z-40 px-6 pt-4 pb-3 bg-background-dark/95 backdrop-blur-md border-b border-white/5">
 
         {/* Header principal */}
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center gap-2">
             <span className="material-icons text-primary-orange">campaign</span>
-            <h1 className="text-3xl font-black uppercase text-primary font-display">+VAQUEJADA</h1>
+            <h1 className="text-3xl font-black uppercase text-primary font-display">VAQUERAMA</h1>
           </div>
           <div className="flex gap-2">
             <button onClick={() => alert('Buscando notícias...')} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 active:scale-95 transition-transform">
@@ -178,7 +178,7 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
 
           <div className="flex-1 text-left">
             <div className="flex items-center gap-2">
-              <p className="text-white font-black text-xl italic tracking-tighter leading-none">TV +VAQUEJADA</p>
+              <p className="text-white font-black text-xl italic tracking-tighter leading-none">TV VAQUERAMA</p>
               {hasLive && (
                 <span className="flex items-center gap-1 bg-white/20 px-2 py-0.5 rounded-full">
                   <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
@@ -266,7 +266,7 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
         </div>
       </div>
 
-      {/* ===== MODAL TV +VAQUEJADA FULL ===== */}
+      {/* ===== MODAL TV VAQUERAMA FULL ===== */}
       {isTvOpen && (
         <div className="fixed inset-0 z-[200] flex flex-col bg-black animate-in fade-in duration-200">
 
@@ -277,7 +277,7 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
                 <span className="material-icons text-white text-lg">live_tv</span>
               </div>
               <div>
-                <h2 className="text-white font-black uppercase italic tracking-tighter text-lg leading-none">TV +VAQUEJADA</h2>
+                <h2 className="text-white font-black uppercase italic tracking-tighter text-lg leading-none">TV VAQUERAMA</h2>
                 <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Central de Transmissões</p>
               </div>
             </div>

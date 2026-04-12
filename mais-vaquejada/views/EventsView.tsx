@@ -197,7 +197,7 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
     e?.stopPropagation();
     
     const shareUrl = `${window.location.origin}/?event=${event.id}`;
-    const shareText = `🏇 Convite +Vaquejada!\n\nVenha ver o evento: *${event.title.toUpperCase()}*\n📍 No ${event.park}, ${event.location}\n\nConfira todos os detalhes no app:`;
+    const shareText = `🏇 Convite Vaquerama!\n\nVenha ver o evento: *${event.title.toUpperCase()}*\n📍 No ${event.park}, ${event.location}\n\nConfira todos os detalhes no app:`;
 
     if (navigator.share) {
         try {

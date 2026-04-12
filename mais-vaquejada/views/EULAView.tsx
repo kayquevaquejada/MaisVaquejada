@@ -20,12 +20,12 @@ const EULAView: React.FC<EULAViewProps> = ({ onBack }) => {
       <div className="space-y-6 text-sm text-white/70 font-medium leading-relaxed">
         <section>
           <h2 className="text-[#ECA413] font-black uppercase text-xs tracking-widest mb-2">1. Aceitação dos Termos</h2>
-          <p>Ao utilizar o aplicativo +Vaquejada, você concorda em cumprir estes Termos de Uso e o Contrato de Licença de Usuário Final (EULA). Se você não concordar, não utilize o aplicativo.</p>
+          <p>Ao utilizar o aplicativo Vaquerama, você concorda em cumprir estes Termos de Uso e o Contrato de Licença de Usuário Final (EULA). Se você não concordar, não utilize o aplicativo.</p>
         </section>
 
         <section>
           <h2 className="text-[#ECA413] font-black uppercase text-xs tracking-widest mb-2">2. Conteúdo Gerado pelo Usuário (UGC)</h2>
-          <p>O +Vaquejada permite que os usuários compartilhem fotos, vídeos e comentários. Você é o único responsável pelo conteúdo que publica.</p>
+          <p>O Vaquerama permite que os usuários compartilhem fotos, vídeos e comentários. Você é o único responsável pelo conteúdo que publica.</p>
           <div className="mt-2 p-4 bg-red-500/5 border border-red-500/10 rounded-2xl">
             <p className="font-bold text-red-200 mb-2 underline">Tolerância Zero para Conteúdo Abusivo:</p>
             <ul className="list-disc pl-4 space-y-1 text-xs">

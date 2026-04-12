@@ -174,8 +174,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
     const shareProfile = () => {
         if (navigator.share) {
             navigator.share({
-                title: `Perfil de ${profileData?.name} no +Vaquejada`,
-                text: `Confira o perfil de @${profileData?.username} na Arena +Vaquejada! 🐎`,
+                title: `Perfil de ${profileData?.name} no Vaquerama`,
+                text: `Confira o perfil de @${profileData?.username} na Arena Vaquerama! 🐎`,
                 url: window.location.href,
             }).catch(err => console.error('Erro ao compartilhar', err));
         } else {
@@ -186,7 +186,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
     const handleShare = (post: any) => {
         if (navigator.share) {
             navigator.share({
-                title: `Post de ${profileData?.username} no +Vaquejada`,
+                title: `Post de ${profileData?.username} no Vaquerama`,
                 text: post.caption || 'Foto na arena! 🐎',
                 url: window.location.href,
             }).catch(err => console.error('Erro ao compartilhar', err));
@@ -267,7 +267,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                     if (currentProfile) {
                         setProfileData({
                             ...currentProfile,
-                            location: `${currentProfile.city_name || currentProfile.city_id || 'Arena'}, ${currentProfile.state_name || currentProfile.state_id || '+VAQUEJADA'}`,
+                            location: `${currentProfile.city_name || currentProfile.city_id || 'Arena'}, ${currentProfile.state_name || currentProfile.state_id || 'VAQUERAMA'}`,
                             isVerified: currentProfile.is_verified || currentProfile.role === 'ADMIN_MASTER'
                         });
                     }

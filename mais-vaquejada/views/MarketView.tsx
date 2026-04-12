@@ -72,7 +72,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                     user_id: ad.user_id,
                     actor_id: user.id,
                     type: 'system',
-                    message: `O +Vaquejada retirou do mercado o seu produto "${ad.title}" por não condizer com a política do aplicativo.`
+                    message: `O Vaquerama retirou do mercado o seu produto "${ad.title}" por não condizer com a política do aplicativo.`
                 });
             }
 
@@ -880,7 +880,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                         <span className="material-icons text-[#D4AF37] text-3xl">storefront</span>
                         <div>
                             <h1 className="text-3xl font-black italic uppercase tracking-tight leading-none">MERCADO</h1>
-                            <p className="text-[10px] font-black uppercase text-[#D4AF37] tracking-[0.3em] mt-1">+VAQUEJADA</p>
+                            <p className="text-[10px] font-black uppercase text-[#D4AF37] tracking-[0.3em] mt-1">VAQUERAMA</p>
                         </div>
                     </div>
                     <div className="flex gap-2">

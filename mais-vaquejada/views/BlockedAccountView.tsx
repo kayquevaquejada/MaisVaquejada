@@ -14,7 +14,7 @@ const BlockedAccountView: React.FC<BlockedAccountViewProps> = ({ onLogout }) => 
       
       <h1 className="text-4xl font-black text-white italic tracking-tighter uppercase mb-4">CONTA <span className="text-red-500">BLOQUEADA</span></h1>
       <p className="text-white/60 text-sm font-bold leading-relaxed mb-10 max-w-xs">
-        Seu acesso à Arena +Vaquejada foi suspenso por violação de nossas diretrizes de comunidade ou termos de uso.
+        Seu acesso à Arena Vaquerama foi suspenso por violação de nossas diretrizes de comunidade ou termos de uso.
       </p>
 
       <div className="w-full max-w-xs space-y-4">

@@ -21,9 +21,9 @@ Adicione as chaves de descrição de uso no seu arquivo `Info.plist`:
 
 ```xml
 <key>NSCameraUsageDescription</key>
-<string>Precisamos de acesso à câmera para chamadas de vídeo no Arena +Vaquejada.</string>
+<string>Precisamos de acesso à câmera para chamadas de vídeo no Arena Vaquerama.</string>
 <key>NSMicrophoneUsageDescription</key>
-<string>Precisamos de acesso ao microfone para chamadas de áudio e vídeo no Arena +Vaquejada.</string>
+<string>Precisamos de acesso ao microfone para chamadas de áudio e vídeo no Arena Vaquerama.</string>
 ```
 
 ---

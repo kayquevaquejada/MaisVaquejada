@@ -176,7 +176,7 @@ const AdminUsersView: React.FC<AdminUsersViewProps> = ({ user }) => {
         <div className="flex justify-between items-start mb-4">
             <div>
                 <h1 className="text-3xl font-black italic tracking-tighter uppercase">Gestão de <span className="text-[#ECA413]">Usuários</span></h1>
-                <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mt-1">Controle Total da Base +Vaquejada</p>
+                <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mt-1">Controle Total da Base Vaquerama</p>
             </div>
             <button onClick={fetchUsers} className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all">
                 <span className={`material-icons text-white/40 ${loading ? 'animate-spin' : ''}`}>refresh</span>
