@@ -50,9 +50,9 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
             // Padrão solicitado: userId/avatar.jpg
             const filePath = `${user.id}/avatar.jpg`;
 
-            // 1. Upload para o bucket 'avatars'
+            // 1. Upload para o bucket 'vaquejadas' (que já existe e funciona)
             const { error: uploadError } = await supabase.storage
-                .from('avatars')
+                .from('vaquejadas')
                 .upload(filePath, file, { 
                     upsert: true,
                     cacheControl: '3600'
@@ -62,7 +62,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
 
             // 2. Obter URL pública
             const { data: { publicUrl } } = supabase.storage
-                .from('avatars')
+                .from('vaquejadas')
                 .getPublicUrl(filePath);
 
             // 3. Atualizar estado local
