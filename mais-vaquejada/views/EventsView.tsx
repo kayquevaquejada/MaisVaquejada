@@ -117,6 +117,7 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
     const saved = localStorage.getItem('arena_favorites');
     return saved ? JSON.parse(saved) : [];
   });
+  const [likesCount, setLikesCount] = useState<Record<string, number>>({});
 
   // Sync with public event from URL
   useEffect(() => {
@@ -149,6 +150,14 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
                 imageUrl: ev.image_url,
                 date: { month: ev.date_month, day: ev.date_day }
             })));
+
+            // Fetch Real Likes for these events
+            const { data: likesData } = await supabase.from('event_likes').select('event_id');
+            const counts: Record<string, number> = {};
+            likesData?.forEach(lk => {
+                counts[lk.event_id] = (counts[lk.event_id] || 0) + 1;
+            });
+            setLikesCount(counts);
         }
       } catch (err) {
         console.error("Error fetching data:", err);
@@ -161,11 +170,27 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
   // Banner auto-scroll logic removed to rely on AdsCarousel component
 
 
-  const toggleFavorite = (id: string, e?: React.MouseEvent) => {
+  const toggleFavorite = async (id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
+    
+    // Optimistic UI toggle for Favorites (Local Star)
     setFavorites(prev =>
       prev.includes(id) ? prev.filter(fid => fid !== id) : [...prev, id]
     );
+
+    // Save Real Like to Database
+    const isAdding = !favorites.includes(id);
+    try {
+        if (isAdding) {
+            await supabase.from('event_likes').insert({ event_id: id, user_id: (await supabase.auth.getUser()).data.user?.id }).then();
+            setLikesCount(prev => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
+        } else {
+            await supabase.from('event_likes').delete().eq('event_id', id).eq('user_id', (await supabase.auth.getUser()).data.user?.id).then();
+            setLikesCount(prev => ({ ...prev, [id]: Math.max(0, (prev[id] || 0) - 1) }));
+        }
+    } catch (err) {
+        // Silently handle if not logged in or other issues
+    }
   };
 
   const handleShare = async (event: EventItem, e?: React.MouseEvent) => {
@@ -238,7 +263,7 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
                   <button onClick={() => toggleFavorite(viewingEvent.id)} className={`w-10 h-10 rounded-full backdrop-blur-md border border-white/10 flex items-center justify-center active:scale-95 transition-transform ${isFav ? 'bg-[#D4AF37] text-black' : 'bg-black/20 text-white'}`}>
                     <span className="material-icons">{isFav ? 'favorite' : 'favorite_border'}</span>
                   </button>
-                  <span className="text-[9px] font-black text-white/40 mt-1">{isFav ? '325' : '324'} curtiu</span>
+                  <span className="text-[9px] font-black text-white/40 mt-1">{likesCount[viewingEvent.id] || 0} curtiu</span>
                 </div>
               </div>
             </div>
@@ -474,7 +499,7 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
                         >
                             <span className="material-icons">{isFav ? 'favorite' : 'favorite_border'}</span>
                         </button>
-                        <span className="text-[8px] font-black text-white/20 mt-1 uppercase tracking-widest">{isFav ? '325' : '324'}</span>
+                        <span className="text-[8px] font-black text-white/20 mt-1 uppercase tracking-widest">{likesCount[event.id] || 0}</span>
                       </div>
                       <button
                         onClick={(e) => handleShare(event, e)}
