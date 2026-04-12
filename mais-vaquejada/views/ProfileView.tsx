@@ -301,8 +301,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                     .in('id', ids);
                 
                 if (profilesData) {
-                    // Filter out the user itself just in case there are legacy self-follows in DB
-                    setListModalData(profilesData.filter(p => p.id !== user?.id));
+                    setListModalData(profilesData);
                 }
             }
         } catch (err) {
