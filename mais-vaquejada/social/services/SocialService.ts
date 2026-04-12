@@ -57,17 +57,26 @@ export const SocialService = {
     }));
   },
 
-  // Stories
+  // Stories — with automatic 24h cleanup
   async fetchStories(userId: string, followingIds: string[] = []): Promise<Story[]> {
     const authorizedIds = [...new Set([userId, ...followingIds])];
+    const now = new Date().toISOString();
 
+    // 1. LIMPEZA AUTOMÁTICA: Apagar stories que já venceram o prazo
+    try {
+      await supabase.from('stories').delete().lt('expires_at', now);
+    } catch (e) {
+      console.warn('Falha na limpeza de stories expirados:', e);
+    }
+
+    // 2. BUSCAR APENAS OS ATIVOS
     const { data, error } = await supabase
       .from('stories')
       .select(`
         *,
         profiles:user_id (username, avatar_url)
       `)
-      .gt('expires_at', new Date().toISOString())
+      .gt('expires_at', now)
       .in('user_id', authorizedIds)
       .order('created_at', { ascending: false });
 

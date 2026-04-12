@@ -100,6 +100,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
     const [selectedPost, setSelectedPost] = useState<any>(null);
     const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
     const [profilePosts, setProfilePosts] = useState<any[]>([]);
+    const [hasActiveStory, setHasActiveStory] = useState(false);
 
     // Persist profilePosts
     useEffect(() => {
@@ -245,11 +246,21 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                         setProfilePosts(postsData.map(p => ({
                             id: p.id,
                             img: p.media_url,
-                            likes: 0, // In a full implementation, we'd fetch likes/comments count per post
+                            likes: 0, 
                             comments: 0,
                             caption: p.caption
                         })));
                     }
+
+                    // Check for active stories (expires_at > now)
+                    const { data: storiesData } = await supabase
+                        .from('stories')
+                        .select('id')
+                        .eq('user_id', profileId)
+                        .gt('expires_at', new Date().toISOString())
+                        .limit(1);
+                    
+                    setHasActiveStory(!!storiesData && storiesData.length > 0);
 
                     if (currentProfile) {
                         setProfileData({
@@ -376,7 +387,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                 {/* Profile Header Info */}
                 <div className="flex flex-row items-center gap-6 mb-6">
                     <div className="relative shrink-0 user-avatar-container">
-                        <div className="w-24 h-24 rounded-full border-2 border-[#ECA413] p-1 bg-background-dark shadow-2xl relative group cursor-pointer active:scale-95 transition-transform overflow-hidden">
+                        <div className={`w-24 h-24 rounded-full p-1 bg-background-dark shadow-2xl relative group cursor-pointer active:scale-95 transition-transform overflow-hidden ${hasActiveStory ? 'border-2 border-[#ECA413]' : 'border border-white/10 opacity-80'}`}>
                             <img
                                 src={finalProfile.avatar_url || `https://ui-avatars.com/api/?name=${finalProfile.name}&background=random`}
                                 className="w-full h-full rounded-full object-cover transition-opacity group-hover:opacity-80 bg-neutral-800"
