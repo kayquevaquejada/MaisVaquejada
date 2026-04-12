@@ -59,6 +59,18 @@ export const CallScreen: React.FC = () => {
     const profile = state.remoteProfiles.get(firstRemoteId || '');
     const remoteStream = state.remoteStreams.get(firstRemoteId || '');
 
+    // Status label logic
+    const getStatusLabel = () => {
+        if (state.status === 'connected') return duration;
+        if (state.isIncoming && state.status === 'ringing') {
+            const caller = state.fromUser ? state.remoteProfiles.get(state.fromUser) : null;
+            return `${caller?.name || caller?.username || 'USUÁRIO'} ESTÁ CHAMANDO VOCÊ`;
+        }
+        return state.status === 'calling' ? 'CHAMANDO...' : 
+               state.status === 'ringing' ? 'TOCANDO...' : state.status;
+    };
+    const statusText = getStatusLabel().toUpperCase();
+
     return (
         <div className="fixed inset-0 z-[400] bg-[#0F0A06] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-300">
             {/* Sponsorship Background - Only during pre-connection */}
@@ -136,9 +148,7 @@ export const CallScreen: React.FC = () => {
                             {profile?.username || 'USUÁRIO'}
                         </h2>
                         <p className="text-[#ECA413] font-bold text-sm tracking-widest animate-pulse">
-                            {state.status === 'calling' ? 'CHAMANDO...' : 
-                             state.status === 'ringing' ? 'TOCANDO...' : 
-                             state.status === 'connected' ? 'CONECTADO' : 'CONECTANDO...'}
+                            {statusText}
                         </p>
                     </div>
                 )}

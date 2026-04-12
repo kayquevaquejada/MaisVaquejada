@@ -153,9 +153,36 @@ export const CallProvider: React.FC<{ children: React.ReactNode, userId: string 
         }));
     };
 
+    const logCallMessage = async (isMissed: boolean = true) => {
+        if (!userId || !state.callId || !state.participants.length) return;
+        
+        const partnerId = state.participants.find(id => id !== userId);
+        if (!partnerId) return;
+
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const dateStr = now.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        
+        const callTypeLabel = state.type === 'video' ? 'Vídeo' : 'Áudio';
+        const content = isMissed 
+            ? `📞 Chamada de ${callTypeLabel} Perdida (${timeStr} - ${dateStr})`
+            : `✅ Chamada de ${callTypeLabel} Encerrada (${timeStr})`;
+
+        try {
+            await supabase.from('messages').insert({
+                sender_id: userId,
+                receiver_id: partnerId,
+                content
+            });
+        } catch (err) {
+            console.error('Error logging call message:', err);
+        }
+    };
+
     const rejectCall = async () => {
         stopRingtone();
         if (state.callId) {
+            await logCallMessage(true); // Log as missed call
             await supabase.from('calls').insert({
                 call_id: state.callId,
                 from_user: userId,
@@ -175,6 +202,11 @@ export const CallProvider: React.FC<{ children: React.ReactNode, userId: string 
 
     const endCall = async () => {
         if (state.callId) {
+            // Se encerrar antes de conectar, loga como chamada perdida para o outro
+            if (state.status !== 'connected') {
+                await logCallMessage(true);
+            }
+            
             await supabase.from('calls').insert({
                 call_id: state.callId,
                 from_user: userId,
