@@ -50,37 +50,39 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
             // Padrão solicitado: userId/avatar.jpg
             const filePath = `${user.id}/avatar.jpg`;
 
-            // 1. Upload para o bucket 'vaquejadas' (que já existe e funciona)
+            // 1. Upload para o bucket 'vaquejadas'
             const { error: uploadError } = await supabase.storage
                 .from('vaquejadas')
                 .upload(filePath, file, { 
                     upsert: true,
-                    cacheControl: '3600'
+                    cacheControl: '0' // Desabilita cache no servidor
                 });
 
             if (uploadError) throw uploadError;
 
-            // 2. Obter URL pública
+            // 2. Obter URL pública com Cache Buster para forçar o navegador a atualizar
             const { data: { publicUrl } } = supabase.storage
                 .from('vaquejadas')
                 .getPublicUrl(filePath);
-
-            // 3. Atualizar estado local
-            setProfileData((prev: any) => prev ? { ...prev, avatar_url: publicUrl } : null);
             
-            // 4. Salvamento imediato no banco de dados
+            const timestampedUrl = `${publicUrl}?t=${Date.now()}`;
+
+            // 3. Atualizar estado local do formulário imediatamente
+            setProfileData((prev: any) => prev ? { ...prev, avatar_url: timestampedUrl } : null);
+            
+            // 4. Salvamento imediato no banco de dados para evitar perda
             const { error: updateError } = await supabase
                 .from('profiles')
-                .update({ avatar_url: publicUrl })
+                .update({ avatar_url: timestampedUrl })
                 .eq('id', user.id);
 
             if (updateError) throw updateError;
             
             if (onProfileUpdate) onProfileUpdate();
-            console.log('Foto atualizada com sucesso:', publicUrl);
+            console.log('Foto atualizada com sucesso:', timestampedUrl);
         } catch (error: any) {
             console.error('Erro no upload da foto:', error);
-            alert(`Erro ao processar imagem: ${error.message || 'Erro de permissão no Supabase'}`);
+            alert(`Erro ao processar imagem: ${error.message || 'Erro de permissão'}`);
         } finally {
             setUploadingAvatar(false);
         }
