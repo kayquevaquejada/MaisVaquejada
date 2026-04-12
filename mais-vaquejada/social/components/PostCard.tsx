@@ -11,6 +11,7 @@ interface PostCardProps {
   onShare: (post: SocialPost) => void;
   onNavigateToProfile: (username: string) => void;
   onOptions: (post: SocialPost) => void;
+  currentUserId?: string;
 }
 
 export const PostCard: React.FC<PostCardProps> = ({
@@ -22,7 +23,8 @@ export const PostCard: React.FC<PostCardProps> = ({
   onComment,
   onShare,
   onNavigateToProfile,
-  onOptions
+  onOptions,
+  currentUserId
 }) => {
   const [imgError, setImgError] = useState(false);
   const [showLikeAnim, setShowLikeAnim] = useState(false);
@@ -65,12 +67,14 @@ export const PostCard: React.FC<PostCardProps> = ({
             </div>
           </div>
         </div>
-        <button
-          onClick={() => onOptions(post)}
-          className="material-icons text-white/40 text-xl hover:text-white transition-colors"
-        >
-          more_vert
-        </button>
+        {currentUserId === post.userId && (
+          <button
+            onClick={() => onOptions(post)}
+            className="material-icons text-white/40 text-xl hover:text-white transition-colors"
+          >
+            more_vert
+          </button>
+        )}
       </div>
 
       {/* Post Media */}

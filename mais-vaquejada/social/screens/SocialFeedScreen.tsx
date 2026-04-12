@@ -48,6 +48,13 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  
+  // Post Options & Editing
+  const [optionsPost, setOptionsPost] = useState<any | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editCaption, setEditCaption] = useState('');
+  const [editLocation, setEditLocation] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
 
   // Derived stories to include active sponsored placements
   const mixedStories = React.useMemo(() => {
@@ -108,6 +115,37 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
   const handlePostComment = async (postId: string, text: string) => {
     const post = posts.find(p => p.id === postId);
     await postComment(postId, text, post?.userId);
+  };
+
+  const handleDeletePost = async () => {
+    if (!optionsPost || !confirm('Tem certeza que deseja excluir esta postagem permanentemente?')) return;
+    try {
+      const { error } = await supabase.from('posts').delete().eq('id', optionsPost.id);
+      if (error) throw error;
+      setOptionsPost(null);
+      refresh(); // Refresh feed after delete
+    } catch (err: any) {
+      alert('Erro ao excluir: ' + err.message);
+    }
+  };
+
+  const handleUpdatePost = async () => {
+    if (!optionsPost) return;
+    setSavingEdit(true);
+    try {
+      const { error } = await supabase.from('posts').update({
+        caption: editCaption,
+        location: editLocation
+      }).eq('id', optionsPost.id);
+      if (error) throw error;
+      setIsEditing(false);
+      setOptionsPost(null);
+      refresh(); // Refresh feed to show changes
+    } catch (err: any) {
+      alert('Erro ao atualizar: ' + err.message);
+    } finally {
+      setSavingEdit(false);
+    }
   };
 
 
@@ -214,7 +252,12 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
                 onComment={(p) => { setActiveCommentPostId(p.id); loadComments(p.id); }}
                 onShare={(p) => navigator.share?.({ title: '+Vaquejada', text: p.caption, url: window.location.href })}
                 onNavigateToProfile={navigateToProfile}
-                onOptions={() => {}}
+                onOptions={(p) => {
+                   setOptionsPost(p);
+                   setEditCaption(p.caption || '');
+                   setEditLocation(p.location || '');
+                }}
+                currentUserId={user?.id}
               />
             );
           })
@@ -349,6 +392,81 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
                     <span className="material-icons text-white/20 text-[20px]">chevron_right</span>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      {/* Post Options Menu */}
+      {optionsPost && (
+        <div className="fixed inset-0 z-[600] flex items-end justify-center bg-black/60 animate-in fade-in duration-300 px-4 pb-8" onClick={() => !isEditing && setOptionsPost(null)}>
+          <div className="bg-background-dark w-full max-w-sm rounded-[32px] overflow-hidden border border-white/5 shadow-2xl animate-in slide-in-from-bottom duration-300" onClick={e => e.stopPropagation()}>
+            {!isEditing ? (
+              <div className="p-2">
+                <button 
+                  onClick={() => setIsEditing(true)}
+                  className="w-full flex items-center gap-4 px-6 py-5 text-white hover:bg-white/5 active:bg-white/10 transition-colors"
+                >
+                  <span className="material-icons opacity-40">edit</span>
+                  <span className="font-black text-xs uppercase tracking-widest text-[#ECA413]">Editar Postagem</span>
+                </button>
+                <div className="h-px bg-white/5 mx-6" />
+                <button 
+                  onClick={handleDeletePost}
+                  className="w-full flex items-center gap-4 px-6 py-5 text-red-500 hover:bg-red-500/10 active:bg-red-500/20 transition-colors"
+                >
+                  <span className="material-icons opacity-60">delete_outline</span>
+                  <span className="font-black text-xs uppercase tracking-widest">Excluir Postagem</span>
+                </button>
+                <div className="h-px bg-white/5 mx-6" />
+                <button 
+                  onClick={() => setOptionsPost(null)}
+                  className="w-full flex items-center gap-4 px-6 py-5 text-white/40 hover:bg-white/5 active:bg-white/10 transition-colors"
+                >
+                  <span className="material-icons opacity-40">close</span>
+                  <span className="font-black text-xs uppercase tracking-widest">Cancelar</span>
+                </button>
+              </div>
+            ) : (
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-8">
+                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-[#ECA413] italic">Editar Publicação</h3>
+                  <button onClick={() => setIsEditing(false)} className="material-icons text-white/40">close</button>
+                </div>
+                
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-2">Legenda</label>
+                    <textarea
+                      value={editCaption}
+                      onChange={e => setEditCaption(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white focus:border-[#ECA413] outline-none min-h-[100px] resize-none"
+                      placeholder="O que está acontecendo na arena?"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-2">Localização</label>
+                    <div className="relative">
+                      <span className="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-[#ECA413] text-xl">place</span>
+                      <input
+                        type="text"
+                        value={editLocation}
+                        onChange={e => setEditLocation(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 pl-12 text-sm text-white focus:border-[#ECA413] outline-none uppercase font-black"
+                        placeholder="CIDADE - ESTADO"
+                      />
+                    </div>
+                  </div>
+                  
+                  <button
+                    disabled={savingEdit}
+                    onClick={handleUpdatePost}
+                    className="w-full bg-[#ECA413] text-background-dark py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-[#ECA413]/20 active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    {savingEdit ? 'Salvando...' : 'Atualizar'}
+                  </button>
+                </div>
               </div>
             )}
           </div>
