@@ -438,6 +438,7 @@ const AdminAdsManager: React.FC<AdminAdsManagerProps> = ({ user, onBack }) => {
                                         <option value="all_screens">Em Todas as Telas (Full Patrocínio)</option>
                                         <option value="market_top_carousel">Somente Mercado (Topo)</option>
                                         <option value="vaquejada_top_carousel">Somente Vaquejadas (Topo)</option>
+                                        <option value="video_call_waiting">Chamada de Vídeo (Fundo)</option>
                                     </select>
                                 </div>
                                 <div className="space-y-2">

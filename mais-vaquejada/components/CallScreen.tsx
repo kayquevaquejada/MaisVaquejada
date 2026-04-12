@@ -1,29 +1,37 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useCall } from '../context/CallContext';
 import { CallControls } from './CallControls';
-import { InternalAdsService } from '../social/services/InternalAdsService';
-import { InternalAdCampaign } from '../social/types/ads';
+import { supabase } from '../lib/supabase';
 
 export const CallScreen: React.FC = () => {
     const { state, setMinimized, acceptCall, rejectCall } = useCall();
     const [duration, setDuration] = useState('00:00');
-    const [preCallAd, setPreCallAd] = useState<InternalAdCampaign | null>(null);
+    const [preCallAd, setPreCallAd] = useState<any | null>(null);
     const localVideoRef = useRef<HTMLVideoElement>(null);
 
-    // Fetch Pre-call sponsorship ad
+    // Fetch Pre-call sponsorship ad (Using the correct ads_campaigns table)
     useEffect(() => {
         const fetchAd = async () => {
             if (state.active && state.status !== 'connected') {
-                const ads = await InternalAdsService.getEligibleCampaigns('video_call_waiting');
-                if (ads && ads.length > 0) {
-                    setPreCallAd(ads[0]);
-                    // Track impression
-                    InternalAdsService.trackImpression(ads[0].id, (state as any).userId, 'video_call_waiting');
+                try {
+                    const { data, error } = await supabase
+                        .from('ads_campaigns')
+                        .select('*')
+                        .eq('status', 'active')
+                        .contains('target_screen', ['video_call_waiting'])
+                        .order('created_at', { ascending: false })
+                        .limit(1);
+
+                    if (data && data.length > 0) {
+                        setPreCallAd(data[0]);
+                    }
+                } catch (err) {
+                    console.error('Error fetching call ad:', err);
                 }
             }
         };
         fetchAd();
-    }, [state.active]);
+    }, [state.active, state.status]);
 
     useEffect(() => {
         if (!state.active || !state.startTime) return;
