@@ -14,11 +14,13 @@ export const CallScreen: React.FC = () => {
         const fetchAd = async () => {
             if (state.active && state.status !== 'connected') {
                 try {
+                    const targetPlacement = state.type === 'video' ? 'video_call_waiting' : 'audio_call_waiting';
+                    
                     const { data, error } = await supabase
                         .from('ads_campaigns')
                         .select('*')
                         .eq('status', 'active')
-                        .contains('target_screen', ['video_call_waiting'])
+                        .contains('target_screen', [targetPlacement])
                         .order('created_at', { ascending: false })
                         .limit(1);
 
@@ -31,7 +33,7 @@ export const CallScreen: React.FC = () => {
             }
         };
         fetchAd();
-    }, [state.active, state.status]);
+    }, [state.active, state.status, state.type]);
 
     useEffect(() => {
         if (!state.active || !state.startTime) return;
@@ -67,8 +69,8 @@ export const CallScreen: React.FC = () => {
                         className="w-full h-full object-cover" 
                         alt="Patrocínio"
                     />
-                    {/* Dark overlay for readability */}
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
+                    {/* Minimal overlay for text readability only */}
+                    <div className="absolute inset-0 bg-black/40" />
                 </div>
             )}
             {/* Header: Status and Minimize */}

@@ -346,10 +346,12 @@ const AdminAdsManager: React.FC<AdminAdsManagerProps> = ({ user, onBack }) => {
                             <h3 className="text-[10px] font-black tracking-widest uppercase text-[#D4AF37] border-b border-[#1A1108]/5 pb-2">2. Conteúdo Visual</h3>
                             <div className="space-y-3">
                                 {formData.image_url ? (
-                                    <div className="relative w-full h-32 rounded-[20px] overflow-hidden bg-neutral-100 shadow-inner group">
+                                    <div className={`relative w-full rounded-[20px] overflow-hidden bg-neutral-100 shadow-inner group transition-all ${
+                                        (formData.target_position?.includes('call')) ? 'aspect-[9/16] max-h-[400px]' : 'h-32'
+                                    }`}>
                                         {/* Pan Interactive Overlay */}
                                         <div 
-                                            className={`absolute inset-0 z-10 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                                            className="absolute inset-0 z-10"
                                             onMouseDown={(e) => { e.preventDefault(); setIsDragging(true); setDragStartY(e.clientY); setDragStartOffset(formData.image_offset || 50); }}
                                             onMouseMove={(e) => {
                                                 if(!isDragging) return;
@@ -395,14 +397,20 @@ const AdminAdsManager: React.FC<AdminAdsManagerProps> = ({ user, onBack }) => {
                                         </button>
                                     </div>
                                 ) : (
-                                    <label className="w-full h-32 rounded-[20px] border-2 border-dashed border-[#1A1108]/20 bg-black/5 hover:bg-black/10 cursor-pointer flex flex-col items-center justify-center transition-all">
+                                    <label className={`w-full rounded-[20px] border-2 border-dashed border-[#1A1108]/20 bg-black/5 hover:bg-black/10 cursor-pointer flex flex-col items-center justify-center transition-all ${
+                                        (formData.target_position?.includes('call')) ? 'aspect-[9/16] max-h-[400px]' : 'h-32'
+                                    }`}>
                                         {uploadingImage ? (
                                             <div className="text-center"><div className="w-6 h-6 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin mx-auto mb-2" /><span className="text-[10px] font-black uppercase text-leather/60">Enviando...</span></div>
                                         ) : (
                                             <div className="text-center opacity-40">
                                                 <span className="material-icons text-3xl mb-1 text-leather">add_photo_alternate</span>
-                                                <p className="text-[10px] text-leather font-black tracking-widest uppercase">Anexar Bandeira</p>
-                                                <p className="text-[8px] text-leather/80 font-bold mt-1 leading-tight">1200 x 400px (3:1)</p>
+                                                <p className="text-[10px] text-leather font-black tracking-widest uppercase">
+                                                    {(formData.target_position?.includes('call')) ? 'Anexar Fundo Tela Cheia' : 'Anexar Bandeira'}
+                                                </p>
+                                                <p className="text-[8px] text-leather/80 font-bold mt-1 leading-tight">
+                                                    {(formData.target_position?.includes('call')) ? '1080 x 1920px (Vertical)' : '1200 x 400px (3:1)'}
+                                                </p>
                                             </div>
                                         )}
                                         <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
@@ -439,6 +447,7 @@ const AdminAdsManager: React.FC<AdminAdsManagerProps> = ({ user, onBack }) => {
                                         <option value="market_top_carousel">Somente Mercado (Topo)</option>
                                         <option value="vaquejada_top_carousel">Somente Vaquejadas (Topo)</option>
                                         <option value="video_call_waiting">Chamada de Vídeo (Fundo)</option>
+                                        <option value="audio_call_waiting">Chamada de Áudio (Fundo)</option>
                                     </select>
                                 </div>
                                 <div className="space-y-2">
