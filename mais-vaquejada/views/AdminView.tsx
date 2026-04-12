@@ -392,26 +392,32 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
     };
 
     const deleteMarketItem = async (ad: any) => {
-        if (!confirm(`Deseja EXCLUIR permanentemente o anúncio "${ad.title}"? O vendedor receberá uma notificação sobre a remoção.`)) return;
+        if (!confirm(`Deseja EXCLUIR permanentemente o anúncio "${ad.title}"?`)) return;
         
         setLoading(true);
         try {
-            // 1. Deletar o anúncio
-            const { error: delError } = await supabase.from('market_items').delete().eq('id', ad.id);
-            if (delError) throw delError;
-
-            // 2. Notificar o usuário
-            if (ad.user_id) {
-                await supabase.from('notifications').insert({
-                    user_id: ad.user_id,
-                    actor_id: user.id, // Admin que deletou
-                    type: 'system',
-                    message: `O +Vaquejada retirou do mercado o seu produto "${ad.title}" por não condizer com a política do aplicativo.`
-                });
+            // 1. Deletar o anúncio direto (Usando match para ser mais preciso)
+            const { error: delError } = await supabase.from('market_items').delete().match({ id: ad.id });
+            
+            if (delError) {
+                alert('Erro do banco: ' + delError.message);
+                return;
             }
 
-            alert('Anúncio excluído e usuário notificado.');
-            fetchMarket();
+            // 2. Tentar notificar (mas se falhar, o anúncio já foi apagado)
+            try {
+                if (ad.user_id) {
+                    await supabase.from('notifications').insert({
+                        user_id: ad.user_id,
+                        actor_id: user.id,
+                        type: 'system',
+                        message: `O +Vaquejada retirou do mercado o seu produto "${ad.title}" por não condizer com a política do aplicativo.`
+                    });
+                }
+            } catch (e) { /* silent fail for notification */ }
+
+            alert('Anúncio excluído com sucesso!');
+            await fetchMarket();
         } catch (err: any) {
             alert('Erro ao excluir: ' + err.message);
         } finally {
