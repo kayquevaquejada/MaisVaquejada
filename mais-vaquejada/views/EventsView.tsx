@@ -235,58 +235,133 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
     return matchesState && matchesSearch && matchesCircuit;
   });
 
-  // Detail View Overlay
-  if (viewingEvent) {
-    const isFav = favorites.includes(viewingEvent.id);
-    return (
-      <div className="absolute inset-0 z-[100] flex justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200">
-        <div className="w-full max-w-[480px] h-full bg-background-dark relative overflow-y-auto hide-scrollbar shadow-2xl animate-in slide-in-from-bottom-10 duration-300">
+    // Detail View Overlay
+    if (viewingEvent) {
+        const isFav = favorites.includes(viewingEvent.id);
+        const [activeImgIndex, setActiveImgIndex] = useState(0);
+        const [zoomImg, setZoomImg] = useState<string | null>(null);
+        
+        // Combine cover + gallery
+        const allImages = [
+            viewingEvent.imageUrl,
+            ...(Array.isArray((viewingEvent as any).gallery) ? (viewingEvent as any).gallery : [])
+        ].filter(Boolean);
 
-          {/* Header Image & Nav */}
-          <div className="relative h-[400px]">
-            <img src={viewingEvent.imageUrl} className="w-full h-full object-cover" alt={viewingEvent.title} />
-            <div className="absolute inset-0 bg-gradient-to-t from-background-dark via-transparent to-black/60"></div>
+        return (
+            <div className="absolute inset-0 z-[100] flex justify-center bg-black/95 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="w-full max-w-[480px] h-full bg-background-dark relative overflow-y-auto hide-scrollbar shadow-2xl animate-in slide-in-from-bottom-10 duration-300">
 
-            {/* Navbar */}
-            <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-start z-10">
-              <button onClick={() => {
-                if (publicEventId) window.history.pushState({}, '', '/');
-                setViewingEvent(null);
-              }} className="w-10 h-10 rounded-full bg-black/20 backdrop-blur-md border border-white/10 flex items-center justify-center text-white active:scale-95 transition-transform">
-                <span className="material-icons">arrow_back</span>
-              </button>
-              <div className="flex gap-2">
-                <button onClick={() => handleShare(viewingEvent)} className="w-10 h-10 rounded-full bg-black/20 backdrop-blur-md border border-white/10 flex items-center justify-center text-white active:scale-95 transition-transform">
-                  <span className="material-icons">share</span>
-                </button>
-                <div className="flex flex-col items-center">
-                  <button onClick={() => toggleFavorite(viewingEvent.id)} className={`w-10 h-10 rounded-full backdrop-blur-md border border-white/10 flex items-center justify-center active:scale-95 transition-transform ${isFav ? 'bg-[#D4AF37] text-black' : 'bg-black/20 text-white'}`}>
-                    <span className="material-icons">{isFav ? 'favorite' : 'favorite_border'}</span>
-                  </button>
-                  <span className="text-[9px] font-black text-white/40 mt-1">{likesCount[viewingEvent.id] || 0} curtiu</span>
-                </div>
-              </div>
-            </div>
+                    {/* Header Image Gallery (Swipeable) */}
+                    <div className="relative h-[480px] bg-black group">
+                        <div 
+                            className="w-full h-full flex transition-transform duration-500 ease-out"
+                            style={{ transform: `translateX(-${activeImgIndex * 100}%)` }}
+                        >
+                            {allImages.map((img, i) => (
+                                <div 
+                                    key={i} 
+                                    className="w-full h-full flex-shrink-0 cursor-zoom-in"
+                                    onClick={() => setZoomImg(img)}
+                                >
+                                    <img src={img} className="w-full h-full object-cover" alt={`Banner ${i}`} />
+                                </div>
+                            ))}
+                        </div>
+                        
+                        <div className="absolute inset-0 bg-gradient-to-t from-background-dark via-transparent to-black/40 pointer-events-none"></div>
 
-            {/* Hero Info */}
-            <div className="absolute bottom-0 left-0 right-0 p-6 pt-12 bg-gradient-to-t from-background-dark to-transparent">
-              <div className="flex flex-wrap gap-2 mb-3">
-                <span className="bg-[#D4AF37] text-background-dark text-[10px] font-black px-2 py-1 rounded uppercase tracking-widest shadow-lg shadow-[#D4AF37]/20">
-                  {viewingEvent.category}
-                </span>
-                {viewingEvent.circuitoId && (
-                  <span className="bg-white/10 border border-[#D4AF37]/50 text-[#D4AF37] text-[10px] font-black px-2 py-1 rounded uppercase tracking-widest backdrop-blur-md shadow-lg">
-                    Circuito {MOCK_CIRCUITS.find(c => c.id === viewingEvent.circuitoId)?.nome}
-                  </span>
-                )}
-              </div>
-              <h1 className="text-3xl font-black uppercase leading-tight mb-2 text-white drop-shadow-xl">{viewingEvent.title}</h1>
-              <div className="flex items-center gap-2 text-white/90">
-                <span className="material-icons text-[#D4AF37] text-sm">place</span>
-                <span className="text-sm font-bold uppercase tracking-wide">{viewingEvent.location}</span>
-              </div>
-            </div>
-          </div>
+                        {/* Gallery Indicators */}
+                        {allImages.length > 1 && (
+                            <div className="absolute bottom-32 left-0 right-0 flex justify-center gap-2 z-10">
+                                {allImages.map((_, i) => (
+                                    <button 
+                                        key={i} 
+                                        onClick={() => setActiveImgIndex(i)}
+                                        className={`h-1.5 rounded-full transition-all duration-300 ${activeImgIndex === i ? 'w-6 bg-[#D4AF37]' : 'w-1.5 bg-white/40'}`}
+                                    />
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Swipe Navigation Hints (Desktop or Manual) */}
+                        {allImages.length > 1 && activeImgIndex > 0 && (
+                            <button onClick={() => setActiveImgIndex(prev => prev - 1)} className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white/60 hover:text-white z-10">
+                                <span className="material-icons">chevron_left</span>
+                            </button>
+                        )}
+                        {allImages.length > 1 && activeImgIndex < allImages.length - 1 && (
+                            <button onClick={() => setActiveImgIndex(prev => prev + 1)} className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white/60 hover:text-white z-10">
+                                <span className="material-icons">chevron_right</span>
+                            </button>
+                        )}
+
+                        {/* Navbar Controls */}
+                        <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-start z-20">
+                            <button onClick={() => {
+                                if (publicEventId) window.history.pushState({}, '', '/');
+                                setViewingEvent(null);
+                            }} className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white active:scale-95 transition-transform">
+                                <span className="material-icons">arrow_back</span>
+                            </button>
+                            <div className="flex gap-2">
+                                <button onClick={() => handleShare(viewingEvent)} className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white active:scale-95 transition-transform">
+                                    <span className="material-icons">share</span>
+                                </button>
+                                <div className="flex flex-col items-center">
+                                    <button onClick={() => toggleFavorite(viewingEvent.id)} className={`w-10 h-10 rounded-full backdrop-blur-md border border-white/10 flex items-center justify-center active:scale-95 transition-transform ${isFav ? 'bg-[#D4AF37] text-black' : 'bg-black/40 text-white'}`}>
+                                        <span className="material-icons">{isFav ? 'favorite' : 'favorite_border'}</span>
+                                    </button>
+                                    <span className="text-[9px] font-black text-white/40 mt-1">{likesCount[viewingEvent.id] || 0} curtiu</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Hero Info Overlay (Integrated into Detail page flow better) */}
+                        <div className="absolute bottom-0 left-0 right-0 p-6 pt-20 bg-gradient-to-t from-background-dark to-transparent pointer-events-none">
+                            <div className="flex flex-wrap gap-2 mb-3">
+                                <span className="bg-[#D4AF37] text-background-dark text-[10px] font-black px-2 py-1 rounded uppercase tracking-widest shadow-lg">
+                                    {viewingEvent.category}
+                                </span>
+                                {viewingEvent.circuitoId && (
+                                    <span className="bg-white/10 border border-[#D4AF37]/30 text-[#D4AF37] text-[10px] font-black px-2 py-1 rounded uppercase tracking-widest backdrop-blur-md">
+                                        Circuito {MOCK_CIRCUITS.find(c => c.id === viewingEvent.circuitoId)?.nome}
+                                    </span>
+                                )}
+                            </div>
+                            <h1 className="text-3xl font-black uppercase leading-tight mb-2 text-white drop-shadow-2xl">{viewingEvent.title}</h1>
+                            <div className="flex items-center gap-2 text-white/90">
+                                <span className="material-icons text-[#D4AF37] text-sm">place</span>
+                                <span className="text-sm font-bold uppercase tracking-wide">{viewingEvent.location}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Pinch-to-Zoom Viewer Component */}
+                    {zoomImg && (
+                        <div 
+                            className="fixed inset-0 z-[150] bg-black flex items-center justify-center animate-in fade-in zoom-in-95 duration-200"
+                            onClick={() => setZoomImg(null)}
+                        >
+                            <div className="absolute top-8 right-6 z-[160]">
+                                <button className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white border border-white/10">
+                                    <span className="material-icons">close</span>
+                                </button>
+                            </div>
+                            <div className="w-full h-full flex items-center justify-center overflow-hidden">
+                                <img 
+                                    src={zoomImg} 
+                                    className="max-w-full max-h-full object-contain select-none"
+                                    style={{ touchAction: 'none' }} // Crucial para o pinch no mobile
+                                    onClick={(e) => e.stopPropagation()}
+                                    onLoad={(e) => {
+                                        // TODO: Implementar pinch detection básico via touch events se necessário
+                                        // Mas navegadores modernos já facilitam o pinch em viewport controlada
+                                    }}
+                                />
+                            </div>
+                            <p className="absolute bottom-12 text-white/40 text-[10px] font-black uppercase tracking-[0.3em]">Arraste com 2 dedos para zoom</p>
+                        </div>
+                    )}
 
           <div className="px-6 pb-32 space-y-8 -mt-2 relative z-10">
             {/* Quick Info Bar */}
