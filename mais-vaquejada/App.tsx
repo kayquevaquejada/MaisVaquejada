@@ -144,32 +144,59 @@ const App: React.FC = () => {
     } catch (err) {
       console.error('Fetch Profile Error:', err);
     } finally {
-      isFetchingProfile.current = false;
-      setInitializing(false);
+      if (isMounted) {
+        isFetchingProfile.current = false;
+        setInitializing(false);
+      }
     }
   };
 
   useEffect(() => {
     let isMounted = true;
+    
+    // Safety Timeout: Força o desligamento do loading em no máximo 6 segundos
+    const fallbackTimeout = setTimeout(() => {
+      if (isMounted && initializing) {
+        console.warn('Initialization taking too long, forcing unlock...');
+        setInitializing(false);
+      }
+    }, 6000);
+
     async function init() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (isMounted) {
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
+
+        if (sessionError) {
+          console.error('Session Error:', sessionError);
+          setInitializing(false);
+          setCurrentView(View.LOGIN);
+          return;
+        }
+
         if (session?.user) {
           await fetchProfile(session.user.id, session.user);
         } else {
           setInitializing(false);
           setCurrentView(View.LOGIN);
         }
+      } catch (err) {
+        console.error('Init Error:', err);
+        if (isMounted) setInitializing(false);
       }
     }
+
     init();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (isMounted && session?.user) {
+      if (!isMounted) return;
+
+      if (session?.user) {
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'USER_UPDATED') {
           await fetchProfile(session.user.id, session.user);
         }
-      } else if (isMounted && event === 'SIGNED_OUT') {
+      } else if (event === 'SIGNED_OUT') {
         setUser(null);
         setCurrentView(View.LOGIN);
         setInitializing(false);
@@ -178,6 +205,7 @@ const App: React.FC = () => {
 
     return () => {
       isMounted = false;
+      clearTimeout(fallbackTimeout);
       subscription.unsubscribe();
     };
   }, []);
