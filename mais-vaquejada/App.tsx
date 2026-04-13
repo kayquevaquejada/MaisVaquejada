@@ -96,6 +96,7 @@ const App: React.FC = () => {
   const [initializing, setInitializing] = useState(true);
   const isFetchingProfile = useRef(false);
   const currentViewRef = useRef(currentView);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
     currentViewRef.current = currentView;
@@ -147,7 +148,7 @@ const App: React.FC = () => {
     } catch (err) {
       console.error('Fetch Profile Error:', err);
     } finally {
-      if (isMounted) {
+      if (isMountedRef.current) {
         isFetchingProfile.current = false;
         setInitializing(false);
       }
@@ -155,11 +156,11 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    let isMounted = true;
+    isMountedRef.current = true;
     
     // Safety Timeout: Força o desligamento do loading em no máximo 6 segundos
     const fallbackTimeout = setTimeout(() => {
-      if (isMounted && initializing) {
+      if (isMountedRef.current && initializing) {
         console.warn('Initialization taking too long, forcing unlock...');
         setInitializing(false);
       }
@@ -169,7 +170,7 @@ const App: React.FC = () => {
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
-        if (!isMounted) return;
+        if (!isMountedRef.current) return;
 
         if (sessionError) {
           console.error('Session Error:', sessionError);
@@ -186,14 +187,14 @@ const App: React.FC = () => {
         }
       } catch (err) {
         console.error('Init Error:', err);
-        if (isMounted) setInitializing(false);
+        if (isMountedRef.current) setInitializing(false);
       }
     }
 
     init();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!isMounted) return;
+      if (!isMountedRef.current) return;
 
       if (session?.user) {
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'USER_UPDATED') {
@@ -207,7 +208,7 @@ const App: React.FC = () => {
     });
 
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
       clearTimeout(fallbackTimeout);
       subscription.unsubscribe();
     };
@@ -236,6 +237,8 @@ const App: React.FC = () => {
         else if (view === View.SOCIAL) window.history.pushState(stateObj, '', `/arena`);
         else if (view === View.EVENT_DETAILS) window.history.pushState(stateObj, '', `/evento`);
         else if (view === View.EVENTS) window.history.pushState(stateObj, '', `/`);
+        else if (view === View.NEWS) window.history.pushState(stateObj, '', `/noticias`);
+        else if (view === View.MERCADO) window.history.pushState(stateObj, '', `/mercado`);
       } catch (e) {}
     };
 

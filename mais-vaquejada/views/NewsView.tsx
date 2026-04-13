@@ -26,7 +26,7 @@ function extractYouTubeId(url: string): string | null {
 
 const NewsView: React.FC<NewsViewProps> = ({ user }) => {
   const [localNews, setLocalNews] = React.useState<any[]>([]);
-  const [activeTab, setActiveTab] = React.useState('TUDO');
+  const [activeTab, setActiveTab] = React.useState('NOTÍCIAS');
   const [selectedNews, setSelectedNews] = React.useState<any | null>(null);
   const [transmissions, setTransmissions] = React.useState<any[]>([]);
   const [isTvOpen, setIsTvOpen] = React.useState(false);
@@ -66,10 +66,28 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
   }, []);
 
   const filteredNews = React.useMemo(() => {
-    if (activeTab === 'TUDO') return localNews;
-    if (activeTab === 'EVENTOS') return localNews.filter(n => n.tag === 'EVENTO' || n.title.includes('EVENTO'));
-    if (activeTab === 'REGULAMENTO') return localNews.filter(n => n.title.includes('REGULAMENTO'));
-    return localNews.filter(n => n.type === 'official' && !n.title.includes('REGULAMENTO') && n.tag !== 'EVENTO');
+    const news = localNews || [];
+    switch (activeTab) {
+      case 'TUDO':
+        return news;
+      case 'EVENTOS':
+        return news.filter(n => 
+          n.tag?.toUpperCase() === 'EVENTO' || 
+          n.title?.toUpperCase().includes('EVENTO') ||
+          n.tag?.toUpperCase() === 'PROGRAMAÇÃO'
+        );
+      case 'REGULAMENTO':
+        return news.filter(n => n.title?.toUpperCase().includes('REGULAMENTO') || n.tag?.toUpperCase() === 'REGULAMENTO');
+      case 'NOTÍCIAS':
+        return news.filter(n => 
+          n.tag?.toUpperCase() !== 'EVENTO' && 
+          n.tag?.toUpperCase() !== 'REGULAMENTO' &&
+          !n.title?.toUpperCase().includes('REGULAMENTO') &&
+          n.tag?.toUpperCase() !== 'PROGRAMAÇÃO'
+        );
+      default:
+        return news;
+    }
   }, [activeTab, localNews]);
 
   // ---- LEITURA DE NOTÍCIA ----
