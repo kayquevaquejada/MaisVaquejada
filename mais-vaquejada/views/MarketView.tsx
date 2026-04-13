@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View } from '../types';
 import { supabase } from '../lib/supabase';
 import AdsCarousel from '../components/AdsCarousel';
+import { compressImage } from '../lib/imageUtils';
 
 
 const STATES = [
@@ -235,13 +236,23 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
                 
+                // 0. Comprimir a imagem
+                let fileToUpload: File | Blob = file;
+                if (file.type.startsWith('image/')) {
+                    try {
+                        fileToUpload = await compressImage(file);
+                    } catch (e) {
+                        console.warn('Falha na compressão:', e);
+                    }
+                }
+
                 // 1. Upload para o Supabase
                 const fileExt = file.name.split('.').pop();
                 const fileName = `market/${user.id}/${Date.now()}_${i}.${fileExt}`;
                 
                 const { error: uploadError } = await supabase.storage
                     .from('vaquejadas')
-                    .upload(fileName, file);
+                    .upload(fileName, fileToUpload);
 
                 if (uploadError) {
                     console.error("Erro upload:", uploadError);

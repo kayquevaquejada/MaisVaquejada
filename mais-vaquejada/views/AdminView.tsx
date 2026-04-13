@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, View } from '../types';
 import { supabase } from '../lib/supabase';
 import AdminAdsManager from '../components/AdminAdsManager';
+import { compressImage } from '../lib/imageUtils';
 
 
 // Extrai o ID do vídeo YouTube de uma URL
@@ -83,10 +84,19 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         if (!file) return;
         setLoginBgUploading(true);
         try {
-            // 1. Upload da imagem
+            // 1. Comprimir e Upload da imagem
+            let fileToUpload: File | Blob = file;
+            if (file.type.startsWith('image/')) {
+                try {
+                    fileToUpload = await compressImage(file);
+                } catch (e) {
+                    console.warn('Falha na compressão:', e);
+                }
+            }
+
             const ext = file.name.split('.').pop();
             const fileName = `login_bg_${Date.now()}.${ext}`;
-            const { error: uploadErr } = await supabase.storage.from('vaquejadas').upload(fileName, file, { upsert: true });
+            const { error: uploadErr } = await supabase.storage.from('vaquejadas').upload(fileName, fileToUpload, { upsert: true });
             if (uploadErr) throw new Error('Erro no upload do arquivo: ' + uploadErr.message);
             
             const { data: { publicUrl } } = supabase.storage.from('vaquejadas').getPublicUrl(fileName);
@@ -219,13 +229,23 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
 
         setLoading(true);
         try {
+            // Comprimir imagem
+            let fileToUpload: File | Blob = file;
+            if (file.type.startsWith('image/')) {
+                try {
+                    fileToUpload = await compressImage(file);
+                } catch (e) {
+                    console.warn('Falha na compressão:', e);
+                }
+            }
+
             const fileExt = file.name.split('.').pop() || 'png';
             const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
             const filePath = `${fileName}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('vaquejadas')
-                .upload(filePath, file);
+                .upload(filePath, fileToUpload);
 
             if (uploadError) throw uploadError;
 
@@ -288,13 +308,23 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
 
         setLoading(true);
         try {
+            // Comprimir imagem
+            let fileToUpload: File | Blob = file;
+            if (file.type.startsWith('image/')) {
+                try {
+                    fileToUpload = await compressImage(file);
+                } catch (e) {
+                    console.warn('Falha na compressão:', e);
+                }
+            }
+
             const fileExt = file.name.split('.').pop();
             const fileName = `${Date.now()}_news_${Math.random().toString(36).substring(7)}.${fileExt}`;
             const filePath = `${fileName}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('vaquejadas')
-                .upload(filePath, file);
+                .upload(filePath, fileToUpload);
 
             if (uploadError) throw uploadError;
 
@@ -450,9 +480,19 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         if (!file) return;
         setLoading(true);
         try {
+            // Comprimir imagem
+            let fileToUpload: File | Blob = file;
+            if (file.type.startsWith('image/')) {
+                try {
+                    fileToUpload = await compressImage(file);
+                } catch (e) {
+                    console.warn('Falha na compressão:', e);
+                }
+            }
+
             const fileExt = file.name.split('.').pop();
             const fileName = `${Date.now()}_banner.${fileExt}`;
-            const { error: uploadError } = await supabase.storage.from('vaquejadas').upload(fileName, file);
+            const { error: uploadError } = await supabase.storage.from('vaquejadas').upload(fileName, fileToUpload);
             if (uploadError) throw uploadError;
             const { data: { publicUrl } } = supabase.storage.from('vaquejadas').getPublicUrl(fileName);
             setBannerForm({ ...bannerForm, image_url: publicUrl });

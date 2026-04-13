@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { compressImage } from '../../lib/imageUtils';
 
 export function useMediaUpload() {
   const [uploading, setUploading] = useState(false);
@@ -9,6 +10,16 @@ export function useMediaUpload() {
     setUploading(true);
     setProgress(0);
     try {
+      // 1. Comprimir apenas se for imagem
+      let fileToUpload: File | Blob = file;
+      if (file.type.startsWith('image/')) {
+        try {
+          fileToUpload = await compressImage(file);
+        } catch (e) {
+          console.warn('Falha na compressão, enviando original:', e);
+        }
+      }
+
       const fileExt = file.name ? file.name.split('.').pop() : (file.type ? file.type.split('/').pop() : 'jpg');
       const finalExt = fileExt === 'jpeg' ? 'jpg' : fileExt;
       const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${finalExt}`;
@@ -17,7 +28,7 @@ export function useMediaUpload() {
 
       const { data, error } = await supabase.storage
         .from(BUCKET_NAME)
-        .upload(filePath, file, {
+        .upload(filePath, fileToUpload, {
           cacheControl: '3600',
           upsert: false
         });

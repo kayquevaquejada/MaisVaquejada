@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { User } from '../types';
 import { supabase } from '../lib/supabase';
 import { createNotification } from '../lib/notifications';
+import { compressImage } from '../lib/imageUtils';
 
 interface ProfileViewProps {
     user: User | null;
@@ -47,13 +48,24 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
 
         setUploadingAvatar(true);
         try {
+            // Comprimir imagem de perfil (avatar)
+            let fileToUpload: File | Blob = file;
+            if (file.type.startsWith('image/')) {
+                try {
+                    // Para o avatar, podemos ser ainda mais agressivos no tamanho
+                    fileToUpload = await compressImage(file, { maxWidth: 800, maxHeight: 800, quality: 0.7 });
+                } catch (e) {
+                    console.warn('Falha na compressão do avatar:', e);
+                }
+            }
+
             // Padrão solicitado: userId/avatar.jpg
             const filePath = `${user.id}/avatar.jpg`;
 
             // 1. Upload para o bucket 'vaquejadas'
             const { error: uploadError } = await supabase.storage
                 .from('vaquejadas')
-                .upload(filePath, file, { 
+                .upload(filePath, fileToUpload, { 
                     upsert: true,
                     cacheControl: '0' // Desabilita cache no servidor
                 });
