@@ -535,6 +535,7 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredEvents.length > 0 ? (
           filteredEvents.map((event) => {
             const isFav = favorites.includes(event.id);
             const priceLabel = !event.price || event.price === '/' ? null : 
