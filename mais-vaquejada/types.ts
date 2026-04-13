@@ -165,6 +165,7 @@ export interface EventItem {
     day: string;
   };
   imageUrl: string;
+  images?: string[]; // Novos banners/fotos anexadas
   site?: string;
   instagram?: string;
   phone?: string;
