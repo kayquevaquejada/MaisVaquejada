@@ -259,10 +259,36 @@ const App: React.FC = () => {
 
   if (initializing) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0F0A05]">
-        <div className="flex flex-col items-center gap-6">
-          <div className="w-16 h-16 border-4 border-[#ECA413]/30 border-t-[#ECA413] rounded-full animate-spin" />
-          <p className="text-[#ECA413] font-black italic text-2xl tracking-tighter uppercase">+VAQUEJADA</p>
+      <div className="min-h-screen flex items-center justify-center bg-[#0F0A05] relative overflow-hidden">
+        {/* Efeito de brilho de fundo */}
+        <div className="absolute w-[500px] h-[500px] bg-[#ECA413]/5 rounded-full blur-[120px] animate-pulse" />
+        
+        <div className="flex flex-col items-center gap-8 relative z-10 transition-all duration-1000">
+          <div className="relative">
+            {/* Logo com animação de pulsação */}
+            <img 
+              src="/logo.png" 
+              className="w-32 h-32 object-contain animate-pulse drop-shadow-[0_0_30px_rgba(236,164,19,0.3)]" 
+              alt="Logo Arena"
+            />
+            {/* Spinner sutil em volta do logo */}
+            <div className="absolute -inset-4 border-2 border-[#ECA413]/10 border-t-[#ECA413]/40 rounded-full animate-spin duration-1000" />
+          </div>
+
+          <div className="flex flex-col items-center gap-2">
+            <h2 className="text-[#ECA413] font-black italic text-3xl tracking-[-0.05em] uppercase drop-shadow-md">
+              VAQUERAMA
+            </h2>
+            <div className="flex gap-1">
+              {[0, 1, 2].map((i) => (
+                <div 
+                  key={i} 
+                  className="w-1.5 h-1.5 bg-[#ECA413] rounded-full animate-bounce" 
+                  style={{ animationDelay: `${i * 0.15}s` }}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );
