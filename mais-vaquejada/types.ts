@@ -16,7 +16,8 @@ export enum View {
   RECOVERY_ASSISTED = 'RECOVERY_ASSISTED',
   AD_CREATION = 'AD_CREATION',
   INTERNAL_ADS = 'INTERNAL_ADS',
-  TERMS = 'TERMS'
+  TERMS = 'TERMS',
+  EVENT_DETAILS = 'EVENT_DETAILS'
 }
 
 export type UserType = 'common' | 'seller' | 'organizer' | 'admin';

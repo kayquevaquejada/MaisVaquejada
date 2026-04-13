@@ -1,476 +1,266 @@
-import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { supabase } from './lib/supabase';
 import { View, User } from './types';
+import Navbar from './components/Navbar';
 import LoginView from './views/LoginView';
 import SignUpView from './views/SignUpView';
-import NewsView from './views/NewsView';
-import EventsView from './views/EventsView';
 import SocialFeedView from './views/SocialFeedView';
-import MarketView from './views/MarketView';
+import EventsView from './views/EventsView';
+import EventDetailView from './views/EventDetailView';
+import MarketplaceView from './views/MarketView';
 import ProfileView from './views/ProfileView';
-import AdminView from './views/AdminView';
 import MediaCreationView from './views/MediaCreationView';
 import SettingsView from './views/SettingsView';
+import AdminView from './views/AdminView';
+import AdminUsersView from './views/AdminUsersView';
+import InternalAdManager from './components/AdminAdsManager';
+import EULAView from './views/EULAView';
 import ForgotPasswordView from './views/ForgotPasswordView';
 import CompleteProfileView from './views/CompleteProfileView';
-import AdminUsersView from './views/AdminUsersView';
 import BlockedAccountView from './views/BlockedAccountView';
 import RecoveryAssistedView from './views/RecoveryAssistedView';
-import EULAView from './views/EULAView';
-import Navbar from './components/Navbar';
+import UpdateManager from './components/UpdateManager';
 import { CallProvider } from './context/CallContext';
 import { CallBar } from './components/CallBar';
 import { CallScreen } from './components/CallScreen';
-import { supabase } from './lib/supabase';
-import { requestPushPermission } from './lib/notifications';
-import UpdateManager from './components/UpdateManager';
-import { InternalAdManager } from './social/screens/InternalAdManager';
 
-// Escudo de Erros (ErrorBoundary)
-class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean, error: any}> {
-  constructor(props: any) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-  static getDerivedStateFromError(error: any) {
-    return { hasError: true, error };
-  }
-  componentDidCatch(error: any, errorInfo: ErrorInfo) {
-    console.error("ErrorBoundary caught an error", error, errorInfo);
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="fixed inset-0 z-[9999] bg-white text-black p-10 flex flex-col items-center justify-center text-center">
-          <h1 className="text-2xl font-black mb-4 uppercase text-red-600">ERRO DE COMPONENTE</h1>
-          <p className="font-mono text-sm bg-gray-100 p-4 rounded mb-6">{this.state.error?.message || "Erro desconhecido"}</p>
-          <button onClick={() => window.location.reload()} className="bg-black text-white px-6 py-3 rounded-full font-bold">RECARREGAR</button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
+const MASTER_EMAILS = ["kayquegusmao@icloud.com", "kayquegusmao276@gmail.com", "Kayquegusmao1@gmail.com", "drkayquegusmao@gmail.com", "contato@maisvaquejada.com.br"];
+
+// ─── ViewRenderer definido FORA do App para evitar remontagem a cada render ───
+interface ViewRendererProps {
+  currentView: View;
+  selectedEvent: any;
+  user: User | null;
+  profileUsername: string | null;
+  onFetchProfile: (userId: string, authUser?: any) => Promise<void>;
+  onSetCurrentView: (view: View) => void;
 }
 
+const ViewRenderer: React.FC<ViewRendererProps> = ({
+  currentView,
+  selectedEvent,
+  user,
+  profileUsername,
+  onFetchProfile,
+  onSetCurrentView,
+}) => {
+  switch (currentView) {
+    case View.LOGIN:
+      return <LoginView onLogin={(u) => onFetchProfile(u.id, u)} onSignUp={() => onSetCurrentView(View.SIGNUP)} onForgotPassword={() => onSetCurrentView(View.FORGOT_PASSWORD)} onRecoveryAssisted={() => onSetCurrentView(View.RECOVERY_ASSISTED)} onTerms={() => onSetCurrentView(View.TERMS)} />;
+    case View.SIGNUP:
+      return <SignUpView onBack={() => onSetCurrentView(View.LOGIN)} onSuccess={(u) => onFetchProfile(u.id, u)} />;
+    case View.COMPLETE_PROFILE:
+      return <CompleteProfileView user={user} onComplete={() => user && onFetchProfile(user.id)} onLogout={() => supabase.auth.signOut()} />;
+    case View.SOCIAL:
+      return <SocialFeedView user={user} onMediaCreation={() => onSetCurrentView(View.MEDIA_CREATION)} />;
+    case View.EVENTS:
+      return <EventsView onLoginPrompt={() => onSetCurrentView(View.LOGIN)} />;
+    case View.MERCADO:
+      return <MarketplaceView user={user} onViewChange={onSetCurrentView} />;
+    case View.PROFILE:
+      return <ProfileView user={user} targetUsername={profileUsername} onLogout={() => supabase.auth.signOut()} onAdminView={() => onSetCurrentView(View.ADMIN)} onSettingsView={() => onSetCurrentView(View.SETTINGS)} onProfileUpdate={() => user && onFetchProfile(user.id)} />;
+    case View.MEDIA_CREATION:
+      return <MediaCreationView user={user} onClose={() => onSetCurrentView(View.SOCIAL)} onSuccess={() => onSetCurrentView(View.SOCIAL)} />;
+    case View.SETTINGS:
+      return <SettingsView user={user} onBack={() => onSetCurrentView(View.PROFILE)} onLogout={() => supabase.auth.signOut()} onAdminView={() => onSetCurrentView(View.ADMIN)} onProfileUpdate={() => user && onFetchProfile(user.id)} />;
+    case View.ADMIN:
+      return <AdminView user={user} />;
+    case View.ADMIN_USERS:
+      return <AdminUsersView user={user} />;
+    case View.INTERNAL_ADS:
+      return <InternalAdManager user={user} onBack={() => onSetCurrentView(View.ADMIN)} />;
+    case View.TERMS:
+      return <EULAView onBack={() => onSetCurrentView(View.LOGIN)} />;
+    case View.FORGOT_PASSWORD:
+      return <ForgotPasswordView onBack={() => onSetCurrentView(View.LOGIN)} />;
+    case View.BLOCKED_ACCOUNT:
+      return <BlockedAccountView onLogout={() => supabase.auth.signOut()} />;
+    case View.RECOVERY_ASSISTED:
+      return <RecoveryAssistedView onBack={() => onSetCurrentView(View.LOGIN)} />;
+    case View.EVENT_DETAILS:
+      return <EventDetailView event={selectedEvent} onBack={() => onSetCurrentView(View.EVENTS)} />;
+    default:
+      return <EventsView />;
+  }
+};
+
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<View>(View.LOGIN);
-  const [navKey, setNavKey] = useState(0);
+  const [currentView, setCurrentView] = useState<View>(View.EVENTS);
+  const [navKey, setNavKey] = useState(Date.now());
   const [profileUsername, setProfileUsername] = useState<string | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [user, setUser] = useState<User | null>(null);
-  const currentViewRef = React.useRef<View>(currentView);
+  const [initializing, setInitializing] = useState(true);
+  const isFetchingProfile = useRef(false);
+  const currentViewRef = useRef(currentView);
 
   useEffect(() => {
     currentViewRef.current = currentView;
   }, [currentView]);
-  
-  const MASTER_EMAILS = [
-    'kayquegusmao@icloud.com',
-    'kayquegusmao276@gmail.com',
-    'Kayquegusmao1@gmail.com',
-    'drkayquegusmao@gmail.com',
-    'contato@maisvaquejada.com.br'
-  ];
-  const [initializing, setInitializing] = useState(true);
-  const [isBiometricLocked, setIsBiometricLocked] = useState(false);
-  const isFetchingProfile = React.useRef(false);
 
-  useEffect(() => {
-    const initApp = async () => {
-      try {
-        const params = new URLSearchParams(window.location.search);
-        const eventId = params.get('event');
-        if (eventId) {
-          sessionStorage.setItem('pending_event_id', eventId);
-        }
-
-        // Verificação manual imediata para destravar o carregamento
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          await fetchProfile(session.user.id, session.user);
-        } else if (!session) {
-          // Se não houver sessão logo de cara, espera um pouco para ver se o evento chega
-          // ou destrava no Login em 1.5 segundos
-          setTimeout(() => {
-            if (initializing) {
-              setInitializing(false);
-              setCurrentView(View.LOGIN);
-            }
-          }, 1500);
-        }
-      } catch (err) {
-        console.error('Init Error:', err);
-        setInitializing(false);
-      }
-    };
-
-    initApp();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('App Auth Change:', event, !!session);
-      
-      if (session?.user) {
-        // Se temos usuário, buscamos o perfil. fetchProfile vai setar initializing como false no final.
-        await fetchProfile(session.user.id, session.user);
-      } else {
-        // Se não temos sessão (evento INITIAL_SESSION com session null ou SIGNED_OUT)
-        setUser(null);
-        setCurrentView(View.LOGIN);
-        setInitializing(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  useEffect(() => {
-  const handleNav = (e: any) => {
-    const view = e.detail?.view || currentView;
-    const username = e.detail?.username ?? null;
-    
-    // Proteção: Redirecionar para Login se tentar acessar views restritas sem estar logado
-    const publicViews = [View.LOGIN, View.SIGNUP, View.FORGOT_PASSWORD, View.RECOVERY_ASSISTED];
-    if (!user && !publicViews.includes(view)) {
-        setCurrentView(View.LOGIN);
-        return;
-    }
-
-    setCurrentView(view);
-    setNavKey(Date.now());
-    if (username !== undefined) {
-        setProfileUsername(username);
-    }
-
-    const stateObj = { view, username };
-    if (username) {
-        window.history.pushState(stateObj, '', `/perfil/${username}`);
-    } else if (view === View.PROFILE) {
-        window.history.pushState(stateObj, '', `/perfil`);
-    } else {
-        window.history.pushState(stateObj, '', `/`);
-    }
-  };
-
-    const handlePopState = (e: PopStateEvent) => {
-        if (e.state) {
-            setCurrentView(e.state.view);
-            setProfileUsername(e.state.username);
-            setNavKey(Date.now());
-        } else {
-            const path = window.location.pathname;
-            if (path.startsWith('/perfil/')) {
-                const parts = path.split('/perfil/');
-                setProfileUsername(parts[1] || null);
-                setCurrentView(View.PROFILE);
-            } else if (path === '/perfil' || path === '/meu-perfil') {
-                setProfileUsername(null);
-                setCurrentView(View.PROFILE);
-            } else {
-                setCurrentView(View.EVENTS);
-            }
-            setNavKey(Date.now());
-        }
-    };
-
-    window.addEventListener('arena_navigate', handleNav);
-    window.addEventListener('popstate', handlePopState);
-    
-    return () => {
-        window.removeEventListener('arena_navigate', handleNav);
-        window.removeEventListener('popstate', handlePopState);
-    };
-  }, [currentView, user]);
-
-  useEffect(() => {
-    if (currentView !== View.LOGIN && currentView !== View.SIGNUP && currentView !== View.FORGOT_PASSWORD && currentView !== View.COMPLETE_PROFILE) {
-      localStorage.setItem('arena_last_view', currentView);
-    }
-  }, [currentView]);
-
-  const fetchProfile = async (userId: string, authUserFromSession?: any) => {
-    if (!userId || isFetchingProfile.current) return;
-    
+  const fetchProfile = async (userId: string, authUser?: any) => {
+    if (isFetchingProfile.current) return;
+    isFetchingProfile.current = true;
     try {
-      isFetchingProfile.current = true;
-      
-      let authUser = authUserFromSession;
-      if (!authUser) {
-        const { data: authData } = await supabase.auth.getUser();
-        authUser = authData?.user;
-      }
-      
-      const userEmail = authUser?.email;
-      const isMasterEmail = userEmail && MASTER_EMAILS.some(e => e.toLowerCase() === userEmail.toLowerCase());
-
-      const queryPromise = supabase
+      const { data: profile } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .maybeSingle();
 
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('TIMEOUT_QUERY_PROFILES')), 10000)
-      );
-
-      let profile = null;
-      let error = null;
-
-      try {
-        const result: any = await Promise.race([queryPromise, timeoutPromise]);
-        profile = result.data;
-        error = result.error;
-      } catch (e: any) {
-        console.error('Profile query failed or timed out:', e);
-        error = e;
-      }
-
-      if (!profile && !error && authUser) {
-        const isMaster = authUser.email && MASTER_EMAILS.some(e => e.toLowerCase() === authUser.email?.toLowerCase());
-
-        const newProfile = {
-          id: authUser.id,
-          name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || 'Vaqueiro',
-          display_name: authUser.user_metadata?.name || authUser.user_metadata?.full_name?.split(' ')[0] || 'Vaqueiro',
-          email: authUser.email,
-          role: isMaster ? 'ADMIN_MASTER' : 'USER',
-          status: 'ACTIVE',
-          profile_completed: false
-        };
-        
-        const { data: created, error: createError } = await supabase
-          .from('profiles')
-          .insert([newProfile])
-          .select()
-          .single();
-        
-        if (!createError) {
-          profile = created;
-        }
-      }
-
       if (profile) {
         const mappedUser: User = {
           id: profile.id,
-          name: profile.full_name || profile.display_name || 'Vaqueiro',
+          name: profile.full_name || profile.name || 'Vaqueiro',
           email: profile.email,
-          role: profile.role || (isMasterEmail ? 'ADMIN_MASTER' : 'USER'),
+          role: profile.role,
           status: profile.status,
           profile_completed: profile.profile_completed,
-          username: profile.username || (profile.full_name || 'user').toLowerCase().replace(/\s+/g, ''),
+          username: profile.username || '',
           avatar_url: profile.avatar_url,
           admin_mercado: profile.admin_mercado || false,
           admin_social: profile.admin_social || false,
           admin_eventos: profile.admin_eventos || false,
           admin_noticias: profile.admin_noticias || false,
-          isMaster: isMasterEmail,
+          isMaster: MASTER_EMAILS.includes(profile.email?.toLowerCase()),
           bio: profile.bio
         } as any;
         
         setUser(mappedUser);
 
-        // REGRA DE OURO REFORÇADA: Se já tem username ou flag de completo, NÃO redireciona. 
-        // Se estiver em uma tela principal ou de configuração, nunca joga para o Quase Lá.
-        const hasUsername = !!(profile.username && profile.username.length >= 2);
-        const hasBasicData = !!(profile.city_id || profile.phone || profile.state_id);
-        const isActuallyComplete = profile.profile_completed || hasUsername || hasBasicData;
-        
-        // Usamos a Ref para evitar closures obsoletas (stale closures)
+        const isEstablished = profile.profile_completed || (profile.username && profile.username.length >= 2);
         const activeView = currentViewRef.current;
+        const onboardingViews = [View.LOGIN, View.SIGNUP, View.COMPLETE_PROFILE];
 
-        // Incluímos SETTINGS e ADMIN na lista de views seguras para evitar "ejeção" durante navegação
-        const isAlreadyOnMainView = [
-          View.SOCIAL, View.EVENTS, View.MERCADO, View.NEWS, View.PROFILE, 
-          View.SETTINGS, View.ADMIN, View.AD_CREATION, View.INTERNAL_ADS, View.ADMIN_USERS,
-          View.MEDIA_CREATION
-        ].includes(activeView);
-
-        if (!isActuallyComplete && !isAlreadyOnMainView) {
-          setCurrentView(View.COMPLETE_PROFILE);
-        } else {
-          // Se tem username mas a flag está false, corrige no background para futuras sessões
-          if (isActuallyComplete && !profile.profile_completed) {
-            supabase.from('profiles').update({ profile_completed: true }).eq('id', profile.id)
-              .then(() => console.log('✓ Perfil sincronizado como completo via background'));
-          }
-          
-          // Só redireciona se estiver no Login/SignUp ou explicitamente na tela de completar (e já estar completo)
-          if (activeView === View.LOGIN || activeView === View.SIGNUP || activeView === View.COMPLETE_PROFILE) {
+        if (isEstablished) {
+          if (onboardingViews.includes(activeView)) {
              const savedView = localStorage.getItem('arena_last_view');
              setCurrentView((savedView as View) || View.EVENTS);
           }
+        } else if (!onboardingViews.includes(activeView)) {
+          setCurrentView(View.COMPLETE_PROFILE);
         }
-      } else if (authUser && !error) {
-        // Fallback apenas se NÃO houve erro de conexão/banco e o perfil realmente não existe
-        setUser({
-          id: userId,
-          email: authUser.email || '',
-          name: authUser.user_metadata?.full_name || 'Vaqueiro',
-          role: isMasterEmail ? 'ADMIN_MASTER' : 'USER',
-          status: 'ACTIVE',
-          profile_completed: false
-        } as any);
-        setCurrentView(View.COMPLETE_PROFILE);
       }
-    } catch (err: any) {
-      console.error('CRITICAL: Error in fetchProfile:', err);
+    } catch (err) {
+      console.error('Fetch Profile Error:', err);
     } finally {
       isFetchingProfile.current = false;
       setInitializing(false);
     }
   };
 
-  const handleAuthSuccess = async (userData: any) => {
-    setInitializing(true);
-    if (userData?.id) {
-      fetchProfile(userData.id, userData);
-    }
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    localStorage.removeItem('arena_last_view');
-    setCurrentView(View.LOGIN);
-  };
-
-  const renderView = () => {
-    try {
-      switch (currentView) {
-        case View.LOGIN:
-          return (
-            <LoginView 
-              onLogin={handleAuthSuccess} 
-              onSignUp={() => setCurrentView(View.SIGNUP)} 
-              onForgotPassword={() => setCurrentView(View.FORGOT_PASSWORD)} 
-              onRecoveryAssisted={() => setCurrentView(View.RECOVERY_ASSISTED)}
-              onTerms={() => setCurrentView(View.TERMS)}
-            />
-          );
-        case View.SIGNUP:
-          return <SignUpView onBack={() => setCurrentView(View.LOGIN)} onSuccess={handleAuthSuccess} />;
-        case View.COMPLETE_PROFILE:
-          return <CompleteProfileView user={user} onComplete={() => user && fetchProfile(user.id)} onLogout={handleLogout} />;
-        case View.ADMIN_USERS:
-          return <AdminUsersView user={user} />;
-        case View.BLOCKED_ACCOUNT:
-          return <BlockedAccountView onLogout={handleLogout} />;
-        case View.RECOVERY_ASSISTED:
-          return <RecoveryAssistedView onBack={() => setCurrentView(View.LOGIN)} />;
-        case View.NEWS:
-          return <NewsView user={user} />;
-        case View.EVENTS:
-          const eventsParams = new URLSearchParams(window.location.search);
-          return <EventsView publicEventId={eventsParams.get('event') || undefined} onLoginPrompt={() => setCurrentView(View.LOGIN)} />;
-        case View.SOCIAL:
-          return <SocialFeedView user={user} onMediaCreation={() => setCurrentView(View.MEDIA_CREATION)} />;
-        case View.MERCADO:
-          return <MarketView user={user} onViewChange={setCurrentView} />;
-        case View.AD_CREATION:
-          return <MarketView user={user} forceShowWizard={true} onViewChange={setCurrentView} onWizardClose={() => setCurrentView(View.MERCADO)} />;
-        case View.PROFILE:
-          return <ProfileView 
-            user={user} 
-            targetUsername={profileUsername} 
-            onLogout={handleLogout} 
-            onAdminView={() => setCurrentView(View.ADMIN)} 
-            onSettingsView={() => setCurrentView(View.SETTINGS)} 
-            onProfileUpdate={() => user && fetchProfile(user.id)}
-          />;
-        case View.ADMIN:
-          return <AdminView user={user} />;
-        case View.MEDIA_CREATION:
-          return (
-            <MediaCreationView
-              user={user}
-              onClose={() => setCurrentView(View.SOCIAL)}
-              onSuccess={() => {
-                setCurrentView(View.SOCIAL);
-                alert('Publicado com sucesso!');
-              }}
-            />
-          );
-        case View.SETTINGS:
-          return (
-            <SettingsView
-              user={user}
-              onBack={() => setCurrentView(View.PROFILE)}
-              onLogout={handleLogout}
-              onAdminView={() => setCurrentView(View.ADMIN)}
-              onProfileUpdate={() => user && fetchProfile(user.id)}
-            />
-          );
-        case View.FORGOT_PASSWORD:
-          return <ForgotPasswordView onBack={() => setCurrentView(View.LOGIN)} />;
-        case View.INTERNAL_ADS:
-          return <InternalAdManager user={user} onBack={() => setCurrentView(View.ADMIN)} />;
-        case View.TERMS:
-          return <EULAView onBack={() => setCurrentView(View.LOGIN)} />;
-        default:
-          return <EventsView />;
+  useEffect(() => {
+    let isMounted = true;
+    async function init() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (isMounted) {
+        if (session?.user) {
+          await fetchProfile(session.user.id, session.user);
+        } else {
+          setInitializing(false);
+          setCurrentView(View.LOGIN);
+        }
       }
-    } catch (e: any) {
-      console.error('CRITICAL RENDER ERROR:', e);
-      return (
-        <div className="fixed inset-0 z-[5000] bg-white text-black p-10 flex flex-col items-center justify-center text-center">
-          <span className="material-icons text-red-600 text-6xl mb-4">error</span>
-          <h1 className="text-2xl font-black mb-2 uppercase">ERRO CRÍTICO NA VIEW: {currentView}</h1>
-          <p className="text-sm font-mono bg-gray-100 p-4 rounded-xl border border-red-200 mb-6 max-w-lg overflow-auto">
-            {e.message || 'Erro desconhecido'}
-          </p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="px-8 py-4 bg-black text-white rounded-full font-black uppercase text-xs"
-          >
-            RECARREGAR APLICATIVO
-          </button>
-        </div>
-      );
     }
-  };
+    init();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (isMounted && session?.user) {
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'USER_UPDATED') {
+          await fetchProfile(session.user.id, session.user);
+        }
+      } else if (isMounted && event === 'SIGNED_OUT') {
+        setUser(null);
+        setCurrentView(View.LOGIN);
+        setInitializing(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleNav = (e: any) => {
+      const view = e.detail?.view || currentView;
+      const username = e.detail?.username ?? null;
+      const eventData = e.detail?.event ?? null;
+
+      if (!user && ![View.LOGIN, View.SIGNUP, View.FORGOT_PASSWORD, View.RECOVERY_ASSISTED, View.TERMS].includes(view)) {
+        setCurrentView(View.LOGIN);
+        return;
+      }
+
+      setCurrentView(view);
+      setNavKey(Date.now());
+      if (username !== undefined) setProfileUsername(username);
+      if (eventData !== undefined) setSelectedEvent(eventData);
+      
+      try {
+        const stateObj = { view, username, event: eventData };
+        if (username) window.history.pushState(stateObj, '', `/perfil/${username}`);
+        else if (view === View.PROFILE) window.history.pushState(stateObj, '', `/perfil`);
+        else if (view === View.SOCIAL) window.history.pushState(stateObj, '', `/arena`);
+        else if (view === View.EVENT_DETAILS) window.history.pushState(stateObj, '', `/evento`);
+        else if (view === View.EVENTS) window.history.pushState(stateObj, '', `/`);
+      } catch (e) {}
+    };
+
+    const handlePopState = (e: PopStateEvent) => {
+      if (e.state) {
+        setCurrentView(e.state.view);
+        setProfileUsername(e.state.username);
+        setNavKey(Date.now());
+      }
+    };
+
+    window.addEventListener('arena_navigate', handleNav);
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('arena_navigate', handleNav);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [user, currentView]);
+
+  // ViewRenderer agora é um componente de módulo (definido acima do App)
+  // Passamos as props necessárias para evitar remontagem a cada render
 
   const showNavbar = ![View.LOGIN, View.SIGNUP, View.FORGOT_PASSWORD, View.COMPLETE_PROFILE, View.BLOCKED_ACCOUNT, View.RECOVERY_ASSISTED, View.AD_CREATION].includes(currentView);
 
   if (initializing) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#0F0A05] relative overflow-hidden">
-        {/* Mesmo background do login */}
-        <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/40 to-[#0F0A05] z-10" />
-          <img
-            src="https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80"
-            className="w-full h-full object-cover scale-110"
-            alt="Vaquejada Background"
-          />
-        </div>
-        <div className="relative z-20 flex flex-col items-center gap-6">
+      <div className="min-h-screen flex items-center justify-center bg-[#0F0A05]">
+        <div className="flex flex-col items-center gap-6">
           <div className="w-16 h-16 border-4 border-[#ECA413]/30 border-t-[#ECA413] rounded-full animate-spin" />
-          <p className="font-black tracking-tighter italic leading-none flex items-baseline">
-            <span className="text-[#ECA413]" style={{ fontSize: '2.5rem', lineHeight: 1, marginRight: '-0.1em' }}>+V</span><span className="text-white text-3xl">AQUEJADA</span>
-          </p>
-          <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Carregando...</p>
+          <p className="text-[#ECA413] font-black italic text-2xl tracking-tighter uppercase">+VAQUEJADA</p>
         </div>
       </div>
     );
   }
 
   return (
-    <ErrorBoundary>
-      <CallProvider userId={user?.id}>
-        <div className="min-h-screen flex flex-col bg-background-dark overflow-hidden">
-          <div className="relative w-full h-screen bg-background-dark overflow-hidden flex flex-col">
-            <UpdateManager />
-            <div className="flex-1 overflow-y-auto hide-scrollbar relative">
-              <div key={navKey} className="max-w-7xl mx-auto w-full h-full">
-                {renderView()}
-              </div>
-            </div>
-            {showNavbar && (
-              <Navbar currentView={currentView} user={user} />
-            )}
-            <CallBar />
-            <CallScreen />
+    <CallProvider userId={user?.id}>
+      <div className="min-h-screen flex flex-col bg-background-dark overflow-hidden">
+        <UpdateManager />
+        <div className="flex-1 overflow-y-auto relative scroll-smooth hide-scrollbar">
+          <div key={`${currentView}-${navKey}`} className="max-w-7xl mx-auto w-full h-full">
+            <ViewRenderer
+              currentView={currentView}
+              selectedEvent={selectedEvent}
+              user={user}
+              profileUsername={profileUsername}
+              onFetchProfile={fetchProfile}
+              onSetCurrentView={setCurrentView}
+            />
           </div>
         </div>
-      </CallProvider>
-    </ErrorBoundary>
+        {showNavbar && <Navbar currentView={currentView} user={user} />}
+        <CallBar />
+        <CallScreen />
+      </div>
+    </CallProvider>
   );
 };
 
