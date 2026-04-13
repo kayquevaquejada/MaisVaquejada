@@ -118,6 +118,8 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
     return saved ? JSON.parse(saved) : [];
   });
   const [likesCount, setLikesCount] = useState<Record<string, number>>({});
+  const [activeImgIndex, setActiveImgIndex] = useState(0);
+  const [zoomImg, setZoomImg] = useState<string | null>(null);
 
   // Sync with public event from URL
   useEffect(() => {
@@ -238,8 +240,6 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
     // Detail View Overlay
     if (viewingEvent) {
         const isFav = favorites.includes(viewingEvent.id);
-        const [activeImgIndex, setActiveImgIndex] = useState(0);
-        const [zoomImg, setZoomImg] = useState<string | null>(null);
         
         // Combine cover + gallery
         const allImages = [
