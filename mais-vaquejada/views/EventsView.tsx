@@ -535,62 +535,88 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredEvents.length > 0 ? (
           filteredEvents.map((event) => {
             const isFav = favorites.includes(event.id);
-            return (
-              <div key={event.id} className="bg-white/5 border border-white/10 rounded-[32px] overflow-hidden shadow-xl group">
-                <div className="relative h-64">
-                  <img src={event.imageUrl} className="w-full h-full object-cover grayscale-[0.2] group-hover:grayscale-0 transition-all duration-500" alt={event.title} />
-                  <div className="absolute top-4 left-4 bg-[#D4AF37] px-3 py-1 rounded text-[10px] font-black text-background-dark flex items-center gap-1 shadow-lg">
-                    <span className="material-icons text-[14px]">verified</span> OFICIAL
-                  </div>
-                  <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md rounded-xl p-2.5 text-center min-w-[50px] border border-white/10 shadow-lg">
-                    <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest leading-none mb-0.5">{event.date.month}</p>
-                    <p className="text-xl font-black text-white leading-none">{event.date.day}</p>
-                  </div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-background-dark to-transparent opacity-80"></div>
+            const priceLabel = !event.price || event.price === '/' ? null : 
+                               event.price.toLowerCase().includes('grátis') ? 'Entrada Gratuita' :
+                               event.price.toLowerCase().includes('breve') ? 'Em Breve' :
+                               `A partir de ${event.price}`;
 
-                  <div className="absolute bottom-6 left-6 right-6">
-                    <h3 className="text-2xl font-black mb-1 font-display text-white leading-tight">{event.title}</h3>
-                    <div className="flex items-center gap-1 text-[#D4AF37]">
-                      <span className="material-icons text-sm">place</span>
-                      <span className="text-xs font-medium uppercase tracking-wide">{event.location} • {event.park}</span>
+            return (
+              <div 
+                key={event.id} 
+                onClick={() => setViewingEvent(event)}
+                className="group relative bg-[#1A1108] rounded-[32px] overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.4)] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.6)] border border-white/5 cursor-pointer"
+              >
+                {/* Background Image with Premium Overlays */}
+                <div className="relative h-[280px] w-full overflow-hidden">
+                  <img 
+                    src={event.imageUrl} 
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                    alt={event.title} 
+                  />
+                  {/* Layered Gradients for maximum readability */}
+                  <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px]"></div>
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-[#1A1108]"></div>
+                  
+                  {/* Badge Oficial */}
+                  <div className="absolute top-5 left-5 bg-[#D4AF37]/90 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-black text-background-dark flex items-center gap-1 shadow-lg shadow-black/20">
+                    <span className="material-icons text-[12px]">verified</span> OFICIAL
+                  </div>
+
+                  {/* Badge Data (Top Right) */}
+                  <div className="absolute top-5 right-5 bg-black/60 backdrop-blur-md rounded-2xl px-4 py-2 text-center border border-white/10 shadow-xl">
+                    <p className="text-[8px] font-black text-white/50 uppercase tracking-[0.2em] leading-none mb-1">{event.date.month}</p>
+                    <p className="text-lg font-black text-white leading-none">{event.date.day}</p>
+                  </div>
+
+                  {/* Floating Action Buttons (Higher Z-Index to stay clickable separately if needed, though card is also clickable) */}
+                  <div className="absolute top-[160px] right-5 flex flex-col gap-3 z-20">
+                    <div className="flex flex-col items-center">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); toggleFavorite(event.id, e); }}
+                            className={`w-11 h-11 rounded-2xl flex items-center justify-center backdrop-blur-xl border border-white/20 transition-all active:scale-90 ${isFav ? 'bg-[#D4AF37] text-black shadow-[0_0_20px_rgba(212,175,55,0.4)]' : 'bg-black/40 text-white hover:bg-black/60'}`}
+                        >
+                            <span className="material-icons text-xl">{isFav ? 'favorite' : 'favorite_border'}</span>
+                        </button>
+                        <span className="text-[8px] font-black text-white/40 mt-1 uppercase tracking-widest drop-shadow-md">{likesCount[event.id] || 0}</span>
                     </div>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); handleShare(event, e); }}
+                        className="w-11 h-11 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/20 text-white active:scale-90 hover:bg-black/60 transition-all"
+                    >
+                        <span className="material-icons text-xl">share</span>
+                    </button>
                   </div>
                 </div>
 
-                <div className="p-6 bg-white/[0.02]">
-                  <div className="flex justify-between items-center mb-6">
-                    <div>
-                      <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1">VALOR DA SENHA</p>
-                      <p className="text-xl font-black text-[#D4AF37]">{event.price} <span className="text-xs font-normal text-white/40">/{event.category}</span></p>
-                    </div>
-                    <div className="flex gap-3">
-                      <div className="flex flex-col items-center">
-                        <button
-                            onClick={(e) => toggleFavorite(event.id, e)}
-                            className={`w-12 h-12 rounded-xl flex items-center justify-center border transition-colors ${isFav ? 'bg-[#D4AF37]/10 border-[#D4AF37] text-[#D4AF37]' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}
-                        >
-                            <span className="material-icons">{isFav ? 'favorite' : 'favorite_border'}</span>
-                        </button>
-                        <span className="text-[8px] font-black text-white/20 mt-1 uppercase tracking-widest">{likesCount[event.id] || 0}</span>
-                      </div>
-                      <button
-                        onClick={(e) => handleShare(event, e)}
-                        className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 text-white/40 hover:text-white transition-colors"
-                      >
-                        <span className="material-icons">share</span>
-                      </button>
+                {/* Content Section */}
+                <div className="px-7 pb-8 -mt-6 relative z-10">
+                  <div className="space-y-1">
+                    <h3 className="text-3xl font-black text-white uppercase tracking-tighter italic leading-none drop-shadow-md truncate">
+                        {event.title}
+                    </h3>
+                    <p className="text-sm font-bold text-white/80 leading-tight truncate">
+                        {event.park}
+                    </p>
+                    <div className="flex items-center gap-1.5 text-white/60 pt-1">
+                      <span className="material-icons text-xs text-[#D4AF37]">place</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest truncate">{event.location}</span>
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => setViewingEvent(event)}
-                    className="w-full bg-[#D4AF37] text-background-dark font-black py-4 rounded-2xl flex items-center justify-center gap-2 uppercase tracking-widest shadow-lg shadow-[#D4AF37]/20 active:scale-[0.98] transition-all hover:bg-[#c5a028]"
-                  >
-                    VER DETALHES <span className="material-icons text-lg">arrow_forward</span>
-                  </button>
+                  {/* Price Info */}
+                  {priceLabel && (
+                    <div className="mt-6 pt-5 border-t border-white/5 flex items-center justify-between">
+                        <div>
+                            <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mb-1">Valor da Senha</p>
+                            <p className="text-base font-black text-[#D4AF37] tracking-tight">{priceLabel}</p>
+                        </div>
+                        <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
+                            <span className="material-icons text-sm text-white/20">arrow_forward</span>
+                        </div>
+                    </div>
+                  )}
                 </div>
               </div>
             );
