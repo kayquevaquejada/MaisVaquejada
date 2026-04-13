@@ -8,6 +8,7 @@ import SocialFeedView from './views/SocialFeedView';
 import EventsView from './views/EventsView';
 import EventDetailView from './views/EventDetailView';
 import MarketplaceView from './views/MarketView';
+import NewsView from './views/NewsView';
 import ProfileView from './views/ProfileView';
 import MediaCreationView from './views/MediaCreationView';
 import SettingsView from './views/SettingsView';
@@ -55,6 +56,8 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
       return <SocialFeedView user={user} onMediaCreation={() => onSetCurrentView(View.MEDIA_CREATION)} />;
     case View.EVENTS:
       return <EventsView onLoginPrompt={() => onSetCurrentView(View.LOGIN)} />;
+    case View.NEWS:
+      return <NewsView />;
     case View.MERCADO:
       return <MarketplaceView user={user} onViewChange={onSetCurrentView} />;
     case View.PROFILE:
