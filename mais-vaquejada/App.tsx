@@ -266,34 +266,27 @@ const App: React.FC = () => {
   if (initializing) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0F0A05] relative overflow-hidden">
-        {/* Efeito de brilho de fundo */}
-        <div className="absolute w-[500px] h-[500px] bg-[#ECA413]/5 rounded-full blur-[120px] animate-pulse" />
+        {/* Background do Cavalo */}
+        <div className="absolute inset-0 z-0">
+          <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/40 to-[#0F0A05] z-10" />
+          <img
+            src="https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80"
+            className="w-full h-full object-cover scale-110 animate-pulse duration-[10000ms]"
+            alt="Vaquejada Background"
+          />
+        </div>
         
-        <div className="flex flex-col items-center gap-8 relative z-10 transition-all duration-1000">
-          <div className="relative">
-            {/* Logo com animação de pulsação */}
-            <img 
-              src="/logo.png" 
-              className="w-32 h-32 object-contain animate-pulse drop-shadow-[0_0_30px_rgba(236,164,19,0.3)]" 
-              alt="Logo Arena"
-            />
-            {/* Spinner sutil em volta do logo */}
-            <div className="absolute -inset-4 border-2 border-[#ECA413]/10 border-t-[#ECA413]/40 rounded-full animate-spin duration-1000" />
-          </div>
-
-          <div className="flex flex-col items-center gap-2">
-            <h2 className="text-[#ECA413] font-black italic text-3xl tracking-[-0.05em] uppercase drop-shadow-md">
-              VAQUERAMA
-            </h2>
-            <div className="flex gap-1">
-              {[0, 1, 2].map((i) => (
-                <div 
-                  key={i} 
-                  className="w-1.5 h-1.5 bg-[#ECA413] rounded-full animate-bounce" 
-                  style={{ animationDelay: `${i * 0.15}s` }}
-                />
-              ))}
+        <div className="flex flex-col items-center gap-8 relative z-10 transition-all duration-1000 text-center">
+          <div className="w-16 h-16 border-4 border-[#ECA413]/30 border-t-[#ECA413] rounded-full animate-spin" />
+          
+          <div className="animate-in fade-in slide-in-from-top-10 duration-1000">
+            <div className="flex justify-center mb-4">
+              <p className="font-black tracking-tighter italic leading-none flex items-baseline">
+                <span className="text-[#ECA413]" style={{ fontSize: '4rem', lineHeight: 1, marginRight: '-0.1em' }}>+V</span>
+                <span className="text-white text-[2.5rem] tracking-tight">AQUEJADA</span>
+              </p>
             </div>
+            <p className="text-white/40 text-xs font-bold uppercase tracking-widest italic">A maior paixão do Nordeste em um só lugar</p>
           </div>
         </div>
       </div>
