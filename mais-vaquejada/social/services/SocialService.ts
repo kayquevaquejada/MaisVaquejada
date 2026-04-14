@@ -111,7 +111,10 @@ export const SocialService = {
     const { error } = await supabase
       .from('post_likes')
       .insert({ user_id: userId, post_id: postId });
-    if (error) { console.error('Like error:', error.message); }
+    if (error) { 
+      console.error('Like error:', error.message); 
+      throw new Error(error.message); 
+    }
   },
 
   async unlikePost(userId: string, postId: string) {
@@ -120,7 +123,10 @@ export const SocialService = {
       .delete()
       .eq('user_id', userId)
       .eq('post_id', postId);
-    if (error) { console.error('Unlike error:', error.message); }
+    if (error) { 
+      console.error('Unlike error:', error.message); 
+      throw new Error(error.message); 
+    }
   },
 
   // Comments
@@ -152,7 +158,10 @@ export const SocialService = {
       .insert({ user_id: userId, post_id: postId, content })
       .select(`*, profiles:user_id (username, avatar_url)`)
       .single();
-    if (error) { console.error('PostComment error:', error.message); return null; }
+    if (error) { 
+      console.error('PostComment error:', error.message); 
+      throw new Error(error.message); 
+    }
     return data;
   },
 

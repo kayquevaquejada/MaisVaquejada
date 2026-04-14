@@ -12,6 +12,7 @@ import { CommentSheet } from '../components/CommentSheet';
 import { NotificationsPanel } from '../components/NotificationsPanel';
 import { DMInbox } from '../components/DMInbox';
 import { ChatThread } from '../components/ChatThread';
+import { ShareSheet } from '../components/ShareSheet';
 import { SocialErrorBoundary } from '../components/SocialErrorBoundary';
 import { supabase } from '../../lib/supabase';
 import { useCall } from '../../context/CallContext';
@@ -45,6 +46,7 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
   const [isDMScreenOpen, setIsDMScreenOpen] = useState(false);
   const [activeChatPartnetId, setActiveChatPartnerId] = useState<string | null>(null);
   const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(null);
+  const [activeSharePost, setActiveSharePost] = useState<any | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -250,7 +252,7 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
                 commentCount={commentCounts[post.id] || 0}
                 onLike={toggleLike}
                 onComment={(p) => { setActiveCommentPostId(p.id); loadComments(p.id); }}
-                onShare={(p) => navigator.share?.({ title: 'Vaquerama', text: p.caption, url: window.location.href })}
+                onShare={(p) => setActiveSharePost(p)}
                 onNavigateToProfile={navigateToProfile}
                 onOptions={(p) => {
                    setOptionsPost(p);
@@ -396,6 +398,15 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
             )}
           </div>
         </div>
+      )}
+
+      {activeSharePost && (
+        <ShareSheet
+          post={activeSharePost}
+          user={user}
+          onClose={() => setActiveSharePost(null)}
+          onShareComplete={() => setActiveSharePost(null)}
+        />
       )}
       {/* Post Options Menu */}
       {optionsPost && (
