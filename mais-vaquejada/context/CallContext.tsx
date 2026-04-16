@@ -56,9 +56,85 @@ const CallContext = createContext<CallContextType | undefined>(undefined);
 export const CallProvider: React.FC<{ children: React.ReactNode, userId: string | undefined }> = ({ children, userId }) => {
     const [state, setState] = useState<CallState>(initialState);
     const audioRef = useRef<HTMLAudioElement | null>(null);
-    const vibrationInterval = useRef<number | null>(null);
+    const vibrationInterval = useRef<any>(null);
     const currentCallIdRef = useRef<string | null>(null);
     const RINGING_URL = 'https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3';
+
+    const stopRingtone = () => {
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+        }
+        if (navigator.vibrate) {
+            navigator.vibrate(0);
+        }
+        if (vibrationInterval.current) {
+            window.clearInterval(vibrationInterval.current);
+            vibrationInterval.current = null;
+        }
+    };
+
+    const playRingtone = () => {
+        try {
+            if (!audioRef.current) audioRef.current = new Audio(RINGING_URL);
+            audioRef.current.loop = true;
+            audioRef.current.play().catch(e => console.warn('Autoplay blocked:', e));
+
+            // Iniciar Vibração
+            if (navigator.vibrate) {
+                navigator.vibrate([1000, 500, 1000, 500, 1000]);
+                if (vibrationInterval.current) window.clearInterval(vibrationInterval.current);
+                vibrationInterval.current = window.setInterval(() => {
+                    navigator.vibrate([1000, 500, 1000]);
+                }, 3000);
+            }
+        } catch (e) {
+            console.error('Error playing ringtone:', e);
+        }
+    };
+
+    const handleIncomingCallEvent = async (data: any) => {
+        // Only accept if it's a new call or if we are already in THIS call
+        if (data.from_user !== userId && data.type === 'offer') {
+            
+            // If we are already handling this specific call, don't restart everything
+            if (currentCallIdRef.current === data.call_id) return;
+
+            console.log('[CallContext] Incoming call offer:', data.call_id);
+            currentCallIdRef.current = data.call_id;
+
+            // Sincronizar session manager
+            callManager.currentSession = {
+                call_id: data.call_id,
+                from_user: data.from_user,
+                participants: data.participants,
+                type: data.sdp === 'video' ? 'video' : 'audio',
+                status: 'ringing'
+            };
+
+            const { data: profile } = await supabase.from('profiles').select('*').eq('id', data.from_user).single();
+            
+            setState(prev => ({
+                ...prev,
+                active: true,
+                isIncoming: true,
+                callId: data.call_id,
+                fromUser: data.from_user,
+                participants: data.participants,
+                type: data.sdp === 'video' ? 'video' : 'audio',
+                status: 'ringing',
+                remoteProfiles: new Map(prev.remoteProfiles).set(data.from_user, profile)
+            }));
+            playRingtone();
+        }
+    };
+
+    const handleEndCall = () => {
+        stopRingtone();
+        callManager.endCall();
+        currentCallIdRef.current = null;
+        setState(initialState);
+    };
 
     useEffect(() => {
         if (!userId) return;
@@ -98,75 +174,6 @@ export const CallProvider: React.FC<{ children: React.ReactNode, userId: string 
 
         return () => { channel.unsubscribe(); };
     }, [userId]); // No more state.callId dependency
-
-    const handleIncomingCallEvent = async (data: any) => {
-        // Only accept if it's a new call or if we are already in THIS call
-        if (data.from_user !== userId && data.type === 'offer') {
-            
-            // If we are already handling this specific call, don't restart everything
-            if (currentCallIdRef.current === data.call_id) return;
-
-            console.log('[CallContext] Incoming call offer:', data.call_id);
-            currentCallIdRef.current = data.call_id;
-
-            // Sincronizar session manager
-            callManager.currentSession = {
-                call_id: data.call_id,
-                from_user: data.from_user,
-                participants: data.participants,
-                type: data.sdp === 'video' ? 'video' : 'audio',
-                status: 'ringing'
-            };
-
-            const { data: profile } = await supabase.from('profiles').select('*').eq('id', data.from_user).single();
-            
-            setState(prev => ({
-                ...prev,
-                active: true,
-                isIncoming: true,
-                callId: data.call_id,
-                fromUser: data.from_user,
-                participants: data.participants,
-                type: data.sdp === 'video' ? 'video' : 'audio',
-                status: 'ringing',
-                remoteProfiles: new Map(prev.remoteProfiles).set(data.from_user, profile)
-            }));
-            playRingtone();
-        }
-    };
-
-    const playRingtone = () => {
-        try {
-            if (!audioRef.current) audioRef.current = new Audio(RINGING_URL);
-            audioRef.current.loop = true;
-            audioRef.current.play().catch(e => console.warn('Autoplay blocked:', e));
-
-            // Iniciar Vibração
-            if (navigator.vibrate) {
-                navigator.vibrate([1000, 500, 1000, 500, 1000]);
-                if (vibrationInterval.current) window.clearInterval(vibrationInterval.current);
-                vibrationInterval.current = window.setInterval(() => {
-                    navigator.vibrate([1000, 500, 1000]);
-                }, 3000) as unknown as number;
-            }
-        } catch (e) {
-            console.error('Error playing ringtone:', e);
-        }
-    };
-
-    const stopRingtone = () => {
-        if (audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current.currentTime = 0;
-        }
-        if (navigator.vibrate) {
-            navigator.vibrate(0);
-        }
-        if (vibrationInterval.current) {
-            clearInterval(vibrationInterval.current);
-            vibrationInterval.current = null;
-        }
-    };
 
     const startCall = async (participants: string[], type: CallType) => {
         if (!userId) return;
@@ -249,13 +256,6 @@ export const CallProvider: React.FC<{ children: React.ReactNode, userId: string 
             });
         }
         handleEndCall();
-    };
-
-    const handleEndCall = () => {
-        stopRingtone();
-        callManager.endCall();
-        currentCallIdRef.current = null;
-        setState(initialState);
     };
 
     const endCall = async () => {

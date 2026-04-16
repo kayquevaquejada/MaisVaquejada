@@ -104,10 +104,6 @@ export const ChatThread: React.FC<ChatThreadProps> = ({
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-5 pr-2">
-          <button onClick={() => onCall('audio')} className="p-1 active:scale-95 transition-all"><span className="material-icons text-[#ECA413] text-2xl">call</span></button>
-          <button onClick={() => onCall('video')} className="p-1 active:scale-95 transition-all"><span className="material-icons text-[#ECA413] text-2xl">videocam</span></button>
-        </div>
       </header>
  
        {/* Messages Area */}
