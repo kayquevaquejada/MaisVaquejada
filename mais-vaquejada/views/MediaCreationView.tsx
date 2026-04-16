@@ -10,15 +10,13 @@ interface MediaCreationViewProps {
 }
 
 type Step = 'CAMERA' | 'PREVIEW' | 'PUBLISH';
-type Mode = 'FEED' | 'STORY';
+type Mode = 'FEED' | 'FOTO' | 'STORY';
 
 const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, onSuccess }) => {
     const [step, setStep] = useState<Step>('CAMERA');
     const [mode, setMode] = useState<Mode>('FEED');
     const [capturedMedia, setCapturedMedia] = useState<{ blob: Blob; url: string; type: 'image' | 'video' } | null>(null);
     const [permissionError, setPermissionError] = useState<string | null>(null);
-    const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
-    const [streamKey, setStreamKey] = useState(0);
     const { uploadFile, uploading: isUploading } = useMediaUpload();
 
     // Form stats
@@ -42,6 +40,8 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
     useEffect(() => {
         if (step === 'CAMERA') {
             startCamera();
+        } else {
+            stopCamera();
         }
         if (step === 'PREVIEW') {
             setTimeout(() => setPreviewAnim(true), 10);
@@ -49,7 +49,7 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
             setPreviewAnim(false);
         }
         return () => stopCamera();
-    }, [step, facingMode]);
+    }, [step, mode]);
 
     const playShutterSound = () => {
         try {
@@ -73,37 +73,18 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
     const startCamera = async () => {
         try {
             setPermissionError(null);
-            
-            let stream = mediaStreamRef.current;
-            if (!stream) {
-                const constraints = {
-                    video: { facingMode },
-                    audio: true
-                };
-
-                try {
-                    stream = await navigator.mediaDevices.getUserMedia(constraints);
-                } catch (e) {
-                    stream = await navigator.mediaDevices.getUserMedia({
-                        video: { facingMode },
-                        audio: false
-                    });
-                }
-                mediaStreamRef.current = stream;
-                setStreamKey(prev => prev + 1);
-            }
-
-            if (videoRef.current && stream) {
+            const constraints = {
+                video: { facingMode: 'user' },
+                audio: mode === 'STORY'
+            };
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            mediaStreamRef.current = stream;
+            if (videoRef.current) {
                 videoRef.current.srcObject = stream;
-                videoRef.current.setAttribute('playsinline', 'true');
-                videoRef.current.play().catch(() => {
-                    // Manual play might be needed on interaction
-                });
             }
-
-        } catch (err: any) {
-            console.error('Camera access error:', err);
-            setPermissionError('Câmera não disponível.');
+        } catch (err) {
+            console.error('Error accessing camera:', err);
+            setPermissionError('Não foi possível acessar a câmera. Por favor, verifique as permissões.');
         }
     };
 
@@ -143,11 +124,6 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
                 }
             }, 'image/jpeg', 0.8);
         }
-    };
-    
-    const toggleCamera = () => {
-        if (navigator.vibrate) navigator.vibrate(20);
-        setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
     };
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -274,8 +250,12 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
     const renderCamera = () => (
         <div className="fixed inset-0 h-[100dvh] bg-black z-[200] overflow-hidden">
             {isFlashing && (
-                <div className="absolute inset-0 bg-white z-[300] transition-opacity duration-100 ease-out" style={{ opacity: isFlashing ? 0.9 : 0 }} />
+                <div className="absolute inset-0 bg-white z-[300] transition-opacity duration-100 ease-out" style={{ opacity: isFlashing ? 0.8 : 0 }} />
             )}
+
+            {/* Premium Depth Overlays */}
+            <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/80 to-transparent pointer-events-none z-10" />
+            <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none z-10" />
 
             <div className="absolute inset-0 w-full h-full overflow-hidden">
                 {permissionError ? (
@@ -292,13 +272,11 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
                     </div>
                 ) : (
                     <video
-                        key={streamKey}
                         ref={videoRef}
                         autoPlay
                         playsInline
                         muted
                         className="absolute inset-0 w-full h-full object-cover"
-                        onClick={() => videoRef.current?.play()}
                     />
                 )}
             </div>
@@ -313,8 +291,8 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
             </div>
 
             <div className="absolute bottom-0 left-0 right-0 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-24 flex flex-col items-center z-50">
-                <div className="flex justify-center gap-12 items-center mb-10 px-10 py-3 bg-black/40 backdrop-blur-2xl rounded-full border border-white/10 shadow-lg">
-                    {(['FEED', 'STORY'] as Mode[]).map((m) => (
+                <div className="flex justify-center gap-8 items-center mb-10 px-8 py-3 bg-black/30 backdrop-blur-2xl rounded-full border border-white/10 shadow-lg">
+                    {(['FEED', 'FOTO', 'STORY'] as Mode[]).map((m) => (
                         <button
                             key={m}
                             onClick={() => {
@@ -346,11 +324,13 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
                         className="relative w-[88px] h-[88px] rounded-full border-[4px] border-white/40 p-1.5 flex items-center justify-center active:scale-[0.92] transition-all duration-200 shadow-[0_0_20px_rgba(0,0,0,0.4)] group overflow-visible"
                     >
                         <div className="absolute inset-[-6px] rounded-full border border-white/20 animate-ping opacity-20 pointer-events-none"></div>
-                        <div className={`w-full h-full rounded-full transition-colors duration-200 shadow-inner bg-white shadow-white/40`}></div>
+                        <div className={`w-full h-full rounded-full transition-colors duration-200 shadow-inner ${mode === 'STORY' ? 'bg-gradient-to-tr from-[#ECA413] to-[#FF4500] shadow-[#ECA413]/50' : 'bg-white shadow-white/40'}`}></div>
                     </button>
 
                     <button 
-                        onClick={toggleCamera}
+                        onClick={() => {
+                            if (navigator.vibrate) navigator.vibrate(10);
+                        }}
                         className="w-14 h-14 rounded-full border border-white/20 bg-black/30 backdrop-blur-md flex items-center justify-center text-white active:scale-90 hover:bg-white/10 transition-all shadow-lg"
                     >
                         <span className="material-icons text-white/90">flip_camera_ios</span>
