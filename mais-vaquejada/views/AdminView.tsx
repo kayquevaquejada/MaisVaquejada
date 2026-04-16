@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, View } from '../types';
 import { supabase } from '../lib/supabase';
 import AdminAdsManager from '../components/AdminAdsManager';
+import AdminMasterView from '../components/AdminMasterView';
 import { compressImage } from '../lib/imageUtils';
 
 
@@ -25,7 +26,7 @@ interface AdminViewProps {
     user: any;
 }
 
-type AdminTab = 'MAIN' | 'USERS' | 'MERCADO' | 'SOCIAL' | 'EVENTOS' | 'NOTICIAS' | 'ADS';
+type AdminTab = 'MAIN' | 'USERS' | 'MERCADO' | 'SOCIAL' | 'EVENTOS' | 'NOTICIAS' | 'ADS' | 'MASTER';
 
 
 const AdminView: React.FC<AdminViewProps> = ({ user }) => {
@@ -1172,7 +1173,8 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
             <div className="absolute inset-0 bg-[#F8F5F2] flex flex-col z-[120]">
                 <SubHeader title="Vaquejadas" />
                 <div className="flex-1 overflow-y-auto pb-10">
-                    <SectionTitle title="Gestão de Eventos" />
+                    {isMaster && (
+                    <SectionTitle title="Gestão Operacional" />
                     <div className="px-6 grid grid-cols-2 gap-3 mb-6">
                         <button onClick={()=>{ setEventForm({}); setSubviewEvents('CREATE'); }} className="bg-[#D4AF37] text-white p-4 rounded-xl font-black uppercase tracking-widest text-[10px] flex flex-col items-center gap-2 active:scale-95 shadow-sm">
                             <span className="material-icons">add_box</span>
@@ -1575,6 +1577,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
     if (activeTab === 'SOCIAL') return renderSocialView();
     if (activeTab === 'EVENTOS') return renderEventosView();
     if (activeTab === 'NOTICIAS') return renderNoticiasView();
+    if (activeTab === 'MASTER') return <AdminMasterView user={user} onBack={() => setActiveTab('MAIN')} />;
     if (activeTab === 'ADS') return <AdminAdsManager user={user} onBack={() => setActiveTab('MAIN')} />;
 
 
@@ -1602,8 +1605,30 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                 </div>
 
                 {isMaster && (
-                    <>
-                        <SectionTitle title="Superusuário" />
+                    <div className="mb-8">
+                        <SectionTitle title="Inteligência & Gestão" />
+                        <div className="bg-gradient-to-r from-leather to-[#2A1C0D] mx-4 rounded-[32px] p-6 shadow-xl relative overflow-hidden group active:scale-95 transition-transform cursor-pointer" onClick={() => setActiveTab('MASTER')}>
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37]/20 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl group-hover:bg-[#D4AF37]/30 transition-colors" />
+                            <div className="flex items-center gap-4 relative z-10">
+                                <div className="w-12 h-12 bg-[#D4AF37] rounded-2xl flex items-center justify-center shadow-lg shadow-[#D4AF37]/20">
+                                    <span className="material-icons text-white">insights</span>
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="text-white font-black uppercase italic tracking-tighter leading-none mb-1">Painel Master</h3>
+                                    <p className="text-[#D4AF37] text-[10px] font-black uppercase tracking-widest">Controle Global & Métricas</p>
+                                </div>
+                                <span className="material-icons text-white/20">chevron_right</span>
+                            </div>
+                            <div className="mt-4 flex gap-2 overflow-hidden relative z-10">
+                                <span className="text-[8px] bg-white/10 text-white/60 px-2 py-1 rounded-full uppercase font-black">Auditoria</span>
+                                <span className="text-[8px] bg-white/10 text-white/60 px-2 py-1 rounded-full uppercase font-black">Analytics</span>
+                                <span className="text-[8px] bg-white/10 text-white/60 px-2 py-1 rounded-full uppercase font-black">Segurança</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                <SectionTitle title="Superusuário" />
                         <MenuItem 
                             icon="group" 
                             label="Comunidade & Usuários" 
