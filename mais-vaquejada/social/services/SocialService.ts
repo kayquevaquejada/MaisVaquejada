@@ -4,27 +4,40 @@ import { SocialPost, Story, StoryMedia, SocialComment, ArenaNotification, ChatMe
 export const SocialService = {
   // Feed & Posts — now with real like/comment counts
   async fetchFeed(userId: string, followingIds: string[] = []): Promise<SocialPost[]> {
-    let query = supabase
+    const query = supabase
       .from('posts')
-      .select(`
-        *,
-        profiles:user_id (name, username, avatar_url, role)
-      `)
+      .select(`*, profiles (id, username, avatar_url, role)`)
+      .in('user_id', [userId, ...followingIds])
       .order('created_at', { ascending: false })
       .limit(50);
-
-    if (followingIds.length > 0) {
-      query = query.in('user_id', [...followingIds, userId]);
-    }
 
     const { data, error } = await query;
     if (error) { console.error('fetchFeed error:', error.message); return []; }
 
-    // Fetch like + comment counts in parallel for all post IDs
+    // 2. Fetch like + comment counts in parallel for all post IDs
     const postIds = (data || []).map(p => p.id);
+    
+    if (postIds.length === 0) {
+      return (data || []).map(p => ({
+        id: p.id,
+        userId: p.user_id,
+        username: p.profiles?.username || 'vaqueiro',
+        avatarUrl: p.profiles?.avatar_url,
+        isVerified: p.profiles?.role?.includes('ADMIN'),
+        location: p.location || '',
+        imageUrl: p.media_url,
+        likes: 0,
+        comments: 0,
+        caption: p.caption || '',
+        hashtags: (p.caption || '').match(/#[a-z0-9]+/gi) || [],
+        timeAgo: this.timeAgo(p.created_at),
+        isLikedByMe: false
+      }));
+    }
+
     const [likesRes, commentsRes, myLikesRes] = await Promise.all([
-      supabase.from('post_likes').select('post_id').in('post_id', postIds),
-      supabase.from('post_comments').select('post_id').in('post_id', postIds),
+      supabase.from('post_likes').select('post_id').in('post_id', postIds).limit(10000),
+      supabase.from('post_comments').select('post_id').in('post_id', postIds).limit(10000),
       userId ? supabase.from('post_likes').select('post_id').eq('user_id', userId).in('post_id', postIds) : Promise.resolve({ data: [] })
     ]);
 
@@ -135,7 +148,7 @@ export const SocialService = {
       .from('post_comments')
       .select(`
         *,
-        profiles:user_id (username, avatar_url)
+        profiles (username, avatar_url)
       `)
       .eq('post_id', postId)
       .order('created_at', { ascending: true });
@@ -145,10 +158,10 @@ export const SocialService = {
       id: c.id,
       post_id: c.post_id,
       user_id: c.user_id,
-      username: c.profiles?.username || 'vaqueiro',
+      username: (c as any).profiles?.username || 'vaqueiro',
       text: c.content,
       created_at: c.created_at,
-      avatar_url: c.profiles?.avatar_url
+      avatar_url: (c as any).profiles?.avatar_url
     }));
   },
 
@@ -156,11 +169,12 @@ export const SocialService = {
     const { data, error } = await supabase
       .from('post_comments')
       .insert({ user_id: userId, post_id: postId, content })
-      .select(`*, profiles:user_id (username, avatar_url)`)
+      .select(`*, profiles (username, avatar_url)`)
       .single();
-    if (error) { 
-      console.error('PostComment error:', error.message); 
-      throw new Error(error.message); 
+
+    if (error) {
+      console.error('Post comment error:', error.message);
+      throw new Error(error.message);
     }
     return data;
   },

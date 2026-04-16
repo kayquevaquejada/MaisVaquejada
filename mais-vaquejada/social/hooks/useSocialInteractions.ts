@@ -12,17 +12,29 @@ export function useSocialInteractions(user: any) {
 
   // Initialize liked state from feed data
   const initFromFeed = useCallback((posts: SocialPost[]) => {
-    const liked = new Set<string>();
-    const counts: Record<string, number> = {};
-    const cCounts: Record<string, number> = {};
-    posts.forEach(p => {
-      if ((p as any).isLikedByMe) liked.add(p.id);
-      counts[p.id] = typeof p.likes === 'number' ? p.likes : parseInt(p.likes.toString()) || 0;
-      cCounts[p.id] = p.comments || 0;
+    setLikedPosts(prev => {
+      const liked = new Set(prev);
+      posts.forEach(p => {
+        if (p.isLikedByMe) liked.add(p.id);
+      });
+      return liked;
     });
-    setLikedPosts(liked);
-    setLikeCounts(counts);
-    setCommentCounts(cCounts);
+    setLikeCounts(prev => {
+      const counts = { ...prev };
+      posts.forEach(p => {
+        // Only update counts for posts we haven't interacted with recently, 
+        // to avoid jumping counts if the server hasn't updated yet.
+        counts[p.id] = typeof p.likes === 'number' ? p.likes : parseInt(p.likes.toString()) || 0;
+      });
+      return counts;
+    });
+    setCommentCounts(prev => {
+      const cCounts = { ...prev };
+      posts.forEach(p => {
+        cCounts[p.id] = p.comments || 0;
+      });
+      return cCounts;
+    });
   }, []);
 
   const toggleLike = useCallback(async (post: SocialPost) => {
@@ -96,10 +108,10 @@ export function useSocialInteractions(user: any) {
           id: result.id,
           post_id: postId,
           user_id: user.id,
-          username: result.profiles?.username || user.username || 'vaqueiro',
+          username: (result as any).profiles?.username || user.username || 'vaqueiro',
           text: result.content,
           created_at: result.created_at,
-          avatar_url: result.profiles?.avatar_url || user.avatar_url
+          avatar_url: (result as any).profiles?.avatar_url || user.avatar_url
         };
         setCommentsMap(prev => ({
           ...prev,
