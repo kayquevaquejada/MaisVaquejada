@@ -77,6 +77,20 @@ const CompleteProfileView: React.FC<CompleteProfileViewProps> = ({ user, onCompl
     setLoading(true);
     setError(null);
 
+    const usernameRegex = /^[a-z0-9._]+$/;
+
+    if (username.length < 6) {
+      setError('O @apelido deve ter no mínimo 6 caracteres.');
+      setLoading(false);
+      return;
+    }
+
+    if (!usernameRegex.test(username)) {
+      setError('O @apelido só pode conter letras, números, "_" e "."');
+      setLoading(false);
+      return;
+    }
+
     const fullPhone = `${ddd}${phoneNumber.replace(/\D/g, '')}`;
 
     try {
@@ -149,6 +163,7 @@ const CompleteProfileView: React.FC<CompleteProfileViewProps> = ({ user, onCompl
                   className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-sm font-bold text-white focus:outline-none focus:border-[#ECA413]"
                   placeholder="Como quer ser chamado"
                 />
+                <p className="text-[9px] text-white/20 font-bold ml-2">Mínimo 6 caracteres. Apenas letras, números, "." e "_"</p>
               </div>
 
               <div className="space-y-1">
