@@ -9,42 +9,23 @@ interface NavbarProps {
 const Navbar: React.FC<NavbarProps> = ({ currentView, user }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isMouseOver, setIsMouseOver] = useState(false);
-  const [isVisible, setIsVisible] = useState(true);
+  const [isScrolling, setIsScrolling] = useState(false);
   const lastScrollY = useRef(0);
-  const scrollThreshold = 10;
+  const scrollingTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const handleScroll = () => {
-      // If mouse is over, we don't auto-hide or collapse
-      if (isMouseOver) return;
+      if (isExpanded) return;
 
-      const currentScrollY = window.scrollY || 0;
-      // Also check nested scroll containers (like the one in App.tsx)
-      const mainContainer = document.querySelector('.overflow-y-auto');
-      const containerScrollY = mainContainer ? mainContainer.scrollTop : 0;
-      const effectiveY = currentScrollY + containerScrollY;
-
-      const diff = effectiveY - lastScrollY.current;
-
-      if (Math.abs(diff) > scrollThreshold) {
-        if (diff > 0) {
-          // Scrolling DOWN
-          if (isExpanded) {
-            setIsExpanded(false);
-          } else {
-            setIsVisible(false);
-          }
-        } else {
-          // Scrolling UP
-          setIsVisible(true);
-        }
-        lastScrollY.current = effectiveY;
-      }
+      setIsScrolling(true);
+      
+      if (scrollingTimeout.current) clearTimeout(scrollingTimeout.current);
+      scrollingTimeout.current = setTimeout(() => {
+        setIsScrolling(false);
+      }, 1000);
     };
 
-    // Use capture phase to catch scroll events from nested divs
     window.addEventListener('scroll', handleScroll, true);
-    // Also catch mouse wheel and touch moves for immediate feedback
     window.addEventListener('wheel', handleScroll, { passive: true });
     window.addEventListener('touchmove', handleScroll, { passive: true });
 
@@ -52,13 +33,13 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, user }) => {
       window.removeEventListener('scroll', handleScroll, true);
       window.removeEventListener('wheel', handleScroll);
       window.removeEventListener('touchmove', handleScroll);
+      if (scrollingTimeout.current) clearTimeout(scrollingTimeout.current);
     };
-  }, [isExpanded, isMouseOver]);
+  }, [isExpanded]);
 
-  // When mouse enters, always show
+  // When mouse enters, stop scrolling effects
   const handleMouseEnter = () => {
     setIsMouseOver(true);
-    setIsVisible(true);
   };
 
   const handleNav = (view: View) => {
@@ -84,8 +65,8 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, user }) => {
       />
 
       <div 
-        className={`fixed left-1/2 -translate-x-1/2 z-[100] flex items-center justify-center transition-all duration-500 ${
-          isVisible ? 'bottom-8' : 'bottom-[-100px]'
+        className={`fixed left-1/2 -translate-x-1/2 z-[100] flex items-center justify-center transition-all duration-700 bottom-8 ${
+          isScrolling && !isExpanded && !isMouseOver ? 'opacity-10 scale-90 translate-y-4' : 'opacity-100 scale-100 translate-y-0'
         }`}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={() => setIsMouseOver(false)}
@@ -93,8 +74,8 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, user }) => {
         {/* Container Principal Expandível */}
         <div
           className={`relative flex items-center justify-center transition-all duration-500 cubic-bezier(0.175, 0.885, 0.32, 1.275) ${isExpanded
-            ? 'w-[320px] h-[72px] rounded-[24px] bg-[#0F0A05]/95 backdrop-blur-3xl border border-white/10 shadow-[0_25px_80px_rgba(0,0,0,1)]'
-            : 'w-[64px] h-[64px] rounded-full bg-[#1A1108] border border-white/20 shadow-[0_10px_40px_rgba(0,0,0,0.8)]'
+            ? 'w-[320px] h-[72px] rounded-[24px] bg-[#0F0A05]/80 backdrop-blur-3xl border border-white/10 shadow-[0_25px_80px_rgba(0,0,0,0.8)]'
+            : 'w-[64px] h-[64px] rounded-full bg-white/5 backdrop-blur-md border border-white/10 shadow-lg'
             }`}
         >
 
@@ -119,8 +100,8 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, user }) => {
           <button
             onClick={handleCenterClick}
             className={`relative z-10 w-[56px] h-[56px] rounded-full flex items-center justify-center transition-all duration-500 active:scale-90 ${currentView === View.EVENTS
-              ? 'bg-gradient-to-br from-[#ECA413] via-[#B47B09] to-[#8B4513] text-white shadow-[#ECA413]/40 shadow-2xl'
-              : 'bg-neutral-800 border border-white/5 text-white/40'
+              ? 'bg-gradient-to-br from-[#ECA413] via-[#B47B09] to-[#8B4513] text-white shadow-[#ECA413]/40'
+              : 'bg-white/10 backdrop-blur-md border border-white/5 text-white/40'
               }`}
           >
             <span className={`material-icons text-3xl transition-transform duration-500 ${isExpanded ? 'rotate-[360deg]' : ''}`}>
