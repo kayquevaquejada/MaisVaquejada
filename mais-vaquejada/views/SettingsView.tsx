@@ -331,7 +331,6 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
                     </div>
                 )}
                     </div>
-                )}
                 <div className="text-center pt-10 pb-10">
                     <p className="text-[10px] font-black text-black/20 uppercase tracking-[0.3em]">Arena Vaquerama v1.0.0</p>
                 </div>
