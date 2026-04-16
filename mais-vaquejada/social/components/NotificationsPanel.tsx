@@ -49,7 +49,12 @@ export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
                   </p>
                   <p className="text-[#ECA413] text-[9px] font-black uppercase tracking-wider mt-1">{timeAgo(notif.created_at)}</p>
                 </div>
-                {!notif.is_read && <div className="w-2 h-2 rounded-full bg-[#ECA413]"></div>}
+                {notif.post_media_url && (
+                  <div className="w-10 h-10 rounded-lg overflow-hidden border border-white/10 shrink-0">
+                    <img src={notif.post_media_url} className="w-full h-full object-cover" />
+                  </div>
+                )}
+                {!notif.is_read && !notif.post_media_url && <div className="w-2 h-2 rounded-full bg-[#ECA413]"></div>}
               </div>
             ))
           )}

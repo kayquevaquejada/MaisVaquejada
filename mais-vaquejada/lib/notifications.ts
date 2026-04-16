@@ -22,6 +22,8 @@ export interface ArenaNotification {
   actor_username?: string;
   actor_name?: string;
   actor_avatar?: string;
+  // Metadata for visual feedback
+  post_media_url?: string;
 }
 
 // ─── Solicitar Permissão de Push ────────────────────────────────────────────
@@ -97,7 +99,7 @@ export async function fetchUserNotifications(userId: string): Promise<ArenaNotif
        return [];
     }
 
-    return (data || []).map((n: any) => ({
+    const notifications = (data || []).map((n: any) => ({
       id: n.id,
       user_id: n.user_id,
       actor_id: n.actor_id,
@@ -111,6 +113,33 @@ export async function fetchUserNotifications(userId: string): Promise<ArenaNotif
       actor_name: n.profiles?.name || 'Vaqueiro',
       actor_avatar: n.profiles?.avatar_url
     }));
+
+    // 2. Fetch post thumbnails for 'like' and 'comment' notifications
+    const postIds = notifications
+      .filter(n => (n.type === 'like' || n.type === 'comment') && n.reference_id)
+      .map(n => n.reference_id);
+
+    if (postIds.length > 0) {
+      const { data: postsData } = await supabase
+        .from('posts')
+        .select('id, media_url')
+        .in('id', postIds);
+
+      if (postsData && postsData.length > 0) {
+        const postImages = (postsData as any[]).reduce((acc, p) => {
+          acc[p.id] = p.media_url;
+          return acc;
+        }, {} as Record<string, string>);
+
+        notifications.forEach(n => {
+          if (n.reference_id && postImages[n.reference_id]) {
+            n.post_media_url = postImages[n.reference_id];
+          }
+        });
+      }
+    }
+
+    return notifications;
   } catch (err) {
     console.error("Critical error fetching notifications:", err);
     return [];
