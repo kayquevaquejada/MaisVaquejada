@@ -50,6 +50,7 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [spotlightPostId, setSpotlightPostId] = useState<string | null>(null);
   
   // Post Options & Editing
   const [optionsPost, setOptionsPost] = useState<any | null>(null);
@@ -101,6 +102,11 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
       navigateToProfile(notif.actor_username);
       setIsNotificationsOpen(false);
     }
+  };
+
+  const handlePostPress = (postId: string) => {
+    setSpotlightPostId(postId);
+    setIsNotificationsOpen(false);
   };
 
   const handleSendMessage = (text: string) => {
@@ -284,6 +290,7 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
           notifications={notifications}
           onClose={() => setIsNotificationsOpen(false)}
           onNotificationPress={handleNotificationPress}
+          onPostPress={handlePostPress}
         />
       )}
 
@@ -407,6 +414,56 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
           onClose={() => setActiveSharePost(null)}
           onShareComplete={() => setActiveSharePost(null)}
         />
+      )}
+
+      {/* Spotlight Post Modal */}
+      {spotlightPostId && (
+        <div className="fixed inset-0 z-[500] bg-black/90 flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-300">
+          <header className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-50">
+             <h3 className="text-white font-black uppercase text-sm italic tracking-widest text-[#ECA413]">Publicação</h3>
+             <button 
+               onClick={() => setSpotlightPostId(null)} 
+               className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white backdrop-blur-md"
+             >
+               <span className="material-icons">close</span>
+             </button>
+          </header>
+          <div className="w-full max-w-lg p-2 max-h-[90vh] overflow-y-auto mt-12">
+            {posts.find(p => p.id === spotlightPostId) ? (
+              <PostCard 
+                post={posts.find(p => p.id === spotlightPostId)!}
+                isLiked={likedPosts.has(spotlightPostId)}
+                likeCount={likeCounts[spotlightPostId] || 0}
+                commentCount={commentCounts[spotlightPostId] || 0}
+                onLike={toggleLike}
+                onComment={(p) => { 
+                  setSpotlightPostId(null); 
+                  setActiveCommentPostId(p.id); 
+                  loadComments(p.id); 
+                }}
+                onShare={(p) => {
+                  setSpotlightPostId(null);
+                  setActiveSharePost(p);
+                }}
+                onNavigateToProfile={(un) => {
+                  setSpotlightPostId(null);
+                  navigateToProfile(un);
+                }}
+                onOptions={(p) => {
+                   setOptionsPost(p);
+                   setEditCaption(p.caption || '');
+                   setEditLocation(p.location || '');
+                }}
+                currentUserId={user?.id}
+              />
+            ) : (
+              <div className="text-white text-center p-20 opacity-40">
+                <span className="material-icons text-5xl mb-4">image_not_supported</span>
+                <p className="text-xs font-black uppercase tracking-widest">Postagem não encontrada no feed atual</p>
+              </div>
+            )}
+          </div>
+        </div>
       )}
       {/* Post Options Menu */}
       {optionsPost && (

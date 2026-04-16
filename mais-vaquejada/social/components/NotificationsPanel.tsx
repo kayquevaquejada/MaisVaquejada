@@ -6,12 +6,14 @@ interface NotificationsPanelProps {
   notifications: ArenaNotification[];
   onClose: () => void;
   onNotificationPress: (notif: ArenaNotification) => void;
+  onPostPress: (postId: string) => void;
 }
 
 export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
   notifications,
   onClose,
-  onNotificationPress
+  onNotificationPress,
+  onPostPress
 }) => {
   return (
     <>
@@ -31,7 +33,7 @@ export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
             notifications.map(notif => (
               <div
                 key={notif.id}
-                className="p-4 border-b border-white/5 flex gap-3 items-center hover:bg-white/5 transition-colors cursor-pointer"
+                className="p-4 border-b border-white/5 flex gap-3 items-center hover:bg-white/5 transition-colors cursor-pointer group"
                 onClick={() => onNotificationPress(notif)}
               >
                 <div className="w-10 h-10 rounded-full border border-white/10 overflow-hidden shrink-0">
@@ -43,14 +45,20 @@ export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
                     }}
                   />
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <p className="text-[12px] text-white/90 leading-tight">
                     {getNotifText(notif as any)}
                   </p>
                   <p className="text-[#ECA413] text-[9px] font-black uppercase tracking-wider mt-1">{timeAgo(notif.created_at)}</p>
                 </div>
-                {notif.post_media_url && (
-                  <div className="w-10 h-10 rounded-lg overflow-hidden border border-white/10 shrink-0">
+                {notif.post_media_url && notif.reference_id && (
+                  <div 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPostPress(notif.reference_id!);
+                    }}
+                    className="w-11 h-11 rounded-lg overflow-hidden border border-white/10 shrink-0 hover:scale-110 active:scale-95 transition-all shadow-lg"
+                  >
                     <img src={notif.post_media_url} className="w-full h-full object-cover" />
                   </div>
                 )}
