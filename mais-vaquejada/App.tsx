@@ -176,13 +176,23 @@ const App: React.FC = () => {
   useEffect(() => {
     isMountedRef.current = true;
     
-    // Safety Timeout: Força o desligamento do loading em no máximo 6 segundos
+    // Safety Timeout: Força o desligamento do loading em no máximo 10 segundos
     const fallbackTimeout = setTimeout(() => {
-      if (isMountedRef.current && initializing) {
-        console.warn('Initialization taking too long, forcing unlock...');
-        setInitializing(false);
+      async function forceUnlock() {
+        if (isMountedRef.current && initializing) {
+          console.warn('Initialization taking too long, forcing unlock...');
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            setInitializing(false);
+            setCurrentView(View.LEGAL_CONSENT);
+          } else {
+            setInitializing(false);
+            setCurrentView(View.LOGIN);
+          }
+        }
       }
-    }, 6000);
+      forceUnlock();
+    }, 10000);
 
     async function init() {
       try {
@@ -285,7 +295,7 @@ const App: React.FC = () => {
   // ViewRenderer agora é um componente de módulo (definido acima do App)
   // Passamos as props necessárias para evitar remontagem a cada render
 
-  const showNavbar = ![View.LOGIN, View.SIGNUP, View.FORGOT_PASSWORD, View.COMPLETE_PROFILE, View.BLOCKED_ACCOUNT, View.RECOVERY_ASSISTED, View.AD_CREATION].includes(currentView);
+  const showNavbar = ![View.LOGIN, View.SIGNUP, View.FORGOT_PASSWORD, View.COMPLETE_PROFILE, View.BLOCKED_ACCOUNT, View.RECOVERY_ASSISTED, View.AD_CREATION, View.LEGAL_CONSENT].includes(currentView);
 
   if (initializing) {
     return (

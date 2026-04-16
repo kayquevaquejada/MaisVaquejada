@@ -22,7 +22,7 @@ const UpdateManager: React.FC = () => {
 
         // Fallback: Busca do Supabase se o arquivo falhar ou não houver atualização no arquivo
         const { data, error } = await supabase
-          .from('app_config')
+          .from('app_settings')
           .select('value')
           .eq('key', 'android_version_control')
           .maybeSingle();
