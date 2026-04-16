@@ -10,13 +10,14 @@ interface MediaCreationViewProps {
 }
 
 type Step = 'CAMERA' | 'PREVIEW' | 'PUBLISH';
-type Mode = 'FEED' | 'FOTO' | 'STORY';
+type Mode = 'FEED' | 'STORY';
 
 const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, onSuccess }) => {
     const [step, setStep] = useState<Step>('CAMERA');
     const [mode, setMode] = useState<Mode>('FEED');
     const [capturedMedia, setCapturedMedia] = useState<{ blob: Blob; url: string; type: 'image' | 'video' } | null>(null);
     const [permissionError, setPermissionError] = useState<string | null>(null);
+    const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
     const { uploadFile, uploading: isUploading } = useMediaUpload();
 
     // Form stats
@@ -49,7 +50,7 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
             setPreviewAnim(false);
         }
         return () => stopCamera();
-    }, [step, mode]);
+    }, [step, mode, facingMode]);
 
     const playShutterSound = () => {
         try {
@@ -70,11 +71,13 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
         } catch (e) { /* silent fallback */ }
     };
 
-    const startCamera = async () => {
         try {
             setPermissionError(null);
+            if (mediaStreamRef.current) {
+                mediaStreamRef.current.getTracks().forEach(track => track.stop());
+            }
             const constraints = {
-                video: { facingMode: 'user' },
+                video: { facingMode: facingMode },
                 audio: mode === 'STORY'
             };
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -124,6 +127,10 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
                 }
             }, 'image/jpeg', 0.8);
         }
+    };
+
+    const toggleCamera = () => {
+        setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
     };
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -292,7 +299,7 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
 
             <div className="absolute bottom-0 left-0 right-0 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-24 flex flex-col items-center z-50">
                 <div className="flex justify-center gap-8 items-center mb-10 px-8 py-3 bg-black/30 backdrop-blur-2xl rounded-full border border-white/10 shadow-lg">
-                    {(['FEED', 'FOTO', 'STORY'] as Mode[]).map((m) => (
+                    {(['FEED', 'STORY'] as Mode[]).map((m) => (
                         <button
                             key={m}
                             onClick={() => {
@@ -328,9 +335,7 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
                     </button>
 
                     <button 
-                        onClick={() => {
-                            if (navigator.vibrate) navigator.vibrate(10);
-                        }}
+                        onClick={toggleCamera}
                         className="w-14 h-14 rounded-full border border-white/20 bg-black/30 backdrop-blur-md flex items-center justify-center text-white active:scale-90 hover:bg-white/10 transition-all shadow-lg"
                     >
                         <span className="material-icons text-white/90">flip_camera_ios</span>
