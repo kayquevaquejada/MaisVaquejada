@@ -241,7 +241,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
         <div className="absolute bottom-6 left-0 right-0 px-4 flex gap-4 items-center z-20">
           <div className="flex-1 h-12 bg-white/10 backdrop-blur-md rounded-full border border-white/20 flex items-center px-4">
             <input
-              className="bg-transparent border-none outline-none text-white text-xs w-full placeholder:text-white/40 select-text"
+              className="bg-transparent border-none outline-none text-white text-base w-full placeholder:text-white/40 select-text py-1"
               placeholder="Enviar mensagem..."
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
