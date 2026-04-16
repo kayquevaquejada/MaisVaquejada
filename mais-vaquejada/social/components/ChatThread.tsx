@@ -145,7 +145,7 @@ export const ChatThread: React.FC<ChatThreadProps> = ({
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSend()}
-              className="bg-transparent border-none outline-none py-4 text-sm text-white w-full placeholder:text-white/20"
+              className="bg-transparent border-none outline-none py-4 text-base text-white w-full placeholder:text-white/20"
               placeholder="Digite uma mensagem..."
             />
           </div>
