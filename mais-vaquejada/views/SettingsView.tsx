@@ -330,13 +330,12 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
                         </div>
                     </div>
                 )}
-                    </div>
+                </div>
                 <div className="text-center pt-10 pb-10">
-                    <p className="text-[10px] font-black text-black/20 uppercase tracking-[0.3em]">Arena Vaquerama v1.0.0</p>
+                    <p className="text-[10px] font-black text-black/20 uppercase tracking-[0.3em]">Arena +Vaquejada v1.0.0</p>
                 </div>
             </div>
-        </div>
-    );
+        );
 
     const renderAbout = () => (
         <div className="absolute inset-0 bg-[#FBFBFB] flex flex-col z-[130] animate-in slide-in-from-right duration-300">
