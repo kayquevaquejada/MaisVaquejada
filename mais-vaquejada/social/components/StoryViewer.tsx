@@ -110,7 +110,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[500] bg-black flex flex-col pointer-events-auto"
+      className="fixed inset-0 z-[500] bg-black flex flex-col pointer-events-auto select-none touch-none"
       style={{
         transform: `translateY(${dragY}px)`,
         opacity,
@@ -119,6 +119,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      onContextMenu={(e) => e.preventDefault()}
     >
       {/* Progress Bars */}
       <div className="absolute top-4 left-0 right-0 px-2 flex gap-1 z-20">
@@ -166,10 +167,13 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
       )}
 
       {/* Story Content — Full screen cover */}
-      <div className="absolute inset-0">
+      <div 
+        className="absolute inset-0 select-none"
+        onContextMenu={(e) => e.preventDefault()}
+      >
         <img
           src={currentItem.url}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover pointer-events-none"
           alt="Story content"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60 pointer-events-none" />
