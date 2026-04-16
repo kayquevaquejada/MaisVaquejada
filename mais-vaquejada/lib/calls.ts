@@ -23,7 +23,7 @@ class CallManager {
     private pcs: Map<string, RTCPeerConnection> = new Map();
     private localStream: MediaStream | null = null;
     private remoteStreams: Map<string, MediaStream> = new Map();
-    private currentSession: CallSession | null = null;
+    public currentSession: CallSession | null = null;
     private onRemoteStreamCallback: ((id: string, stream: MediaStream) => void) | null = null;
     private onRemoteLeaveCallback: ((id: string) => void) | null = null;
     private onStatusChangeCallback: ((status: CallStatus) => void) | null = null;
@@ -181,6 +181,31 @@ class CallManager {
         }
         this.remoteStreams.clear();
         this.currentSession = null;
+    }
+
+    async handleSignal(data: any) {
+        if (!this.currentSession || data.call_id !== this.currentSession.call_id) {
+            // Se for um novo offer e não temos sessão, a sessão será criada pelo Context
+            // Mas se já temos sessão, processamos
+            if (!this.currentSession) return;
+        }
+
+        const pc = this.pcs.get(data.from_user);
+        if (!pc && data.type !== 'offer') return;
+
+        try {
+            if (data.type === 'offer' && data.sdp) {
+                // Se recebermos um offer e não temos o peer ainda, é o receptor criando o peer
+                const newPc = pc || await this.createPeer(data.from_user, false);
+                await newPc.setRemoteDescription(new RTCSessionDescription(JSON.parse(data.sdp)));
+            } else if (data.type === 'answer' && data.sdp && pc) {
+                await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(data.sdp)));
+            } else if (data.type === 'ice' && data.candidate && pc) {
+                await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+            }
+        } catch (e) {
+            console.error('[CallManager] Error handling signal:', e, data.type);
+        }
     }
 
     private async updateStatus(status: CallStatus) {
