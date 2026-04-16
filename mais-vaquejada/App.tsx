@@ -101,6 +101,7 @@ const App: React.FC = () => {
   const isFetchingProfile = useRef(false);
   const currentViewRef = useRef(currentView);
   const isMountedRef = useRef(true);
+  const hasValidConsentRef = useRef(false);
 
   useEffect(() => {
     currentViewRef.current = currentView;
@@ -139,9 +140,11 @@ const App: React.FC = () => {
         setUser(mappedUser);
 
         const lastAcceptance = profile.user_legal_acceptances?.[0];
-        const hasValidConsent = lastAcceptance && 
+        const hasValidConsent = !!(lastAcceptance && 
                                lastAcceptance.terms_version === TERMS_VERSION && 
-                               lastAcceptance.privacy_version === PRIVACY_VERSION;
+                               lastAcceptance.privacy_version === PRIVACY_VERSION);
+        
+        hasValidConsentRef.current = hasValidConsent;
 
         const isEstablished = profile.profile_completed || (profile.username && profile.username.length >= 2);
         const activeView = currentViewRef.current;
@@ -237,6 +240,12 @@ const App: React.FC = () => {
 
       if (!user && ![View.LOGIN, View.SIGNUP, View.FORGOT_PASSWORD, View.RECOVERY_ASSISTED, View.TERMS].includes(view)) {
         setCurrentView(View.LOGIN);
+        return;
+      }
+
+      // NOVO: Bloqueio agressivo de navegação se não houver aceite legal
+      if (user && !hasValidConsentRef.current && ![View.LOGIN, View.SIGNUP, View.LEGAL_CONSENT].includes(view)) {
+        setCurrentView(View.LEGAL_CONSENT);
         return;
       }
 
