@@ -114,6 +114,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
     const [selectedPost, setSelectedPost] = useState<any>(null);
     const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
     const [profilePosts, setProfilePosts] = useState<any[]>([]);
+    const [marketPosts, setMarketPosts] = useState<any[]>([]);
     const [hasActiveStory, setHasActiveStory] = useState(false);
 
     // Persist profilePosts
@@ -263,6 +264,24 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                             likes: 0, 
                             comments: 0,
                             caption: p.caption
+                        })));
+                    }
+
+                    // Fetch market items
+                    const { data: marketData } = await supabase
+                        .from('market_items')
+                        .select('*')
+                        .eq('user_id', profileId)
+                        .eq('status', 'active')
+                        .order('created_at', { ascending: false });
+                    
+                    if (marketData) {
+                        setMarketPosts(marketData.map(m => ({
+                            id: m.id,
+                            img: m.image_url || m.media_url,
+                            price: m.price || 'A combinar',
+                            title: m.title || m.name,
+                            status: m.status
                         })));
                     }
 
@@ -470,10 +489,10 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                                 </button>
                             )}
                             <button 
-                                onClick={shareProfile} 
+                                onClick={() => window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'SOCIAL' } }))}
                                 className="flex-1 bg-white/10 text-white py-2.5 rounded-lg font-black text-[11px] uppercase tracking-wider flex items-center justify-center hover:bg-white/20 active:scale-95 transition-all"
                             >
-                                Compartilhar
+                                Mensagem
                             </button>
                         </>
                     ) : (
@@ -543,19 +562,28 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                         )
                     )}
                     {activeTab === 'ADS' && (
-                        <div className="grid grid-cols-2 gap-2 animate-in fade-in duration-300 pt-2">
-                            {ADS_MOCK.map((ad: any, i: number) => (
-                                <div key={i} className="bg-white/5 rounded-xl overflow-hidden border border-white/10">
-                                    <div className="aspect-square bg-black relative">
-                                        <img src={ad.img} className="w-full h-full object-cover" alt=""/>
+                        marketPosts.length > 0 ? (
+                            <div className="grid grid-cols-2 gap-2 animate-in fade-in duration-300 pt-2">
+                                {marketPosts.map((ad: any, i: number) => (
+                                    <div key={i} className="bg-white/5 rounded-xl overflow-hidden border border-white/10 active:scale-95 transition-transform" onClick={() => window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'MARKET', itemId: ad.id } }))}>
+                                        <div className="aspect-square bg-black relative">
+                                            <img src={ad.img} className="w-full h-full object-cover" alt=""/>
+                                            <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg">
+                                                <p className="text-[9px] font-black text-[#ECA413] uppercase tracking-widest">{ad.price}</p>
+                                            </div>
+                                        </div>
+                                        <div className="p-3">
+                                            <p className="text-white font-bold text-[10px] truncate leading-tight uppercase tracking-tight">{ad.title}</p>
+                                        </div>
                                     </div>
-                                    <div className="p-3">
-                                        <p className="text-[#ECA413] font-black text-[11px] mb-1">{ad.price}</p>
-                                        <p className="text-white font-bold text-[10px] truncate leading-tight">{ad.title}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center py-20 opacity-20 border-2 border-dashed border-white/5 rounded-[32px] mt-2">
+                                <span className="material-icons text-5xl mb-3">storefront</span>
+                                <p className="text-xs font-black uppercase tracking-widest">Nenhum item à venda</p>
+                            </div>
+                        )
                     )}
 
                     {activeTab === 'FAVORITES' && isMyProfile && (
