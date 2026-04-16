@@ -41,8 +41,6 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
     useEffect(() => {
         if (step === 'CAMERA') {
             startCamera();
-        } else {
-            stopCamera();
         }
         if (step === 'PREVIEW') {
             setTimeout(() => setPreviewAnim(true), 10);
