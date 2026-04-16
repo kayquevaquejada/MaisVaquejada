@@ -72,6 +72,7 @@ export const ChatThread: React.FC<ChatThreadProps> = ({
               )}
             </div>
           );
+        }
         if (data.type === 'story_reply') {
           return (
             <div className="flex flex-col gap-3 min-w-[180px]">
