@@ -41,10 +41,16 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
     if (!user?.id) return;
     setSendingId(recipientId);
     try {
-      const shareText = `Veja esta postagem de @${post.username}:\nhttps://mais-vaquejada.vercel.app/social`;
-      // Send a text message linking to the post or just text format
-      await sendMessage(recipientId, shareText);
-      alert('Postagem enviada com sucesso!');
+      const shareData = JSON.stringify({
+        type: 'post_share',
+        postId: post.id,
+        mediaUrl: post.imageUrl,
+        username: post.username,
+        caption: post.caption,
+        avatarUrl: post.userAvatar
+      });
+      
+      await sendMessage(recipientId, shareData);
       onShareComplete();
       onClose();
     } catch (err) {

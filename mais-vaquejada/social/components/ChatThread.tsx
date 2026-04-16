@@ -11,6 +11,7 @@ interface ChatThreadProps {
   onCall: (type: 'audio' | 'video') => void;
   onBack: () => void;
   onNavigateToProfile: (username: string) => void;
+  onViewPost: (postId: string) => void;
 }
 
 export const ChatThread: React.FC<ChatThreadProps> = ({
@@ -22,7 +23,8 @@ export const ChatThread: React.FC<ChatThreadProps> = ({
   onSendMessage,
   onCall,
   onBack,
-  onNavigateToProfile
+  onNavigateToProfile,
+  onViewPost
 }) => {
   const [text, setText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -40,6 +42,40 @@ export const ChatThread: React.FC<ChatThreadProps> = ({
       onSendMessage(text.trim());
       setText('');
     }
+  };
+
+  const renderMessageContent = (content: string) => {
+    try {
+      if (content.startsWith('{')) {
+        const data = JSON.parse(content);
+        if (data.type === 'post_share') {
+          return (
+            <div 
+              className="w-full min-w-[180px] max-w-[240px] overflow-hidden rounded-2xl bg-black/30 border border-white/5 cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all"
+              onClick={() => onViewPost(data.postId)}
+            >
+              <div className="p-2.5 flex items-center justify-between border-b border-white/5 bg-white/5">
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <img src={data.avatarUrl || `https://ui-avatars.com/api/?name=${data.username}&background=random`} className="w-5 h-5 rounded-full object-cover shrink-0" />
+                  <span className="text-[10px] font-black uppercase text-white/90 tracking-widest truncate">@{data.username}</span>
+                </div>
+                <span className="material-icons text-white/20 text-xs">chevron_right</span>
+              </div>
+              <div className="relative aspect-square">
+                <img src={data.mediaUrl} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
+              </div>
+              {data.caption && (
+                <div className="p-2 px-3">
+                  <p className="text-[10px] text-white/50 line-clamp-1 italic">{data.caption}</p>
+                </div>
+              )}
+            </div>
+          );
+        }
+      }
+    } catch (e) {}
+    return <p className="text-[13px] font-medium leading-relaxed">{content}</p>;
   };
 
   return (
@@ -68,13 +104,19 @@ export const ChatThread: React.FC<ChatThreadProps> = ({
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {messages.map((msg, i) => {
           const isMe = msg.sender_id === currentUserId;
+          const isPostShare = msg.content.startsWith('{"type":"post_share"');
+
           return (
             <div key={msg.id || i} className={`flex ${isMe ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-${isMe ? 'right' : 'left'}-4 duration-300`}>
-              <div className={`max-w-[75%] rounded-3xl px-5 py-3 shadow-xl ${
-                isMe ? 'bg-[#ECA413] text-background-dark rounded-br-none' : 'bg-[#2C2C2E] text-white rounded-bl-none border border-white/5'
+              <div className={`shadow-xl ${
+                isPostShare 
+                  ? 'bg-transparent' 
+                  : isMe 
+                    ? 'max-w-[75%] rounded-3xl px-5 py-3 bg-[#ECA413] text-background-dark rounded-br-none' 
+                    : 'max-w-[75%] rounded-3xl px-5 py-3 bg-[#2C2C2E] text-white rounded-bl-none border border-white/5'
               }`}>
-                <p className="text-[13px] font-medium leading-relaxed">{msg.content}</p>
-                <div className={`text-[8px] font-black uppercase tracking-widest mt-1 text-right opacity-50`}>
+                {renderMessageContent(msg.content)}
+                <div className={`text-[8px] font-black uppercase tracking-widest mt-1 text-right opacity-50 ${isPostShare ? 'text-white/40' : ''}`}>
                   {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </div>
               </div>

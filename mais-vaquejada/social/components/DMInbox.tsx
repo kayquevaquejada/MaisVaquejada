@@ -115,7 +115,9 @@ export const DMInbox: React.FC<DMInboxProps> = ({
                         <h3 className="font-black text-sm text-white uppercase tracking-tighter truncate">@{conv.other_username}</h3>
                         <span className="text-[9px] font-black text-white/20 uppercase">{conv.last_message_time ? timeAgo(conv.last_message_time) : ''}</span>
                       </div>
-                      <p className="text-[12px] text-white/40 truncate leading-tight">{conv.last_message}</p>
+                      <p className="text-[12px] text-white/40 truncate leading-tight">
+                        {conv.last_message?.startsWith('{"type":"post_share"') ? '📷 Publicação compartilhada' : conv.last_message}
+                      </p>
                     </div>
                   </div>
                 );

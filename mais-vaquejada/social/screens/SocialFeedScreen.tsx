@@ -307,6 +307,7 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
               onCall={(type) => startCall?.([activeChatPartnetId], type)}
               onBack={() => setActiveChatPartnerId(null)}
               onNavigateToProfile={navigateToProfile}
+              onViewPost={handlePostPress}
             />
           ) : (
             <div className="flex flex-col h-full">
