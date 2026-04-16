@@ -39,13 +39,56 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
     });
 
     const [connectionType, setConnectionType] = useState<string>('4G');
+    const [contactInfo, setContactInfo] = useState({
+        whatsapp: '',
+        instagram: '',
+        email: ''
+    });
+    const [editContact, setEditContact] = useState({
+        whatsapp: '',
+        instagram: '',
+        email: ''
+    });
+
+    const isMaster = user?.role === 'ADMIN_MASTER' || user?.isMaster || false;
 
     useEffect(() => {
+        fetchContactInfo();
         if ('connection' in navigator) {
             const conn = (navigator as any).connection;
             setConnectionType(conn.effectiveType?.toUpperCase() || 'WiFi');
         }
     }, []);
+
+    const fetchContactInfo = async () => {
+        const { data } = await supabase.from('app_settings').select('value').eq('key', 'contact_info').single();
+        if (data?.value) {
+            setContactInfo(data.value);
+            setEditContact(data.value);
+        }
+    };
+
+    const handleSaveContact = async () => {
+        setLoading(true);
+        try {
+            const { error } = await supabase
+                .from('app_settings')
+                .upsert({ 
+                    key: 'contact_info', 
+                    value: editContact,
+                    category: 'support'
+                }, { onConflict: 'key' });
+
+            if (error) throw error;
+            setContactInfo(editContact);
+            setSuccess('Contato atualizado!');
+            setTimeout(() => setSuccess(null), 2000);
+        } catch (err: any) {
+            alert(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleSaveProfile = async () => {
         setLoading(true);
@@ -187,22 +230,106 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
         </div>
     );
 
-    const renderLanguage = () => (
+    const renderHelp = () => (
         <div className="absolute inset-0 bg-[#FBFBFB] flex flex-col z-[120]">
-            <SubHeader title={t('language')} />
-            <div className="flex-1 overflow-y-auto pt-4">
-                {['pt', 'en', 'es'].map((id) => (
-                    <div key={id} onClick={() => confirm(t('confirmLanguageChange')) && changeLanguage(id as any)} className="p-6 bg-white border-b border-black/5 flex justify-between items-center active:bg-black/5">
-                        <span className="text-[15px] font-bold text-[#1A1108] uppercase tracking-widest">{id === 'pt' ? 'Português' : id === 'en' ? 'English' : 'Español'}</span>
-                        {lang === id && <span className="material-icons text-[#D4AF37]">check</span>}
+            <SubHeader title="Entrar em contato" />
+            <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                {isMaster ? (
+                    <div className="bg-white p-6 rounded-[32px] border border-black/5 space-y-6 shadow-sm">
+                        <h3 className="text-[10px] font-black uppercase text-[#D4AF37] tracking-[0.2em] mb-2 text-center">Configurações de Suporte (Master Only)</h3>
+                        
+                        <div className="space-y-2">
+                            <label className="text-[9px] font-black text-black/30 uppercase tracking-widest ml-1">WhatsApp (Apenas números com DDD)</label>
+                            <input 
+                                className="w-full bg-neutral-50 border border-black/5 rounded-2xl py-4 px-5 font-bold text-sm outline-none focus:border-[#D4AF37]" 
+                                value={editContact.whatsapp} 
+                                onChange={e => setEditContact({ ...editContact, whatsapp: e.target.value })} 
+                                placeholder="Ex: 5583999999999"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-[9px] font-black text-black/30 uppercase tracking-widest ml-1">Instagram (@usuario)</label>
+                            <input 
+                                className="w-full bg-neutral-50 border border-black/5 rounded-2xl py-4 px-5 font-bold text-sm outline-none focus:border-[#D4AF37]" 
+                                value={editContact.instagram} 
+                                onChange={e => setEditContact({ ...editContact, instagram: e.target.value })} 
+                                placeholder="Ex: arenadigital"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-[9px] font-black text-black/30 uppercase tracking-widest ml-1">E-mail</label>
+                            <input 
+                                className="w-full bg-neutral-50 border border-black/5 rounded-2xl py-4 px-5 font-bold text-sm outline-none focus:border-[#D4AF37]" 
+                                value={editContact.email} 
+                                onChange={e => setEditContact({ ...editContact, email: e.target.value })} 
+                                placeholder="Ex: contato@arena.com"
+                            />
+                        </div>
+
+                        <button 
+                            disabled={loading}
+                            onClick={handleSaveContact} 
+                            className="w-full bg-leather text-white py-5 rounded-[24px] font-black text-[11px] uppercase tracking-widest shadow-xl active:scale-95 transition-all disabled:opacity-50"
+                        >
+                            {loading ? 'Salvando...' : 'Atualizar Contatos'}
+                        </button>
                     </div>
-                ))}
+                ) : (
+                    <div className="space-y-4">
+                        <button 
+                            onClick={() => window.open(`https://wa.me/${contactInfo.whatsapp}`, '_blank')}
+                            className="w-full bg-[#25D366] text-white p-6 rounded-[32px] flex items-center gap-4 active:scale-95 transition-all shadow-lg shadow-[#25D366]/20"
+                        >
+                            <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
+                                <span className="material-icons">chat</span>
+                            </div>
+                            <div className="text-left">
+                                <p className="text-[10px] font-black uppercase opacity-60 tracking-widest">WhatsApp</p>
+                                <p className="text-sm font-black italic tracking-tighter uppercase">Falar com Suporte</p>
+                            </div>
+                            <span className="material-icons ml-auto opacity-40">chevron_right</span>
+                        </button>
+
+                        <button 
+                            onClick={() => window.open(`https://instagram.com/${contactInfo.instagram}`, '_blank')}
+                            className="w-full bg-gradient-to-tr from-[#FFB700] via-[#FF0069] to-[#7638FF] text-white p-6 rounded-[32px] flex items-center gap-4 active:scale-95 transition-all shadow-lg"
+                        >
+                            <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
+                                <span className="material-icons">camera_alt</span>
+                            </div>
+                            <div className="text-left">
+                                <p className="text-[10px] font-black uppercase opacity-60 tracking-widest">Instagram</p>
+                                <p className="text-sm font-black italic tracking-tighter uppercase">Seguir Oficial</p>
+                            </div>
+                            <span className="material-icons ml-auto opacity-40">chevron_right</span>
+                        </button>
+
+                        <button 
+                            onClick={() => window.open(`mailto:${contactInfo.email}`, '_blank')}
+                            className="w-full bg-white border border-black/5 text-leather p-6 rounded-[32px] flex items-center gap-4 active:scale-95 transition-all shadow-sm"
+                        >
+                            <div className="w-10 h-10 bg-leather/5 rounded-2xl flex items-center justify-center">
+                                <span className="material-icons text-leather">mail</span>
+                            </div>
+                            <div className="text-left">
+                                <p className="text-[10px] font-black uppercase text-black/30 tracking-widest">E-mail</p>
+                                <p className="text-sm font-black italic tracking-tighter uppercase">Enviar Mensagem</p>
+                            </div>
+                            <span className="material-icons ml-auto opacity-10">chevron_right</span>
+                        </button>
+                    </div>
+                )}
+                <div className="text-center pt-10">
+                    <p className="text-[10px] font-black text-black/20 uppercase tracking-[0.3em]">Arena Vaquerama v1.0.0</p>
+                </div>
             </div>
         </div>
     );
 
     if (activeTab === 'EDIT_PROFILE') return renderEditProfile();
-    if (activeTab === 'LANGUAGE') return renderLanguage();
+    if (activeTab === 'HELP') return renderHelp();
 
 
     return (
@@ -216,7 +343,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
                 <SettingItem icon="person_outline" label={t('editProfile')} value={user?.name} onClick={() => setActiveTab('EDIT_PROFILE')} />
                 
                 <div className="px-6 py-6 bg-neutral-50 text-[10px] font-black text-black/30 uppercase tracking-[0.3em] border-b border-black/5">App</div>
-                <SettingItem icon="language" label={t('language')} value={lang.toUpperCase()} onClick={() => setActiveTab('LANGUAGE')} />
+                <SettingItem icon="help_outline" label="Entrar em contato" onClick={() => setActiveTab('HELP')} />
 
                 
                 {/* Administrative Access */}
