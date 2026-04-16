@@ -18,6 +18,7 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
     const [capturedMedia, setCapturedMedia] = useState<{ blob: Blob; url: string; type: 'image' | 'video' } | null>(null);
     const [permissionError, setPermissionError] = useState<string | null>(null);
     const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+    const [streamKey, setStreamKey] = useState(0);
     const { uploadFile, uploading: isUploading } = useMediaUpload();
 
     // Form stats
@@ -72,37 +73,37 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
     const startCamera = async () => {
         try {
             setPermissionError(null);
-            if (mediaStreamRef.current) return; // Already running
+            
+            let stream = mediaStreamRef.current;
+            if (!stream) {
+                const constraints = {
+                    video: { facingMode },
+                    audio: true
+                };
 
-            const constraints = {
-                video: { 
-                    facingMode: facingMode,
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                },
-                audio: true // Always try to get audio so we don't have to restart later
-            };
-
-            let stream: MediaStream;
-            try {
-                stream = await navigator.mediaDevices.getUserMedia(constraints);
-            } catch (e) {
-                // Fallback to video-only if audio fails
-                stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: facingMode },
-                    audio: false
-                });
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia(constraints);
+                } catch (e) {
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode },
+                        audio: false
+                    });
+                }
+                mediaStreamRef.current = stream;
+                setStreamKey(prev => prev + 1);
             }
 
-            mediaStreamRef.current = stream;
-            if (videoRef.current) {
+            if (videoRef.current && stream) {
                 videoRef.current.srcObject = stream;
-                videoRef.current.play().catch(e => console.error("Play error:", e));
+                videoRef.current.setAttribute('playsinline', 'true');
+                videoRef.current.play().catch(() => {
+                    // Manual play might be needed on interaction
+                });
             }
 
         } catch (err: any) {
             console.error('Camera access error:', err);
-            setPermissionError('Câmera não disponível. Verifique as permissões.');
+            setPermissionError('Câmera não disponível.');
         }
     };
 
@@ -291,11 +292,13 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
                     </div>
                 ) : (
                     <video
+                        key={streamKey}
                         ref={videoRef}
                         autoPlay
                         playsInline
                         muted
                         className="absolute inset-0 w-full h-full object-cover"
+                        onClick={() => videoRef.current?.play()}
                     />
                 )}
             </div>
