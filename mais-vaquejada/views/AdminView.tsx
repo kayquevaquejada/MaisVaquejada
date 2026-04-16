@@ -1174,13 +1174,16 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                 <SubHeader title="Vaquejadas" />
                 <div className="flex-1 overflow-y-auto pb-10">
                     {isMaster && (
-                    <SectionTitle title="Gestão Operacional" />
-                    <div className="px-6 grid grid-cols-2 gap-3 mb-6">
-                        <button onClick={()=>{ setEventForm({}); setSubviewEvents('CREATE'); }} className="bg-[#D4AF37] text-white p-4 rounded-xl font-black uppercase tracking-widest text-[10px] flex flex-col items-center gap-2 active:scale-95 shadow-sm">
-                            <span className="material-icons">add_box</span>
-                            Nova Vaquejada
-                        </button>
-                    </div>
+                        <>
+                            <SectionTitle title="Gestão Operacional" />
+                            <div className="px-6 grid grid-cols-2 gap-3 mb-6">
+                                <button onClick={()=>{ setEventForm({}); setSubviewEvents('CREATE'); }} className="bg-[#D4AF37] text-white p-4 rounded-xl font-black uppercase tracking-widest text-[10px] flex flex-col items-center gap-2 active:scale-95 shadow-sm">
+                                    <span className="material-icons">add_box</span>
+                                    Nova Vaquejada
+                                </button>
+                            </div>
+                        </>
+                    )}
 
                     <SectionTitle title="Eventos Atuais" />
                     <div className="px-6 space-y-4">
