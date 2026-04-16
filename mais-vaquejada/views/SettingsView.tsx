@@ -319,10 +319,120 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
                             </div>
                             <span className="material-icons ml-auto opacity-10">chevron_right</span>
                         </button>
+                        </button>
                     </div>
                 )}
-                <div className="text-center pt-10">
+                <div className="text-center pt-10 pb-10">
                     <p className="text-[10px] font-black text-black/20 uppercase tracking-[0.3em]">Arena Vaquerama v1.0.0</p>
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderAbout = () => (
+        <div className="absolute inset-0 bg-[#FBFBFB] flex flex-col z-[130] animate-in slide-in-from-right duration-300">
+            <header className="px-6 py-8 border-b border-black/5 bg-white flex items-center gap-4 sticky top-0 z-10">
+                <button onClick={() => setActiveTab('MAIN')} className="material-icons text-[#1A1108]">arrow_back</button>
+                <div>
+                    <h2 className="text-xl font-black uppercase italic tracking-tighter">Sobre o +Vaquejada</h2>
+                    <p className="text-[10px] font-black opacity-30 uppercase tracking-widest mt-1">Nossa história e compromisso</p>
+                </div>
+            </header>
+
+            <div className="flex-1 overflow-y-auto px-6 py-10 space-y-12 pb-24">
+                {/* Brand Identity Card */}
+                <div className="flex flex-col items-center text-center space-y-6">
+                    <img src="/about-logo.png" className="w-32 h-32 object-contain" alt="+Vaquejada Logo" />
+                    <div>
+                        <h1 className="text-3xl font-black italic text-leather tracking-tighter uppercase">+VAQUEJADA</h1>
+                        <p className="text-sm font-medium text-leather/60 max-w-[280px] mx-auto leading-relaxed mt-2">Fortalecendo o universo da vaquejada através da tecnologia.</p>
+                    </div>
+                    <div 
+                        onClick={() => {
+                            navigator.clipboard.writeText('63.713.232/0001-07');
+                            setSuccess('CNPJ Copiado!');
+                            setTimeout(() => setSuccess(null), 2000);
+                        }}
+                        className="bg-leather/5 border border-leather/10 px-6 py-4 rounded-[20px] cursor-pointer active:scale-95 transition-all group hover:bg-leather/10"
+                    >
+                        <p className="text-[9px] font-black text-leather/40 uppercase tracking-widest mb-1">Dados Institucionais</p>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-leather">CNPJ: 63.713.232/0001-07</span>
+                            <span className="material-icons text-sm text-leather/30 group-hover:text-leather transition-colors">content_copy</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Content Sections */}
+                <div className="space-y-4">
+                    <AboutSection title="SOBRE O +VAQUEJADA">
+                        +Vaquejada é uma plataforma digital criada com o propósito de fortalecer, valorizar e conectar o universo da vaquejada por meio da tecnologia, da informação e da comunicação moderna.
+                        <br /><br />
+                        A proposta do aplicativo nasce da percepção de que a vaquejada, como manifestação cultural, esportiva, econômica e social, movimenta milhares de pessoas, profissionais, equipes, organizadores, parques, locutores, patrocinadores, empresários e admiradores em diferentes regiões do Brasil. Mesmo com toda essa força, muitas informações importantes ainda se encontram descentralizadas, dispersas ou de difícil acesso para o público.
+                        <br /><br />
+                        Diante disso, o +Vaquejada foi idealizado para funcionar como um ecossistema digital voltado à organização, divulgação, visibilidade, interação e fortalecimento desse setor, aproximando pessoas, eventos, oportunidades e experiências em um só ambiente.
+                    </AboutSection>
+
+                    <AboutSection title="NOSSO OBJETIVO">
+                        O principal objetivo do +Vaquejada é construir uma plataforma sólida e relevante para o segmento, permitindo que usuários, organizadores, parceiros e anunciantes tenham acesso a um ambiente digital capaz de:
+                        <ul className="list-disc pl-5 mt-4 space-y-2 text-sm font-medium text-leather/70">
+                            <li>ampliar a visibilidade de eventos, circuitos e competições;</li>
+                            <li>facilitar a conexão entre o público e o universo da vaquejada;</li>
+                            <li>reunir informações importantes em um só lugar;</li>
+                            <li>criar novas oportunidades de divulgação e negócios;</li>
+                            <li>fortalecer a presença digital do setor;</li>
+                            <li>incentivar a profissionalização da comunicação dentro desse mercado;</li>
+                            <li>modernizar a forma como conteúdos, anúncios, campanhas e interações são apresentados ao público.</li>
+                        </ul>
+                    </AboutSection>
+
+                    <AboutSection title="NOSSA MISSÃO">
+                        A missão do +Vaquejada é conectar o ecossistema da vaquejada por meio da tecnologia, da informação e da valorização cultural, oferecendo uma plataforma acessível, útil e estratégica para usuários, organizadores, patrocinadores e demais participantes desse universo.
+                    </AboutSection>
+
+                    <AboutSection title="NOSSA VISÃO">
+                        A visão do +Vaquejada é consolidar-se como uma referência digital no segmento, tornando-se uma plataforma reconhecida pela utilidade, credibilidade, inovação e capacidade de gerar valor real para a comunidade da vaquejada.
+                    </AboutSection>
+
+                    <AboutSection title="NOSSOS VALORES">
+                        <div className="space-y-6">
+                            <div>
+                                <p className="text-xs font-black uppercase tracking-widest text-leather mb-1">Valorização cultural</p>
+                                <p className="text-sm font-medium text-leather/70">Reconhecemos a importância histórica, social e econômica da vaquejada e buscamos contribuir para sua presença digital com respeito e responsabilidade.</p>
+                            </div>
+                            <div>
+                                <p className="text-xs font-black uppercase tracking-widest text-leather mb-1">Inovação com propósito</p>
+                                <p className="text-sm font-medium text-leather/70">A tecnologia utilizada na plataforma deve servir para facilitar, organizar, conectar e gerar utilidade prática, e não apenas para existir como recurso estético.</p>
+                            </div>
+                            <div>
+                                <p className="text-xs font-black uppercase tracking-widest text-leather mb-1">Respeito à comunidade</p>
+                                <p className="text-sm font-medium text-leather/70">O app é pensado para servir pessoas reais: usuários, organizadores, patrocinadores, profissionais e admiradores do setor.</p>
+                            </div>
+                        </div>
+                    </AboutSection>
+
+                    <AboutSection title="O QUE PRETENDEMOS CONSTRUIR">
+                        O +Vaquejada pretende construir, de forma progressiva e estruturada, um ambiente digital que possa oferecer divulgação de eventos, visibilidade institucional e comercial, e ferramentas de gestão modernas para o setor.
+                    </AboutSection>
+
+                    <AboutSection title="COMPROMISSO COM A EVOLUÇÃO">
+                        O +Vaquejada está sendo desenvolvido para oferecer uma navegação intuitiva, clara e agradável. Recursos podem ser ajustados ou reformulados ao longo do tempo, sempre com o objetivo de melhorar a utilidade e a estabilidade do sistema.
+                    </AboutSection>
+
+                    {/* Final Board Message Card */}
+                    <div className="bg-leather text-white p-8 rounded-[40px] space-y-6 shadow-2xl relative overflow-hidden group">
+                        <div className="absolute -top-24 -right-24 w-64 h-64 bg-white/5 rounded-full group-hover:scale-110 transition-transform duration-700" />
+                        <span className="material-icons text-white/40 text-4xl">format_quote</span>
+                        <h3 className="text-xl font-black italic uppercase tracking-tighter">Mensagem Final da Diretoria</h3>
+                        <p className="text-sm font-medium text-white/80 leading-relaxed italic">
+                            "A Diretoria do +Vaquejada reafirma seu compromisso com a construção de uma plataforma séria, moderna e em constante evolução. Tecnologia e tradição podem caminhar juntas. Muito obrigado por fazer parte desta trajetória."
+                        </p>
+                        <div className="pt-6 border-t border-white/10 flex flex-col items-center">
+                            <img src="/about-logo.png" className="w-16 h-16 object-contain brightness-0 invert opacity-40 mb-4" />
+                            <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Diretoria +Vaquejada</p>
+                            <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-20 mt-4">Todos os direitos reservados © 2026</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -330,6 +440,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
 
     if (activeTab === 'EDIT_PROFILE') return renderEditProfile();
     if (activeTab === 'HELP') return renderHelp();
+    if (activeTab === 'ABOUT') return renderAbout();
 
 
     return (
@@ -344,6 +455,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
                 
                 <div className="px-6 py-6 bg-neutral-50 text-[10px] font-black text-black/30 uppercase tracking-[0.3em] border-b border-black/5">App</div>
                 <SettingItem icon="help_outline" label="Entrar em contato" onClick={() => setActiveTab('HELP')} />
+                <SettingItem icon="info_outline" label="Sobre o +Vaquejada" onClick={() => setActiveTab('ABOUT')} />
 
                 
                 {/* Administrative Access */}
@@ -363,5 +475,14 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
         </div>
     );
 };
+
+const AboutSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+    <div className="bg-white border border-black/5 p-8 rounded-[32px] space-y-4 shadow-sm">
+        <h3 className="text-[11px] font-black text-leather/40 uppercase tracking-[0.2em] border-b border-black/5 pb-4">{title}</h3>
+        <div className="text-sm font-medium text-leather leading-relaxed">
+            {children}
+        </div>
+    </div>
+);
 
 export default SettingsView;
