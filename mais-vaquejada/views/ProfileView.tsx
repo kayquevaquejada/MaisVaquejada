@@ -488,12 +488,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                                     Painel Admin
                                 </button>
                             )}
-                            <button 
-                                onClick={() => window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'SOCIAL' } }))}
-                                className="flex-1 bg-white/10 text-white py-2.5 rounded-lg font-black text-[11px] uppercase tracking-wider flex items-center justify-center hover:bg-white/20 active:scale-95 transition-all"
-                            >
-                                Mensagem
-                            </button>
                         </>
                     ) : (
                         <>
@@ -502,12 +496,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                                 className={`flex-1 ${isFollowing ? 'bg-white/10 text-white' : 'bg-[#ECA413] text-black'} py-2.5 rounded-lg font-black text-[11px] uppercase tracking-wider flex items-center justify-center active:scale-95 transition-all`}
                             >
                                 {isFollowing ? 'Seguindo' : 'Seguir'}
-                            </button>
-                            <button 
-                                onClick={() => window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'SOCIAL', openDM: finalProfile.username } }))}
-                                className="flex-1 bg-white/10 text-white py-2.5 rounded-lg font-black text-[11px] uppercase tracking-wider flex items-center justify-center hover:bg-white/20 active:scale-95 transition-all"
-                            >
-                                Mensagem
                             </button>
                         </>
                     )}
