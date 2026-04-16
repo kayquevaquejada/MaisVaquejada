@@ -282,7 +282,13 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
           onShare={async (data: any) => {
             if (data.type === 'story_reply') {
               try {
-                await sendMessage(data.targetUserId, data.text);
+                const payload = JSON.stringify({
+                  type: 'story_reply',
+                  mediaUrl: data.mediaUrl,
+                  text: data.text,
+                  username: data.username
+                });
+                await sendMessage(data.targetUserId, payload);
               } catch (e) {
                 console.error('Erro ao responder story:', e);
               }

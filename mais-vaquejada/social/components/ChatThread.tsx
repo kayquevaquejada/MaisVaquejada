@@ -72,6 +72,15 @@ export const ChatThread: React.FC<ChatThreadProps> = ({
               )}
             </div>
           );
+        if (data.type === 'story_reply') {
+          return (
+            <div className="flex flex-col gap-3 min-w-[180px]">
+              <div className="w-[45%] aspect-[9/16] rounded-xl overflow-hidden border border-white/10 bg-black/40 shadow-inner">
+                <img src={data.mediaUrl} className="w-full h-full object-cover opacity-60" />
+              </div>
+              <p className="text-[13px] font-medium leading-relaxed italic opacity-90">"{data.text}"</p>
+            </div>
+          );
         }
       }
     } catch (e) {}
@@ -99,18 +108,19 @@ export const ChatThread: React.FC<ChatThreadProps> = ({
           <button onClick={() => onCall('video')} className="p-1 active:scale-95 transition-all"><span className="material-icons text-[#ECA413] text-2xl">videocam</span></button>
         </div>
       </header>
-
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
-        {messages.map((msg, i) => {
+ 
+       {/* Messages Area */}
+       <div className="flex-1 overflow-y-auto p-6 space-y-4">
+         {messages.map((msg, i) => {
           const isMe = msg.sender_id === currentUserId;
           const isPostShare = msg.content.startsWith('{"type":"post_share"');
-
-          return (
-            <div key={msg.id || i} className={`flex ${isMe ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-${isMe ? 'right' : 'left'}-4 duration-300`}>
-              <div className={`shadow-xl ${
-                isPostShare 
-                  ? 'bg-transparent' 
+          const isSpecial = msg.content.startsWith('{"type":');
+ 
+           return (
+             <div key={msg.id || i} className={`flex ${isMe ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-${isMe ? 'right' : 'left'}-4 duration-300`}>
+               <div className={`shadow-xl ${
+                 isPostShare 
+                   ? 'bg-transparent' 
                   : isMe 
                     ? 'max-w-[75%] rounded-3xl px-5 py-3 bg-[#ECA413] text-background-dark rounded-br-none' 
                     : 'max-w-[75%] rounded-3xl px-5 py-3 bg-[#2C2C2E] text-white rounded-bl-none border border-white/5'
