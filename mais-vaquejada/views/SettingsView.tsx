@@ -467,6 +467,25 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
                 <SettingItem icon="help_outline" label="Entrar em contato" onClick={() => setActiveTab('HELP')} />
                 <SettingItem icon="info_outline" label="Sobre o +Vaquejada" onClick={() => setActiveTab('ABOUT')} />
 
+                <div className="px-6 py-6 bg-neutral-50 text-[10px] font-black text-black/30 uppercase tracking-[0.3em] border-b border-black/5">Jurídico</div>
+                <SettingItem 
+                    icon="description" 
+                    label="Termos de Uso" 
+                    onClick={() => window.open('/terms', '_blank')} 
+                    value={user?.last_terms_version ? `Aceito (${user.last_terms_version})` : ''}
+                />
+                <SettingItem 
+                    icon="gavel" 
+                    label="Política de Privacidade" 
+                    onClick={() => window.open('/privacy', '_blank')} 
+                    value={user?.last_privacy_version ? `Aceito (${user.last_privacy_version})` : ''}
+                />
+                {user?.last_legal_accepted_at && (
+                    <div className="px-6 py-4">
+                        <p className="text-[9px] font-black text-black/20 uppercase tracking-widest">Último aceite em: {new Date(user.last_legal_accepted_at).toLocaleDateString('pt-BR')}</p>
+                    </div>
+                )}
+
                 
                 {/* Administrative Access */}
                 {(user?.isMaster || user?.role === 'ADMIN' || user?.role === 'ADMIN_MASTER' || user?.admin_mercado || user?.admin_social || user?.admin_eventos || user?.admin_noticias) && (

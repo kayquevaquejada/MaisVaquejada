@@ -24,6 +24,8 @@ import UpdateManager from './components/UpdateManager';
 import { CallProvider } from './context/CallContext';
 import { CallBar } from './components/CallBar';
 import { CallScreen } from './components/CallScreen';
+import LegalConsentView from './views/LegalConsentView';
+import { TERMS_VERSION, PRIVACY_VERSION } from './lib/constants';
 
 const MASTER_EMAILS = ["kayquegusmao@icloud.com", "kayquegusmao276@gmail.com", "Kayquegusmao1@gmail.com", "drkayquegusmao@gmail.com", "contato@maisvaquejada.com.br"];
 
@@ -82,6 +84,8 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
       return <RecoveryAssistedView onBack={() => onSetCurrentView(View.LOGIN)} />;
     case View.EVENT_DETAILS:
       return <EventDetailView event={selectedEvent} onBack={() => onSetCurrentView(View.EVENTS)} />;
+    case View.LEGAL_CONSENT:
+      return <LegalConsentView user={user} onAccept={() => onFetchProfile(user?.id || '')} />;
     default:
       return <EventsView />;
   }
@@ -108,8 +112,10 @@ const App: React.FC = () => {
     try {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*, user_legal_acceptances(*)')
         .eq('id', userId)
+        .order('created_at', { foreignTable: 'user_legal_acceptances', ascending: false })
+        .limit(1, { foreignTable: 'user_legal_acceptances' })
         .maybeSingle();
 
       if (profile) {
@@ -132,11 +138,20 @@ const App: React.FC = () => {
         
         setUser(mappedUser);
 
+        const lastAcceptance = profile.user_legal_acceptances?.[0];
+        const hasValidConsent = lastAcceptance && 
+                               lastAcceptance.terms_version === TERMS_VERSION && 
+                               lastAcceptance.privacy_version === PRIVACY_VERSION;
+
         const isEstablished = profile.profile_completed || (profile.username && profile.username.length >= 2);
         const activeView = currentViewRef.current;
-        const onboardingViews = [View.LOGIN, View.SIGNUP, View.COMPLETE_PROFILE];
+        const onboardingViews = [View.LOGIN, View.SIGNUP, View.COMPLETE_PROFILE, View.LEGAL_CONSENT];
 
-        if (isEstablished) {
+        if (!hasValidConsent) {
+          if (![View.LOGIN, View.SIGNUP].includes(activeView)) {
+            setCurrentView(View.LEGAL_CONSENT);
+          }
+        } else if (isEstablished) {
           if (onboardingViews.includes(activeView)) {
              const savedView = localStorage.getItem('arena_last_view');
              setCurrentView((savedView as View) || View.EVENTS);

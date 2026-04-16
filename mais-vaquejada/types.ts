@@ -17,7 +17,8 @@ export enum View {
   AD_CREATION = 'AD_CREATION',
   INTERNAL_ADS = 'INTERNAL_ADS',
   TERMS = 'TERMS',
-  EVENT_DETAILS = 'EVENT_DETAILS'
+  EVENT_DETAILS = 'EVENT_DETAILS',
+  LEGAL_CONSENT = 'LEGAL_CONSENT'
 }
 
 export type UserType = 'common' | 'seller' | 'organizer' | 'admin';
@@ -67,6 +68,10 @@ export interface User {
   admin_eventos?: boolean;
   admin_noticias?: boolean;
   bio?: string;
+  legal_acceptance_completed?: boolean;
+  last_legal_accepted_at?: string;
+  last_terms_version?: string;
+  last_privacy_version?: string;
   createdAt: string;
   updatedAt?: string;
   lastLoginAt?: string;
