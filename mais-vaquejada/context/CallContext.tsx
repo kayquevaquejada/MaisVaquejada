@@ -56,7 +56,7 @@ const CallContext = createContext<CallContextType | undefined>(undefined);
 export const CallProvider: React.FC<{ children: React.ReactNode, userId: string | undefined }> = ({ children, userId }) => {
     const [state, setState] = useState<CallState>(initialState);
     const audioRef = useRef<HTMLAudioElement | null>(null);
-    const vibrationInterval = useRef<any>(null);
+    const vibrationInterval = useRef<number | null>(null);
     const currentCallIdRef = useRef<string | null>(null);
     const RINGING_URL = 'https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3';
 
@@ -110,7 +110,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode, userId: string 
             currentCallIdRef.current = data.call_id;
 
             // Sincronizar session manager
-            (callManager as any).currentSession = {
+            callManager.currentSession = {
                 call_id: data.call_id,
                 from_user: data.from_user,
                 participants: data.participants,
@@ -144,10 +144,10 @@ export const CallProvider: React.FC<{ children: React.ReactNode, userId: string 
             // Iniciar Vibração
             if (navigator.vibrate) {
                 navigator.vibrate([1000, 500, 1000, 500, 1000]);
-                if (vibrationInterval.current) clearInterval(vibrationInterval.current);
-                vibrationInterval.current = setInterval(() => {
+                if (vibrationInterval.current) window.clearInterval(vibrationInterval.current);
+                vibrationInterval.current = window.setInterval(() => {
                     navigator.vibrate([1000, 500, 1000]);
-                }, 3000);
+                }, 3000) as unknown as number;
             }
         } catch (e) {
             console.error('Error playing ringtone:', e);
