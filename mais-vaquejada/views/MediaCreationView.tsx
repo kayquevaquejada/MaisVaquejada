@@ -284,10 +284,6 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
                 <div className="absolute inset-0 bg-white z-[300] transition-opacity duration-100 ease-out" style={{ opacity: isFlashing ? 0.8 : 0 }} />
             )}
 
-            {/* Premium Depth Overlays */}
-            <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black/80 to-transparent pointer-events-none z-10" />
-            <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none z-10" />
-
             <div className="absolute inset-0 w-full h-full overflow-hidden">
                 {permissionError ? (
                     <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-neutral-900">
