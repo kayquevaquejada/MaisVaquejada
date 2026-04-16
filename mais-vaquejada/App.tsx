@@ -182,51 +182,31 @@ const App: React.FC = () => {
 
   useEffect(() => {
     isMountedRef.current = true;
-    
-    // Safety Timeout: Força o desligamento do loading em no máximo 10 segundos
-    const fallbackTimeout = setTimeout(() => {
-      async function forceUnlock() {
-        if (isMountedRef.current && initializing) {
-          console.warn('Initialization taking too long, forcing unlock...');
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) {
-            setInitializing(false);
-            setCurrentView(View.LEGAL_CONSENT);
-          } else {
-            setInitializing(false);
-            setCurrentView(View.LOGIN);
-          }
-        }
-      }
-      forceUnlock();
-    }, 10000);
 
-    async function init() {
+    // Função de inicialização principal
+    const startup = async () => {
       try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (!isMountedRef.current) return;
-
-        if (sessionError) {
-          console.error('Session Error:', sessionError);
-          setInitializing(false);
-          setCurrentView(View.LOGIN);
-          return;
-        }
-
+        const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
+          // Inicia a busca, mas não bloqueia a aplicação se demorar demais
           await fetchProfile(session.user.id, session.user);
-        } else {
-          setInitializing(false);
-          setCurrentView(View.LOGIN);
         }
       } catch (err) {
         console.error('Init Error:', err);
+      } finally {
         if (isMountedRef.current) setInitializing(false);
       }
-    }
+    };
 
-    init();
+    startup();
+
+    // Trava de segurança absoluta de 10 segundos
+    const timer = setTimeout(() => {
+      if (isMountedRef.current && initializing) {
+        console.warn('Absolute timeout reached, unlocking splash...');
+        setInitializing(false);
+      }
+    }, 10000);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMountedRef.current) return;
@@ -244,7 +224,7 @@ const App: React.FC = () => {
 
     return () => {
       isMountedRef.current = false;
-      clearTimeout(fallbackTimeout);
+      clearTimeout(timer);
       subscription.unsubscribe();
     };
   }, []);
