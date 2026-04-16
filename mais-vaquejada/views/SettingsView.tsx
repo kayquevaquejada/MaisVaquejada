@@ -234,92 +234,102 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
         <div className="absolute inset-0 bg-[#FBFBFB] flex flex-col z-[120]">
             <SubHeader title="Entrar em contato" />
             <div className="flex-1 overflow-y-auto p-6 space-y-8">
-                {isMaster ? (
-                    <div className="bg-white p-6 rounded-[32px] border border-black/5 space-y-6 shadow-sm">
-                        <h3 className="text-[10px] font-black uppercase text-[#D4AF37] tracking-[0.2em] mb-2 text-center">Configurações de Suporte (Master Only)</h3>
+                {/* Contact Buttons (Always visible for testing/usage) */}
+                <div className="space-y-4">
+                    <button 
+                        onClick={() => window.open(`https://wa.me/${contactInfo.whatsapp}`, '_blank')}
+                        className="w-full bg-[#25D366] text-white p-6 rounded-[32px] flex items-center gap-4 active:scale-95 transition-all shadow-lg shadow-[#25D366]/20"
+                    >
+                        <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
+                            <span className="material-icons">chat</span>
+                        </div>
+                        <div className="text-left">
+                            <p className="text-[10px] font-black uppercase opacity-60 tracking-widest">WhatsApp</p>
+                            <p className="text-sm font-black italic tracking-tighter uppercase">Falar com Suporte</p>
+                        </div>
+                        <span className="material-icons ml-auto opacity-40">chevron_right</span>
+                    </button>
+
+                    <button 
+                        onClick={() => window.open(`https://instagram.com/${contactInfo.instagram}`, '_blank')}
+                        className="w-full bg-gradient-to-tr from-[#FFB700] via-[#FF0069] to-[#7638FF] text-white p-6 rounded-[32px] flex items-center gap-4 active:scale-95 transition-all shadow-lg"
+                    >
+                        <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
+                            <span className="material-icons">camera_alt</span>
+                        </div>
+                        <div className="text-left">
+                            <p className="text-[10px] font-black uppercase opacity-60 tracking-widest">Instagram</p>
+                            <p className="text-sm font-black italic tracking-tighter uppercase">Seguir Oficial</p>
+                        </div>
+                        <span className="material-icons ml-auto opacity-40">chevron_right</span>
+                    </button>
+
+                    <button 
+                        onClick={() => window.open(`mailto:${contactInfo.email}`, '_blank')}
+                        className="w-full bg-white border border-black/5 text-leather p-6 rounded-[32px] flex items-center gap-4 active:scale-95 transition-all shadow-sm"
+                    >
+                        <div className="w-10 h-10 bg-leather/5 rounded-2xl flex items-center justify-center">
+                            <span className="material-icons text-leather">mail</span>
+                        </div>
+                        <div className="text-left">
+                            <p className="text-[10px] font-black uppercase text-black/30 tracking-widest">E-mail</p>
+                            <p className="text-sm font-black italic tracking-tighter uppercase">Enviar Mensagem</p>
+                        </div>
+                        <span className="material-icons ml-auto opacity-10">chevron_right</span>
+                    </button>
+                </div>
+
+                {isMaster && (
+                    <div className="bg-white p-6 rounded-[32px] border border-leather/10 space-y-6 shadow-sm mt-8">
+                        <div className="flex flex-col items-center">
+                            <div className="w-12 h-12 bg-leather/5 rounded-full flex items-center justify-center mb-2">
+                                <span className="material-icons text-leather opacity-40 text-xl">settings</span>
+                            </div>
+                            <h3 className="text-[11px] font-black uppercase text-leather tracking-[0.2em] text-center">Configurações de Suporte</h3>
+                            <p className="text-[9px] font-bold text-black/30 uppercase mt-1">Visível apenas para Administradores</p>
+                        </div>
                         
-                        <div className="space-y-2">
-                            <label className="text-[9px] font-black text-black/30 uppercase tracking-widest ml-1">WhatsApp (Apenas números com DDD)</label>
-                            <input 
-                                className="w-full bg-neutral-50 border border-black/5 rounded-2xl py-4 px-5 font-bold text-sm text-leather outline-none focus:border-[#D4AF37]" 
-                                value={editContact.whatsapp} 
-                                onChange={e => setEditContact({ ...editContact, whatsapp: e.target.value })} 
-                                placeholder="Ex: 5583999999999"
-                            />
-                        </div>
+                        <div className="space-y-6 pt-4">
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-black text-black/30 uppercase tracking-widest ml-1">WhatsApp (Apenas números com DDD)</label>
+                                <input 
+                                    className="w-full bg-neutral-50 border border-black/5 rounded-2xl py-4 px-5 font-bold text-sm text-leather outline-none focus:border-[#D4AF37]" 
+                                    value={editContact.whatsapp} 
+                                    onChange={e => setEditContact({ ...editContact, whatsapp: e.target.value })} 
+                                    placeholder="Ex: 5583999999999"
+                                />
+                            </div>
 
-                        <div className="space-y-2">
-                            <label className="text-[9px] font-black text-black/30 uppercase tracking-widest ml-1">Instagram (@usuario)</label>
-                            <input 
-                                className="w-full bg-neutral-50 border border-black/5 rounded-2xl py-4 px-5 font-bold text-sm text-leather outline-none focus:border-[#D4AF37]" 
-                                value={editContact.instagram} 
-                                onChange={e => setEditContact({ ...editContact, instagram: e.target.value })} 
-                                placeholder="Ex: arenadigital"
-                            />
-                        </div>
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-black text-black/30 uppercase tracking-widest ml-1">Instagram (@usuario)</label>
+                                <input 
+                                    className="w-full bg-neutral-50 border border-black/5 rounded-2xl py-4 px-5 font-bold text-sm text-leather outline-none focus:border-[#D4AF37]" 
+                                    value={editContact.instagram} 
+                                    onChange={e => setEditContact({ ...editContact, instagram: e.target.value })} 
+                                    placeholder="Ex: arenadigital"
+                                />
+                            </div>
 
-                        <div className="space-y-2">
-                            <label className="text-[9px] font-black text-black/30 uppercase tracking-widest ml-1">E-mail</label>
-                            <input 
-                                className="w-full bg-neutral-50 border border-black/5 rounded-2xl py-4 px-5 font-bold text-sm text-leather outline-none focus:border-[#D4AF37]" 
-                                value={editContact.email} 
-                                onChange={e => setEditContact({ ...editContact, email: e.target.value })} 
-                                placeholder="Ex: contato@arena.com"
-                            />
-                        </div>
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-black text-black/30 uppercase tracking-widest ml-1">E-mail</label>
+                                <input 
+                                    className="w-full bg-neutral-50 border border-black/5 rounded-2xl py-4 px-5 font-bold text-sm text-leather outline-none focus:border-[#D4AF37]" 
+                                    value={editContact.email} 
+                                    onChange={e => setEditContact({ ...editContact, email: e.target.value })} 
+                                    placeholder="Ex: contato@arena.com"
+                                />
+                            </div>
 
-                        <button 
-                            disabled={loading}
-                            onClick={handleSaveContact} 
-                            className="w-full bg-leather text-white py-5 rounded-[24px] font-black text-[11px] uppercase tracking-widest shadow-xl active:scale-95 transition-all disabled:opacity-50"
-                        >
-                            {loading ? 'Salvando...' : 'Atualizar Contatos'}
-                        </button>
+                            <button 
+                                disabled={loading}
+                                onClick={handleSaveContact} 
+                                className="w-full bg-leather text-white py-5 rounded-[24px] font-black text-[11px] uppercase tracking-widest shadow-xl active:scale-95 transition-all disabled:opacity-50"
+                            >
+                                {loading ? 'Salvando...' : 'Atualizar Contatos'}
+                            </button>
+                        </div>
                     </div>
-                ) : (
-                    <div className="space-y-4">
-                        <button 
-                            onClick={() => window.open(`https://wa.me/${contactInfo.whatsapp}`, '_blank')}
-                            className="w-full bg-[#25D366] text-white p-6 rounded-[32px] flex items-center gap-4 active:scale-95 transition-all shadow-lg shadow-[#25D366]/20"
-                        >
-                            <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
-                                <span className="material-icons">chat</span>
-                            </div>
-                            <div className="text-left">
-                                <p className="text-[10px] font-black uppercase opacity-60 tracking-widest">WhatsApp</p>
-                                <p className="text-sm font-black italic tracking-tighter uppercase">Falar com Suporte</p>
-                            </div>
-                            <span className="material-icons ml-auto opacity-40">chevron_right</span>
-                        </button>
-
-                        <button 
-                            onClick={() => window.open(`https://instagram.com/${contactInfo.instagram}`, '_blank')}
-                            className="w-full bg-gradient-to-tr from-[#FFB700] via-[#FF0069] to-[#7638FF] text-white p-6 rounded-[32px] flex items-center gap-4 active:scale-95 transition-all shadow-lg"
-                        >
-                            <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
-                                <span className="material-icons">camera_alt</span>
-                            </div>
-                            <div className="text-left">
-                                <p className="text-[10px] font-black uppercase opacity-60 tracking-widest">Instagram</p>
-                                <p className="text-sm font-black italic tracking-tighter uppercase">Seguir Oficial</p>
-                            </div>
-                            <span className="material-icons ml-auto opacity-40">chevron_right</span>
-                        </button>
-
-                        <button 
-                            onClick={() => window.open(`mailto:${contactInfo.email}`, '_blank')}
-                            className="w-full bg-white border border-black/5 text-leather p-6 rounded-[32px] flex items-center gap-4 active:scale-95 transition-all shadow-sm"
-                        >
-                            <div className="w-10 h-10 bg-leather/5 rounded-2xl flex items-center justify-center">
-                                <span className="material-icons text-leather">mail</span>
-                            </div>
-                            <div className="text-left">
-                                <p className="text-[10px] font-black uppercase text-black/30 tracking-widest">E-mail</p>
-                                <p className="text-sm font-black italic tracking-tighter uppercase">Enviar Mensagem</p>
-                            </div>
-                            <span className="material-icons ml-auto opacity-10">chevron_right</span>
-                        </button>
-                        </button>
+                )}
                     </div>
                 )}
                 <div className="text-center pt-10 pb-10">
