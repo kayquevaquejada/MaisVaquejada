@@ -25,7 +25,8 @@ import {
   ArrowRight,
   ChevronRight,
   MoreVertical,
-  CheckCircle2
+  CheckCircle2,
+  Trash2
 } from 'lucide-react';
 
 interface AdminMasterViewProps {
@@ -125,9 +126,30 @@ const AdminMasterView: React.FC<AdminMasterViewProps> = ({ user, onBack }) => {
     }
   };
 
-  const handleUserAction = async (action: 'block' | 'activate' | 'promote', userId: string) => {
+  const handleUserAction = async (action: 'block' | 'activate' | 'promote' | 'delete', userId: string) => {
+    if (action === 'delete') {
+      const confirmed = window.confirm('TEM CERTEZA? Esta ação excluirá permanentemente o usuário e todos os seus dados da Arena. Esta ação não pode ser desfeita.');
+      if (!confirmed) return;
+
+      setLoading(true);
+      try {
+        const { error } = await supabase.rpc('delete_user_admin', { target_user_id: userId });
+        if (error) throw error;
+        
+        alert('Usuário excluído com sucesso.');
+        fetchGlobalData(); // Refresh list
+        setSelectedUser(null);
+      } catch (err: any) {
+        console.error('Delete Error:', err);
+        alert('Erro ao excluir usuário: ' + err.message);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+    
     // Implementation for security and auditing
-    alert(`Acão "${action}" realizada com sucesso (Simulado).`);
+    alert(`Ação "${action}" realizada com sucesso (Simulado).`);
   };
 
   // --- SUB-RENDERERS ---
@@ -248,9 +270,22 @@ const AdminMasterView: React.FC<AdminMasterViewProps> = ({ user, onBack }) => {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <button className="w-8 h-8 rounded-full flex items-center justify-center text-leather/20 hover:bg-leather/5 transition-colors">
-                      <MoreVertical size={16} />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setSelectedUser(u); }}
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-leather/20 hover:bg-leather/5 hover:text-leather transition-colors"
+                      >
+                        <Eye size={14} />
+                      </button>
+                      {u.role !== 'ADMIN_MASTER' && u.id !== user.id && (
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleUserAction('delete', u.id); }}
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-red-500/20 hover:bg-red-50 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -571,10 +606,10 @@ const AdminMasterView: React.FC<AdminMasterViewProps> = ({ user, onBack }) => {
 
                  <div className="grid grid-cols-2 gap-4 w-full mt-10">
                     <button 
-                      onClick={() => handleUserAction('block', selectedUser.id)}
+                      onClick={() => handleUserAction('delete', selectedUser.id)}
                       className="py-4 rounded-2xl border-2 border-red-500/10 text-red-500 text-[10px] font-black uppercase tracking-widest hover:bg-red-50 transition-all flex items-center justify-center gap-2"
                     >
-                       <UserMinus size={14} /> Bloquear
+                       <Trash2 size={14} /> Excluir Conta
                     </button>
                     <button 
                       onClick={() => handleUserAction('promote', selectedUser.id)}
