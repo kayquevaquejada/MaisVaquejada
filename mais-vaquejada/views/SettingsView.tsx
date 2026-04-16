@@ -241,7 +241,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
                         <div className="space-y-2">
                             <label className="text-[9px] font-black text-black/30 uppercase tracking-widest ml-1">WhatsApp (Apenas números com DDD)</label>
                             <input 
-                                className="w-full bg-neutral-50 border border-black/5 rounded-2xl py-4 px-5 font-bold text-sm outline-none focus:border-[#D4AF37]" 
+                                className="w-full bg-neutral-50 border border-black/5 rounded-2xl py-4 px-5 font-bold text-sm text-leather outline-none focus:border-[#D4AF37]" 
                                 value={editContact.whatsapp} 
                                 onChange={e => setEditContact({ ...editContact, whatsapp: e.target.value })} 
                                 placeholder="Ex: 5583999999999"
@@ -251,7 +251,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
                         <div className="space-y-2">
                             <label className="text-[9px] font-black text-black/30 uppercase tracking-widest ml-1">Instagram (@usuario)</label>
                             <input 
-                                className="w-full bg-neutral-50 border border-black/5 rounded-2xl py-4 px-5 font-bold text-sm outline-none focus:border-[#D4AF37]" 
+                                className="w-full bg-neutral-50 border border-black/5 rounded-2xl py-4 px-5 font-bold text-sm text-leather outline-none focus:border-[#D4AF37]" 
                                 value={editContact.instagram} 
                                 onChange={e => setEditContact({ ...editContact, instagram: e.target.value })} 
                                 placeholder="Ex: arenadigital"
@@ -261,7 +261,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
                         <div className="space-y-2">
                             <label className="text-[9px] font-black text-black/30 uppercase tracking-widest ml-1">E-mail</label>
                             <input 
-                                className="w-full bg-neutral-50 border border-black/5 rounded-2xl py-4 px-5 font-bold text-sm outline-none focus:border-[#D4AF37]" 
+                                className="w-full bg-neutral-50 border border-black/5 rounded-2xl py-4 px-5 font-bold text-sm text-leather outline-none focus:border-[#D4AF37]" 
                                 value={editContact.email} 
                                 onChange={e => setEditContact({ ...editContact, email: e.target.value })} 
                                 placeholder="Ex: contato@arena.com"
