@@ -104,6 +104,23 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
     }
   };
 
+  const formatRelativeTime = (dateStr: string) => {
+    if (!dateStr) return '';
+    try {
+      const now = new Date();
+      const past = new Date(dateStr);
+      const diffInMs = now.getTime() - past.getTime();
+      const diffInMins = Math.floor(diffInMs / (1000 * 60));
+      const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+
+      if (diffInMins < 1) return 'agora';
+      if (diffInMins < 60) return `${diffInMins} m`;
+      return `${diffInHours} h`;
+    } catch (e) {
+      return '';
+    }
+  };
+
   if (!currentUser || !currentItem) return null;
 
   const opacity = Math.max(0.3, 1 - dragY / 400);
@@ -142,13 +159,18 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
           <div className="w-8 h-8 rounded-full border border-white/20 p-0.5">
             <img className="w-full h-full object-cover rounded-full" src={currentUser.avatar} alt="" />
           </div>
-          <div className="flex flex-col">
+          <div className="flex items-center gap-2">
             <span
               onClick={() => currentUser.isAd ? null : onNavigateToProfile(currentUser.username)}
-              className="text-white text-xs font-black uppercase tracking-widest drop-shadow-md cursor-pointer hover:underline flex items-center gap-2"
+              className="text-white text-xs font-black uppercase tracking-widest drop-shadow-md cursor-pointer hover:underline"
             >
               {currentUser.username}
             </span>
+            {!currentUser.isAd && (
+              <span className="text-white/60 text-[10px] font-bold drop-shadow-md">
+                • {formatRelativeTime(currentItem.created_at)}
+              </span>
+            )}
             {currentUser.isAd && (
               <span className="text-[8px] bg-[#ECA413] text-background-dark font-black tracking-widest uppercase px-1.5 py-0.5 rounded shadow">Patrocinado</span>
             )}
