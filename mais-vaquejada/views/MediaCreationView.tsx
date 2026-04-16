@@ -50,7 +50,7 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
             setPreviewAnim(false);
         }
         return () => stopCamera();
-    }, [step, mode, facingMode]);
+    }, [step, facingMode]);
 
     const playShutterSound = () => {
         try {
@@ -74,24 +74,22 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
     const startCamera = async () => {
         try {
             setPermissionError(null);
-            stopCamera(); 
-            
-            // Wait a tiny bit for the hardware to release the previous stream
-            await new Promise(r => setTimeout(r, 200));
+            if (mediaStreamRef.current) return; // Already running
+
+            const constraints = {
+                video: { 
+                    facingMode: facingMode,
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                },
+                audio: true // Always try to get audio so we don't have to restart later
+            };
 
             let stream: MediaStream;
             try {
-                const constraints = {
-                    video: { 
-                        facingMode: facingMode,
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 }
-                    },
-                    audio: mode === 'STORY' // Try to get audio for stories
-                };
                 stream = await navigator.mediaDevices.getUserMedia(constraints);
-            } catch (audioErr) {
-                console.warn('Fallback to video-only due to audio/media error:', audioErr);
+            } catch (e) {
+                // Fallback to video-only if audio fails
                 stream = await navigator.mediaDevices.getUserMedia({
                     video: { facingMode: facingMode },
                     audio: false
@@ -99,24 +97,14 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
             }
 
             mediaStreamRef.current = stream;
-            
-            // Robust assignment to video element
-            const setStream = () => {
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream;
-                    videoRef.current.onloadedmetadata = () => {
-                        videoRef.current?.play().catch(e => console.error("Play error:", e));
-                    };
-                } else {
-                    // Ref might not be ready yet, try again in a bit
-                    setTimeout(setStream, 100);
-                }
-            };
-            setStream();
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+                videoRef.current.play().catch(e => console.error("Play error:", e));
+            }
 
-        } catch (err) {
-            console.error('Final camera access error:', err);
-            setPermissionError('Não foi possível acessar a câmera. Tente recarregar a página.');
+        } catch (err: any) {
+            console.error('Camera access error:', err);
+            setPermissionError('Câmera não disponível. Verifique as permissões.');
         }
     };
 
