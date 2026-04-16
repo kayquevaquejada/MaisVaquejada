@@ -27,7 +27,7 @@ import { CallScreen } from './components/CallScreen';
 import LegalConsentView from './views/LegalConsentView';
 import { TERMS_VERSION, PRIVACY_VERSION } from './lib/constants';
 
-const MASTER_EMAILS = ["kayquegusmao@icloud.com", "kayquegusmao276@gmail.com", "Kayquegusmao1@gmail.com", "drkayquegusmao@gmail.com", "contato@maisvaquejada.com.br"];
+const MASTER_EMAILS = ["kayquegusmao@icloud.com", "kayquegusmao276@gmail.com", "Kayquegusmao1@gmail.com", "maisvaquejada1@gmail.com", "contato@maisvaquejada.com.br"];
 
 // ─── ViewRenderer definido FORA do App para evitar remontagem a cada render ───
 interface ViewRendererProps {
@@ -114,6 +114,7 @@ const App: React.FC = () => {
       const { data: profile } = await supabase
         .from('profiles')
         .select('*, user_legal_acceptances(*)')
+        .order('accepted_at', { foreignTable: 'user_legal_acceptances', ascending: false })
         .eq('id', userId)
         .order('created_at', { foreignTable: 'user_legal_acceptances', ascending: false })
         .limit(1, { foreignTable: 'user_legal_acceptances' })
@@ -142,7 +143,8 @@ const App: React.FC = () => {
         const lastAcceptance = profile.user_legal_acceptances?.[0];
         const hasValidConsent = !!(lastAcceptance && 
                                lastAcceptance.terms_version === TERMS_VERSION && 
-                               lastAcceptance.privacy_version === PRIVACY_VERSION);
+                               lastAcceptance.privacy_version === PRIVACY_VERSION) ||
+                               localStorage.getItem(`arena_legal_accepted_${userId}`) === `${TERMS_VERSION}_${PRIVACY_VERSION}`;
         
         hasValidConsentRef.current = hasValidConsent;
 

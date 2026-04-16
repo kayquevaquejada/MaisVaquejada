@@ -712,7 +712,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
             )}
 
             {/* Edit Profile Overlay */}
-            {isEditProfileOpen && (
+            {isEditProfileOpen && profileData && (
                 <div className="fixed inset-0 z-[300] bg-background-dark flex flex-col animate-in slide-in-from-bottom duration-300">
                     <header className="px-6 py-4 flex items-center justify-between border-b border-white/5 bg-background-dark/95 backdrop-blur-md sticky top-0 z-10">
                         <button onClick={() => setIsEditProfileOpen(false)} className="text-sm font-bold text-white/60">Cancelar</button>

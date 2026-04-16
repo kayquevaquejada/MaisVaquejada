@@ -33,6 +33,9 @@ const LegalConsentView: React.FC<LegalConsentViewProps> = ({ user, onAccept }) =
         });
 
       if (error) throw error;
+      
+      // Salvar localmente para evitar loop de carregamento
+      localStorage.setItem(`arena_legal_accepted_${user.id}`, `${TERMS_VERSION}_${PRIVACY_VERSION}`);
 
       // Opcional: Atualizar cache do perfil se necessário
       await supabase
