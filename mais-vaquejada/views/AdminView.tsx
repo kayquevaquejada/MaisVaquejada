@@ -1688,10 +1688,9 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                                 </div>
                             </div>
                         </div>
-                    </>
-                )}
 
                 {(hasMercado || hasSocial || hasEventos || hasNoticias) && <SectionTitle title="Módulos Interligados" />}
+
                 
                 {hasMercado && <MenuItem icon="storefront" label="Mercado Oficial" onClick={() => setActiveTab('MERCADO')} />}
                 
