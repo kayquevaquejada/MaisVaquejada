@@ -29,6 +29,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
   const touchStartY = useRef<number>(0);
   const [dragY, setDragY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
 
   const currentUser = stories[activeUserIndex];
   const currentItem = currentUser?.items[activeItemIndex];
@@ -61,7 +62,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
   };
 
   useEffect(() => {
-    if (currentUser && currentItem) {
+    if (currentUser && currentItem && !isPaused) {
       if (currentUser.isAd && onAdImpression) {
         onAdImpression(currentUser.campaign.id);
       }
@@ -74,15 +75,17 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
           return prev + 1;
         });
       }, currentUser.isAd ? 100 : 50);
+    } else {
+      if (progressInterval.current) clearInterval(progressInterval.current);
     }
     return () => { if (progressInterval.current) clearInterval(progressInterval.current); };
-  }, [activeUserIndex, activeItemIndex]);
+  }, [activeUserIndex, activeItemIndex, isPaused]);
 
-  // Swipe-down handlers
+  // Swipe-down & Pause handlers
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartY.current = e.touches[0].clientY;
     setIsDragging(true);
-    if (progressInterval.current) clearInterval(progressInterval.current);
+    setIsPaused(true); // PAUSE ON TOUCH
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
@@ -92,6 +95,8 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
 
   const handleTouchEnd = () => {
     setIsDragging(false);
+    setIsPaused(false); // RESUME ON RELEASE
+    
     if (dragY > 120) {
       onClose();
     } else {
@@ -183,15 +188,8 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
             <input
               className="bg-transparent border-none outline-none text-white text-xs w-full placeholder:text-white/40"
               placeholder="Enviar mensagem..."
-              onFocus={() => { if (progressInterval.current) clearInterval(progressInterval.current); }}
-              onBlur={() => {
-                progressInterval.current = setInterval(() => {
-                  setStoryProgress(prev => {
-                    if (prev >= 100) { handleNextStory(); return 100; }
-                    return prev + 1;
-                  });
-                }, 50);
-              }}
+              onFocus={() => setIsPaused(true)}
+              onBlur={() => setIsPaused(false)}
             />
           </div>
           <button className="material-icons text-white drop-shadow-md">favorite_border</button>
