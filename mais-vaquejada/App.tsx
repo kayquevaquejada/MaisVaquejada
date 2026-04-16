@@ -111,16 +111,21 @@ const App: React.FC = () => {
     if (isFetchingProfile.current) return;
     isFetchingProfile.current = true;
     try {
-      const { data: profile } = await supabase
+      const { data: profile, error } = await supabase
         .from('profiles')
         .select('*, user_legal_acceptances(*)')
-        .order('accepted_at', { foreignTable: 'user_legal_acceptances', ascending: false })
         .eq('id', userId)
-        .order('created_at', { foreignTable: 'user_legal_acceptances', ascending: false })
-        .limit(1, { foreignTable: 'user_legal_acceptances' })
         .maybeSingle();
 
-      if (profile) {
+      let targetProfile = profile;
+      if (error) {
+        console.error('Supabase Profile Fetch Error:', error);
+        const { data: fallback } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+        targetProfile = fallback;
+      }
+
+      if (targetProfile) {
+        const profile = targetProfile; // Alias para manter compatibilidade com o código abaixo
         const mappedUser: User = {
           id: profile.id,
           name: profile.full_name || profile.name || 'Vaqueiro',
