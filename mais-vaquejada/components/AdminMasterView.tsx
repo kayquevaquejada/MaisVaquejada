@@ -100,9 +100,19 @@ const AdminMasterView: React.FC<AdminMasterViewProps> = ({ user, onBack }) => {
         { id: 3, user: 'admin_master', action: 'Alteração de Fundo', target: 'Login Screen', date: new Date().toISOString(), module: 'SISTEMA' }
       ]);
 
+      // Fetch System Health from app_settings
+      const { data: storageSettings } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'storage_monitoring')
+        .single();
+
+      const storageData = storageSettings?.value || { used_gb: 4.2, limit_gb: 100 };
+
       setHealthData({
         uploadsToday: 142,
-        storageUsed: '4.2 GB',
+        storageUsed: storageData.used_gb,
+        storageLimit: storageData.limit_gb,
         loginFailures: 12,
         notifsSent: 1205,
         syncStatus: 'OK'
@@ -338,14 +348,35 @@ const AdminMasterView: React.FC<AdminMasterViewProps> = ({ user, onBack }) => {
            <Database className="text-blue-500" size={20} />
            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-leather/60">Infraestrutura</h4>
         </div>
-        <div className="space-y-4">
+        <div className="space-y-6">
+          <div className="p-4 rounded-3xl bg-neutral-50 border border-leather/5">
+            <div className="flex justify-between items-center mb-2">
+              <div>
+                <p className="text-[8px] font-black uppercase text-leather/40 tracking-widest">Armazenamento</p>
+                <p className="text-xs font-bold text-leather">Bucket Supabase</p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-black text-leather">{healthData.storageUsed} GB <span className="text-leather/20 font-medium">/ {healthData.storageLimit} GB</span></p>
+                <p className="text-[8px] font-black text-[#D4AF37] uppercase">{((healthData.storageUsed / healthData.storageLimit) * 100).toFixed(1)}% usado</p>
+              </div>
+            </div>
+            <div className="w-full h-2 bg-leather/5 rounded-full overflow-hidden">
+              <div 
+                className={`h-full transition-all duration-1000 ${
+                  (healthData.storageUsed / healthData.storageLimit) > 0.9 ? 'bg-red-500' : 
+                  (healthData.storageUsed / healthData.storageLimit) > 0.7 ? 'bg-orange-500' : 'bg-[#D4AF37]'
+                }`}
+                style={{ width: `${Math.min((healthData.storageUsed / healthData.storageLimit) * 100, 100)}%` }}
+              />
+            </div>
+          </div>
+
           {[
             { label: 'Uploads (Hoje)', value: healthData.uploadsToday, subtitle: 'Imagens e Vídeos' },
-            { label: 'Armazenamento', value: healthData.storageUsed, subtitle: 'Bucket Supabase' },
             { label: 'Notificações', value: healthData.notifsSent, subtitle: 'Push / In-app' },
             { label: 'Status API', value: healthData.syncStatus, subtitle: 'Global Sinc' }
           ].map((item, i) => (
-            <div key={i} className="flex justify-between items-center p-3 rounded-2xl bg-neutral-50">
+            <div key={i} className="flex justify-between items-center p-3 px-4 rounded-2xl bg-neutral-50 border border-leather/5">
               <div>
                 <p className="text-[8px] font-black uppercase text-leather/40 tracking-widest">{item.label}</p>
                 <p className="text-xs font-bold text-leather">{item.subtitle}</p>
