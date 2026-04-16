@@ -414,7 +414,7 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
               <div className="flex items-start gap-3">
                 <span className="material-icons text-red-500 shrink-0 mt-0.5">info</span>
                 <p className="text-[11px] text-red-400 font-bold leading-relaxed">
-                  Transmissões via YouTube. Toque em uma transmissão para assistir diretamente aqui no app, ou acesse pelo YouTube no ícone externo.
+                  As transmissões exibidas são provenientes do YouTube. O aplicativo não hospeda, armazena ou retransmite conteúdo, apenas incorpora players oficiais. A responsabilidade pelos conteúdos é exclusivamente dos canais de origem.
                 </p>
               </div>
             </div>

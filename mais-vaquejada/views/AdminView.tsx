@@ -374,11 +374,21 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         e.preventDefault();
         setLoading(true);
         try {
+            if (!transmissionForm.authorized) {
+                alert("Você deve declarar que possui autorização para compartilhar esta transmissão.");
+                setLoading(false);
+                return;
+            }
+
             // Auto-extrai o ID do YouTube e gera thumbnail se não foi fornecida
             const videoId = extractYouTubeId(transmissionForm.youtube_url || '');
             const thumbnail = transmissionForm.thumbnail_url || (videoId ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` : '');
+            
+            // Remove o campo 'authorized' do payload para não dar erro no banco
+            const { authorized, ...cleanForm } = transmissionForm;
+            
             const payload = {
-                ...transmissionForm,
+                ...cleanForm,
                 youtube_video_id: videoId || transmissionForm.youtube_video_id,
                 thumbnail_url: thumbnail,
                 channel_name: transmissionForm.channel_name || 'Vaquerama Oficial',
@@ -1446,6 +1456,20 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                                         {transmissionForm.is_live ? 'Badge piscando aparece para todos os usuários' : 'Ative para exibir o indicador de live'}
                                     </p>
                                 </div>
+                            </button>
+
+                            {/* Declaração de Autorização Obrigatória */}
+                            <button
+                                type="button"
+                                onClick={() => setTransmissionForm({...transmissionForm, authorized: !transmissionForm.authorized})}
+                                className="w-full flex items-start gap-4 p-4 bg-neutral-50 rounded-[20px] border border-[#1A1108]/5 active:scale-[0.98] transition-all text-left"
+                            >
+                                <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-all ${transmissionForm.authorized ? 'bg-red-600 border-red-600' : 'bg-white border-leather/20'}`}>
+                                    {transmissionForm.authorized && <span className="material-icons text-white text-lg">check</span>}
+                                </div>
+                                <p className="text-[11px] text-leather/70 font-black leading-tight uppercase tracking-tight">
+                                    Declaro que possuo autorização para compartilhar esta transmissão no aplicativo
+                                </p>
                             </button>
 
                             <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-red-700 to-red-600 text-white p-5 rounded-2xl font-black uppercase text-sm tracking-widest active:scale-95 transition-transform shadow-xl shadow-red-600/20 flex items-center justify-center gap-2 disabled:opacity-50">
