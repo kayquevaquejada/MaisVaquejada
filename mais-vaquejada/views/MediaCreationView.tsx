@@ -18,6 +18,7 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
     const [capturedMedia, setCapturedMedia] = useState<{ blob: Blob; url: string; type: 'image' | 'video' } | null>(null);
     const [permissionError, setPermissionError] = useState<string | null>(null);
     const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+    const [isTorchOn, setIsTorchOn] = useState(false);
     const { uploadFile, uploading: isUploading } = useMediaUpload();
 
     // Form stats
@@ -70,14 +71,18 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
             osc.stop(ctx.currentTime + 0.1);
         } catch (e) { /* silent fallback */ }
     };
-
+    const startCamera = async () => {
         try {
             setPermissionError(null);
             if (mediaStreamRef.current) {
                 mediaStreamRef.current.getTracks().forEach(track => track.stop());
             }
             const constraints = {
-                video: { facingMode: facingMode },
+                video: { 
+                    facingMode,
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                },
                 audio: mode === 'STORY'
             };
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -87,7 +92,26 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
             }
         } catch (err) {
             console.error('Error accessing camera:', err);
-            setPermissionError('Não foi possível acessar a câmera. Por favor, verifique as permissões.');
+            setPermissionError('Câmera não disponível. Verifique as permissões.');
+        }
+    };
+
+    const toggleFlash = async () => {
+        const track = mediaStreamRef.current?.getVideoTracks()[0];
+        if (!track) return;
+        
+        try {
+            const capabilities = (track as any).getCapabilities?.() || {};
+            const isOn = !isTorchOn;
+            
+            if (capabilities.torch) {
+                await track.applyConstraints({
+                    advanced: [{ torch: isOn } as any]
+                });
+            }
+            setIsTorchOn(isOn);
+        } catch (e) {
+            setIsTorchOn(!isTorchOn);
         }
     };
 
@@ -292,8 +316,11 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
                 <button onClick={onClose} className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center text-white border border-white/20 pointer-events-auto active:scale-90 hover:bg-white/10 transition-all shadow-lg">
                     <span className="material-icons">close</span>
                 </button>
-                <button className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center text-white border border-white/20 pointer-events-auto active:scale-90 hover:bg-white/10 transition-all shadow-lg">
-                    <span className="material-icons">flash_off</span>
+                <button 
+                    onClick={toggleFlash}
+                    className={`w-12 h-12 rounded-full backdrop-blur-md flex items-center justify-center border pointer-events-auto active:scale-90 transition-all shadow-lg ${isTorchOn ? 'bg-white text-black border-white' : 'bg-black/30 text-white border-white/20'}`}
+                >
+                    <span className="material-icons">{isTorchOn ? 'flash_on' : 'flash_off'}</span>
                 </button>
             </div>
 
