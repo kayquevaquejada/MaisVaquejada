@@ -279,7 +279,15 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
           initialUserIndex={activeStoryIndex} 
           onClose={() => setActiveStoryIndex(null)}
           onNavigateToProfile={navigateToProfile}
-          onShare={() => {}}
+          onShare={async (data: any) => {
+            if (data.type === 'story_reply') {
+              try {
+                await sendMessage(data.targetUserId, data.text);
+              } catch (e) {
+                console.error('Erro ao responder story:', e);
+              }
+            }
+          }}
           onAdImpression={(id) => trackStoryImpression(id, activeStoryIndex)}
           onAdClick={trackStoryClick}
         />

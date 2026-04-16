@@ -121,9 +121,38 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
     }
   };
 
+  const [replyText, setReplyText] = useState('');
+  const [likedStories, setLikedStories] = useState<Set<string>>(new Set());
+
+  const handleToggleLike = () => {
+    if (!currentItem) return;
+    setLikedStories(prev => {
+      const next = new Set(prev);
+      if (next.has(currentItem.id)) next.delete(currentItem.id);
+      else next.add(currentItem.id);
+      return next;
+    });
+    if (navigator.vibrate) navigator.vibrate(10);
+  };
+
+  const handleSendReply = () => {
+    if (!replyText.trim() || !currentUser) return;
+    onShare({
+      type: 'story_reply',
+      username: currentUser.username.replace('@', ''),
+      mediaUrl: currentItem.url,
+      text: replyText.trim(),
+      targetUserId: currentUser.id
+    });
+    setReplyText('');
+    setStoryProgress(0); // Resume
+    setIsPaused(false);
+  };
+
   if (!currentUser || !currentItem) return null;
 
   const opacity = Math.max(0.3, 1 - dragY / 400);
+  const isLiked = likedStories.has(currentItem.id);
 
   return (
     <div
@@ -212,14 +241,27 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
         <div className="absolute bottom-6 left-0 right-0 px-4 flex gap-4 items-center z-20">
           <div className="flex-1 h-12 bg-white/10 backdrop-blur-md rounded-full border border-white/20 flex items-center px-4">
             <input
-              className="bg-transparent border-none outline-none text-white text-xs w-full placeholder:text-white/40"
+              className="bg-transparent border-none outline-none text-white text-xs w-full placeholder:text-white/40 select-text"
               placeholder="Enviar mensagem..."
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
               onFocus={() => setIsPaused(true)}
               onBlur={() => setIsPaused(false)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSendReply()}
             />
           </div>
-          <button className="material-icons text-white drop-shadow-md">favorite_border</button>
-          <button className="material-icons text-white drop-shadow-md" onClick={() => onShare(currentItem)}>send</button>
+          <button 
+            onClick={handleToggleLike}
+            className={`material-icons drop-shadow-md transition-all active:scale-125 ${isLiked ? 'text-red-500' : 'text-white'}`}
+          >
+            {isLiked ? 'favorite' : 'favorite_border'}
+          </button>
+          <button 
+            className="material-icons text-white drop-shadow-md active:scale-110 transition-transform" 
+            onClick={handleSendReply}
+          >
+            send
+          </button>
         </div>
       ) : (
         <div className="absolute bottom-8 left-0 right-0 px-6 z-20">
@@ -241,3 +283,4 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
     </div>
   );
 };
+
