@@ -37,6 +37,7 @@ interface ViewRendererProps {
   profileUsername: string | null;
   onFetchProfile: (userId: string, authUser?: any) => Promise<void>;
   onSetCurrentView: (view: View) => void;
+  onLogout: () => void;
 }
 
 const ViewRenderer: React.FC<ViewRendererProps> = ({
@@ -46,6 +47,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
   profileUsername,
   onFetchProfile,
   onSetCurrentView,
+  onLogout,
 }) => {
   switch (currentView) {
     case View.LOGIN:
@@ -53,7 +55,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
     case View.SIGNUP:
       return <SignUpView onBack={() => onSetCurrentView(View.LOGIN)} onSuccess={(u) => onFetchProfile(u.id, u)} />;
     case View.COMPLETE_PROFILE:
-      return <CompleteProfileView user={user} onComplete={() => user && onFetchProfile(user.id)} onLogout={() => supabase.auth.signOut()} />;
+      return <CompleteProfileView user={user} onComplete={() => user && onFetchProfile(user.id)} onLogout={onLogout} />;
     case View.SOCIAL:
       return <SocialFeedView user={user} onMediaCreation={() => onSetCurrentView(View.MEDIA_CREATION)} />;
     case View.EVENTS:
@@ -63,11 +65,11 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
     case View.MERCADO:
       return <MarketplaceView user={user} onViewChange={onSetCurrentView} />;
     case View.PROFILE:
-      return <ProfileView user={user} targetUsername={profileUsername} onLogout={() => supabase.auth.signOut()} onAdminView={() => onSetCurrentView(View.ADMIN)} onSettingsView={() => onSetCurrentView(View.SETTINGS)} onProfileUpdate={() => user && onFetchProfile(user.id)} />;
+      return <ProfileView user={user} targetUsername={profileUsername} onLogout={onLogout} onAdminView={() => onSetCurrentView(View.ADMIN)} onSettingsView={() => onSetCurrentView(View.SETTINGS)} onProfileUpdate={() => user && onFetchProfile(user.id)} />;
     case View.MEDIA_CREATION:
       return <MediaCreationView user={user} onClose={() => onSetCurrentView(View.SOCIAL)} onSuccess={() => onSetCurrentView(View.SOCIAL)} />;
     case View.SETTINGS:
-      return <SettingsView user={user} onBack={() => onSetCurrentView(View.PROFILE)} onLogout={() => supabase.auth.signOut()} onAdminView={() => onSetCurrentView(View.ADMIN)} onProfileUpdate={() => user && onFetchProfile(user.id)} />;
+      return <SettingsView user={user} onBack={() => onSetCurrentView(View.PROFILE)} onLogout={onLogout} onAdminView={() => onSetCurrentView(View.ADMIN)} onProfileUpdate={() => user && onFetchProfile(user.id)} />;
     case View.ADMIN:
       return <AdminView user={user} />;
     case View.ADMIN_USERS:
@@ -79,7 +81,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
     case View.FORGOT_PASSWORD:
       return <ForgotPasswordView onBack={() => onSetCurrentView(View.LOGIN)} />;
     case View.BLOCKED_ACCOUNT:
-      return <BlockedAccountView onLogout={() => supabase.auth.signOut()} />;
+      return <BlockedAccountView onLogout={onLogout} />;
     case View.RECOVERY_ASSISTED:
       return <RecoveryAssistedView onBack={() => onSetCurrentView(View.LOGIN)} />;
     case View.EVENT_DETAILS:
@@ -87,12 +89,13 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
     case View.LEGAL_CONSENT:
       return <LegalConsentView user={user} onAccept={() => onFetchProfile(user?.id || '')} />;
     default:
+      if (!user || !user.profile_completed) return <LoginView onLogin={(u) => onFetchProfile(u.id, u)} onSignUp={() => onSetCurrentView(View.SIGNUP)} onForgotPassword={() => onSetCurrentView(View.FORGOT_PASSWORD)} onRecoveryAssisted={() => onSetCurrentView(View.RECOVERY_ASSISTED)} onTerms={() => onSetCurrentView(View.TERMS)} />;
       return <EventsView />;
   }
 };
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<View>(View.EVENTS);
+  const [currentView, setCurrentView] = useState<View>(View.LOGIN);
   const [navKey, setNavKey] = useState(Date.now());
   const [profileUsername, setProfileUsername] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
@@ -107,9 +110,21 @@ const App: React.FC = () => {
     currentViewRef.current = currentView;
   }, [currentView]);
 
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setCurrentView(View.LOGIN);
+      localStorage.removeItem('arena_last_view');
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+  };
+
   const fetchProfile = async (userId: string, authUser?: any) => {
     if (isFetchingProfile.current) return;
     isFetchingProfile.current = true;
+    setInitializing(true);
     try {
       const { data: profile, error } = await supabase
         .from('profiles')
@@ -153,21 +168,23 @@ const App: React.FC = () => {
         
         hasValidConsentRef.current = hasValidConsent;
 
-        const isEstablished = profile.profile_completed || (profile.username && profile.username.length >= 2);
+        const isEstablished = !!profile.profile_completed;
         const activeView = currentViewRef.current;
         const onboardingViews = [View.LOGIN, View.SIGNUP, View.COMPLETE_PROFILE, View.LEGAL_CONSENT];
 
-        if (!hasValidConsent) {
-          if (![View.LOGIN, View.SIGNUP].includes(activeView)) {
-            setCurrentView(View.LEGAL_CONSENT);
-          }
-        } else if (isEstablished) {
-          if (onboardingViews.includes(activeView)) {
-             const savedView = localStorage.getItem('arena_last_view');
-             setCurrentView((savedView as View) || View.EVENTS);
-          }
-        } else if (!onboardingViews.includes(activeView)) {
+        // Lógica de Redirecionamento Pós-Fetch (Mandatória e Sequencial)
+        if (!isEstablished) {
+          // 1. Sempre exige conclusão de perfil
           setCurrentView(View.COMPLETE_PROFILE);
+        } else if (!hasValidConsent) {
+          // 2. Com perfil pronto, exige aceite legal
+          setCurrentView(View.LEGAL_CONSENT);
+        } else {
+          // 3. Somente se ambos estiverem prontos, libera para o App
+          if (onboardingViews.includes(activeView)) {
+            const savedView = localStorage.getItem('arena_last_view');
+            setCurrentView((savedView as View) || View.EVENTS);
+          }
         }
       }
     } catch (err) {
@@ -188,8 +205,9 @@ const App: React.FC = () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
-          // Inicia a busca, mas não bloqueia a aplicação se demorar demais
           await fetchProfile(session.user.id, session.user);
+        } else {
+          setCurrentView(View.LOGIN);
         }
       } catch (err) {
         console.error('Init Error:', err);
@@ -282,7 +300,7 @@ const App: React.FC = () => {
   // ViewRenderer agora é um componente de módulo (definido acima do App)
   // Passamos as props necessárias para evitar remontagem a cada render
 
-  const showNavbar = ![View.LOGIN, View.SIGNUP, View.FORGOT_PASSWORD, View.COMPLETE_PROFILE, View.BLOCKED_ACCOUNT, View.RECOVERY_ASSISTED, View.AD_CREATION, View.LEGAL_CONSENT].includes(currentView);
+  const showNavbar = user && ![View.LOGIN, View.SIGNUP, View.FORGOT_PASSWORD, View.COMPLETE_PROFILE, View.BLOCKED_ACCOUNT, View.RECOVERY_ASSISTED, View.AD_CREATION, View.LEGAL_CONSENT].includes(currentView);
 
   if (initializing) {
     return (
@@ -327,6 +345,7 @@ const App: React.FC = () => {
               profileUsername={profileUsername}
               onFetchProfile={fetchProfile}
               onSetCurrentView={setCurrentView}
+              onLogout={handleLogout}
             />
           </div>
         </div>

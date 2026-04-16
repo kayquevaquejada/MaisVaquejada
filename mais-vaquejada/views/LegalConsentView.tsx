@@ -181,7 +181,7 @@ const LegalConsentView: React.FC<LegalConsentViewProps> = ({ user, onAccept }) =
             onClick={handleFinalize}
             className={`w-full py-5 rounded-[24px] font-black text-[11px] uppercase tracking-widest transition-all shadow-xl shadow-black/40 ${acceptedTerms && acceptedPrivacy ? 'bg-[#ECA413] text-black active:scale-95' : 'bg-white/5 text-white/20'}`}
           >
-            {loading ? 'Processando...' : 'Finalizar Cadastro'}
+            {loading ? 'Processando...' : 'CONCORDAR E ENTRAR NA ARENA'}
           </button>
           
           <button 
