@@ -76,40 +76,47 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
             setPermissionError(null);
             stopCamera(); 
             
-            // Try with audio for story, but fallback to video-only if audio fails
+            // Wait a tiny bit for the hardware to release the previous stream
+            await new Promise(r => setTimeout(r, 200));
+
             let stream: MediaStream;
             try {
                 const constraints = {
                     video: { 
                         facingMode: facingMode,
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
                     },
-                    audio: mode === 'STORY'
+                    audio: mode === 'STORY' // Try to get audio for stories
                 };
                 stream = await navigator.mediaDevices.getUserMedia(constraints);
             } catch (audioErr) {
-                console.warn('Failed to get audio, falling back to video only:', audioErr);
-                const videoOnlyConstraints = {
-                    video: { 
-                        facingMode: facingMode,
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    },
+                console.warn('Fallback to video-only due to audio/media error:', audioErr);
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: facingMode },
                     audio: false
-                };
-                stream = await navigator.mediaDevices.getUserMedia(videoOnlyConstraints);
+                });
             }
 
             mediaStreamRef.current = stream;
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-                // Force play to ensure it's not paused
-                videoRef.current.play().catch(e => console.error("Video play error:", e));
-            }
+            
+            // Robust assignment to video element
+            const setStream = () => {
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                    videoRef.current.onloadedmetadata = () => {
+                        videoRef.current?.play().catch(e => console.error("Play error:", e));
+                    };
+                } else {
+                    // Ref might not be ready yet, try again in a bit
+                    setTimeout(setStream, 100);
+                }
+            };
+            setStream();
+
         } catch (err) {
-            console.error('Error accessing camera:', err);
-            setPermissionError('Não foi possível acessar a câmera. Por favor, verifique as permissões.');
+            console.error('Final camera access error:', err);
+            setPermissionError('Não foi possível acessar a câmera. Tente recarregar a página.');
         }
     };
 
@@ -350,7 +357,7 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
                         className="relative w-[88px] h-[88px] rounded-full border-[4px] border-white/40 p-1.5 flex items-center justify-center active:scale-[0.92] transition-all duration-200 shadow-[0_0_20px_rgba(0,0,0,0.4)] group overflow-visible"
                     >
                         <div className="absolute inset-[-6px] rounded-full border border-white/20 animate-ping opacity-20 pointer-events-none"></div>
-                        <div className={`w-full h-full rounded-full transition-colors duration-200 shadow-inner ${mode === 'STORY' ? 'bg-gradient-to-tr from-[#ECA413] to-[#FF4500] shadow-[#ECA413]/50' : 'bg-white shadow-white/40'}`}></div>
+                        <div className={`w-full h-full rounded-full transition-colors duration-200 shadow-inner bg-white shadow-white/40`}></div>
                     </button>
 
                     <button 
