@@ -37,8 +37,10 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
     setGoogleLoading(true);
     setError(null);
     try {
-      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      const redirectTo = isMobile 
+      // Verifica se estamos rodando dentro do aplicativo Capacitor ou no navegador
+      const isCapacitor = (window as any).Capacitor?.isNative;
+      
+      const redirectTo = isCapacitor 
         ? 'com.arenavaquejada.app://google-auth' 
         : window.location.origin;
 
