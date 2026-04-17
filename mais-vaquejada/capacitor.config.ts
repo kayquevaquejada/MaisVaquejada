@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.arenavaquejada.app',
+  appId: 'com.maisvaquejada.app',
   appName: 'Vaquerama',
   webDir: 'dist',
   android: {

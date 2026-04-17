@@ -37,11 +37,9 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
     setGoogleLoading(true);
     setError(null);
     try {
-      // Verifica se estamos rodando dentro do aplicativo Capacitor ou no navegador
       const isCapacitor = (window as any).Capacitor?.isNative;
-      
       const redirectTo = isCapacitor 
-        ? 'com.arenavaquejada.app://google-auth' 
+        ? 'com.maisvaquejada.app://google-auth' 
         : window.location.origin;
 
       const { error } = await supabase.auth.signInWithOAuth({
@@ -53,8 +51,10 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
           }
         }
       });
+      
       if (error) throw error;
     } catch (err: any) {
+      console.error('Erro no Google Login:', err);
       setError(err.message || 'Erro ao entrar com Google');
       setGoogleLoading(false);
     }
