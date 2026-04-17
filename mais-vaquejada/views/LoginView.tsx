@@ -37,17 +37,15 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
     setGoogleLoading(true);
     setError(null);
     try {
-      const isCapacitor = (window as any).Capacitor?.isNative;
-      const redirectTo = isCapacitor 
-        ? 'com.maisvaquejada.app://google-auth' 
-        : window.location.origin;
+      // Usar window.location.origin é o caminho mais seguro para evitar Erro 400
+      const redirectTo = window.location.origin;
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo,
           queryParams: {
-            prompt: 'select_account'
+            access_type: 'offline',
           }
         }
       });
