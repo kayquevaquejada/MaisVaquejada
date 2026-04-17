@@ -76,6 +76,8 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
       return <AdminUsersView user={user} />;
     case View.INTERNAL_ADS:
       return <InternalAdManager user={user} onBack={() => onSetCurrentView(View.ADMIN)} />;
+    case View.AD_CREATION:
+      return <MarketplaceView user={user} forceShowWizard={true} onWizardClose={() => onSetCurrentView(View.MERCADO)} onViewChange={onSetCurrentView} />;
     case View.TERMS:
       return <EULAView onBack={() => onSetCurrentView(View.LOGIN)} />;
     case View.FORGOT_PASSWORD:
