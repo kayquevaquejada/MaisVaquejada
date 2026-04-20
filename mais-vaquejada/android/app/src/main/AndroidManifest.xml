@@ -18,6 +18,14 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- Filtro para o Deep Link do Login Google -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.maisvaquejada.app" />
+            </intent-filter>
         </activity>
 
         <provider
@@ -27,6 +35,9 @@
             android:grantUriPermissions="true">
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
         </provider>
+
+        <meta-data android:name="com.codetrixstudio.capacitor.GoogleAuth.serverClientId" android:value="833804814174-iqpspdjar3kj5qsadmug4if3mu90m6sm.apps.googleusercontent.com" />
+        <meta-data android:name="com.codetrixstudio.capacitor.GoogleAuth.forceCodeForRefreshToken" android:value="true" />
     </application>
 
     <!-- Permissions -->

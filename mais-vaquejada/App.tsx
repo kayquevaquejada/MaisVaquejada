@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './lib/supabase';
+import { App as CapApp } from '@capacitor/app';
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
+import { Capacitor } from '@capacitor/core';
+import { Preferences } from '@capacitor/preferences';
 import { View, User } from './types';
 import Navbar from './components/Navbar';
 import LoginView from './views/LoginView';
@@ -107,6 +111,28 @@ const App: React.FC = () => {
   const currentViewRef = useRef(currentView);
   const isMountedRef = useRef(true);
   const hasValidConsentRef = useRef(false);
+  const isInitializedRef = useRef(false);
+
+  // Helper para persistir o perfil localmente (cache para boot rápido)
+  const saveCachedProfile = async (profileData: any) => {
+    try {
+      await Preferences.set({
+        key: 'cached_profile_data',
+        value: JSON.stringify(profileData)
+      });
+    } catch (e) {
+      console.warn('Erro ao salvar cache de perfil:', e);
+    }
+  };
+
+  const getCachedProfile = async () => {
+    try {
+      const { value } = await Preferences.get({ key: 'cached_profile_data' });
+      return value ? JSON.parse(value) : null;
+    } catch (e) {
+      return null;
+    }
+  };
 
   useEffect(() => {
     currentViewRef.current = currentView;
@@ -114,9 +140,25 @@ const App: React.FC = () => {
 
   const handleLogout = async () => {
     try {
+      // Logout do Supabase (limpa o storage nativo)
       await supabase.auth.signOut();
+      
+      // Logout do Google (limpa o seletor de contas se necessário)
+      if (Capacitor.isNativePlatform()) {
+        try {
+          await GoogleAuth.signOut();
+        } catch (e) {
+          console.warn('Google signout skip or fail:', e);
+        }
+      }
+
       setUser(null);
       setCurrentView(View.LOGIN);
+      hasValidConsentRef.current = false;
+      
+      // Limpar caches
+      await Preferences.remove({ key: 'cached_profile_data' });
+      await Preferences.remove({ key: 'vaquejada_auth_session' });
       localStorage.removeItem('arena_last_view');
     } catch (err) {
       console.error('Logout error:', err);
@@ -126,7 +168,11 @@ const App: React.FC = () => {
   const fetchProfile = async (userId: string, authUser?: any) => {
     if (isFetchingProfile.current) return;
     isFetchingProfile.current = true;
-    setInitializing(true);
+    
+    // Só mostramos o carregamento total se for a PRIMEIRA inicialização do app
+    // Nunca definimos setInitializing(true) novamente após o app ter aberto uma vez
+    if (!user && initializing) setInitializing(true);
+    
     try {
       const { data: profile, error } = await supabase
         .from('profiles')
@@ -142,7 +188,7 @@ const App: React.FC = () => {
       }
 
       if (targetProfile) {
-        const profile = targetProfile; // Alias para manter compatibilidade com o código abaixo
+        const profile = targetProfile;
         const mappedUser: User = {
           id: profile.id,
           name: profile.full_name || profile.name || 'Vaqueiro',
@@ -161,12 +207,15 @@ const App: React.FC = () => {
         } as any;
         
         setUser(mappedUser);
+        saveCachedProfile(mappedUser);
 
         const lastAcceptance = profile.user_legal_acceptances?.[0];
+        const { value: localConsent } = await Preferences.get({ key: `arena_legal_accepted_${userId}` });
         const hasValidConsent = !!(lastAcceptance && 
-                               lastAcceptance.terms_version === TERMS_VERSION && 
-                               lastAcceptance.privacy_version === PRIVACY_VERSION) ||
-                               localStorage.getItem(`arena_legal_accepted_${userId}`) === `${TERMS_VERSION}_${PRIVACY_VERSION}`;
+                                lastAcceptance.terms_version === TERMS_VERSION && 
+                                lastAcceptance.privacy_version === PRIVACY_VERSION) ||
+                                localConsent === `${TERMS_VERSION}_${PRIVACY_VERSION}`;
+
         
         hasValidConsentRef.current = hasValidConsent;
 
@@ -174,19 +223,16 @@ const App: React.FC = () => {
         const activeView = currentViewRef.current;
         const onboardingViews = [View.LOGIN, View.SIGNUP, View.COMPLETE_PROFILE, View.LEGAL_CONSENT];
 
-        // Lógica de Redirecionamento Pós-Fetch (Mandatória e Sequencial)
         if (!isEstablished) {
-          // 1. Sempre exige conclusão de perfil
           setCurrentView(View.COMPLETE_PROFILE);
         } else if (!hasValidConsent) {
-          // 2. Com perfil pronto, exige aceite legal
           setCurrentView(View.LEGAL_CONSENT);
         } else {
-          // 3. Somente se ambos estiverem prontos, libera para o App
           if (onboardingViews.includes(activeView)) {
-            const savedView = localStorage.getItem('arena_last_view');
+            const { value: savedView } = await Preferences.get({ key: 'arena_last_view' });
             setCurrentView((savedView as View) || View.EVENTS);
           }
+
         }
       }
     } catch (err) {
@@ -202,51 +248,93 @@ const App: React.FC = () => {
   useEffect(() => {
     isMountedRef.current = true;
 
-    // Função de inicialização principal
     const startup = async () => {
+      // Se já inicializou, não faz nada (previne loops no multitarefa se o App re-renderizar)
+      if (isInitializedRef.current) return;
+      
       try {
+        // Inicializar Google Auth globalmente no mobile
+        if (Capacitor.isNativePlatform()) {
+          GoogleAuth.initialize({
+            clientId: '833804814174-iqpspdjar3kj5qsadmug4if3mu90m6sm.apps.googleusercontent.com',
+            scopes: ['profile', 'email'],
+            grantOfflineAccess: true,
+          }).catch(e => console.warn('GoogleAuth init warning:', e));
+        }
+
+        // Tentar hidratar do cache primeiro para dar feedback instantâneo
+
+        const cached = await getCachedProfile();
+        if (cached && isMountedRef.current) {
+          setUser(cached);
+          // Se o perfil parece completo, já liberamos a view
+          if (cached.profile_completed && !initializing) {
+             // Mantemos initializing true inicialmente para garantir splash, mas se cache existe, soltamos logo após getSession
+          }
+        }
+
         const { data: { session } } = await supabase.auth.getSession();
+        
         if (session?.user) {
-          await fetchProfile(session.user.id, session.user);
+          // Já temos o usuário em cache? Ótimo, solta o loading logo.
+          // O fetchProfile fará a atualização real em background.
+          if (cached && cached.id === session.user.id) {
+            setInitializing(false);
+            fetchProfile(session.user.id, session.user);
+          } else {
+            // Se não tem cache ou é outro usuário, busca obrigatório antes de soltar splash
+            await fetchProfile(session.user.id, session.user);
+          }
         } else {
           setCurrentView(View.LOGIN);
+          setInitializing(false);
         }
       } catch (err) {
         console.error('Init Error:', err);
+        setInitializing(false); // Garante saída do splash em erro
       } finally {
-        if (isMountedRef.current) setInitializing(false);
+        isInitializedRef.current = true;
       }
     };
 
     startup();
 
-    // Trava de segurança absoluta de 10 segundos
-    const timer = setTimeout(() => {
-      if (isMountedRef.current && initializing) {
-        console.warn('Absolute timeout reached, unlocking splash...');
-        setInitializing(false);
-      }
-    }, 10000);
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMountedRef.current) return;
 
       if (session?.user) {
-        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'USER_UPDATED') {
-          await fetchProfile(session.user.id, session.user);
+        // SIGNED_IN pode disparar várias vezes dependendo do provedor, fetchProfile cuida do ref
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
+          fetchProfile(session.user.id, session.user);
         }
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         setCurrentView(View.LOGIN);
         setInitializing(false);
+        hasValidConsentRef.current = false;
+        Preferences.remove({ key: 'cached_profile_data' });
+      }
+    });
+
+    const stateListener = CapApp.addListener('appStateChange', ({ isActive }) => {
+      if (isActive && isMountedRef.current) {
+        // Ao voltar do background, apenas verifica se a sessão ainda é válida silenciamente
+        // NÃO ativa initializing(true) para não piscar splash
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session?.user && isMountedRef.current) {
+            // Atualiza em background sem travar UI
+            fetchProfile(session.user.id, session.user);
+          }
+        });
       }
     });
 
     return () => {
       isMountedRef.current = false;
-      clearTimeout(timer);
       subscription.unsubscribe();
+      stateListener.then(l => l.remove());
     };
+
   }, []);
 
   useEffect(() => {
@@ -270,6 +358,12 @@ const App: React.FC = () => {
       setNavKey(Date.now());
       if (username !== undefined) setProfileUsername(username);
       if (eventData !== undefined) setSelectedEvent(eventData);
+
+      // Persistir última view para restauração no próximo boot
+      if (user && ![View.LOGIN, View.SIGNUP, View.COMPLETE_PROFILE, View.LEGAL_CONSENT].includes(view)) {
+        Preferences.set({ key: 'arena_last_view', value: view });
+      }
+
       
       try {
         const stateObj = { view, username, event: eventData };

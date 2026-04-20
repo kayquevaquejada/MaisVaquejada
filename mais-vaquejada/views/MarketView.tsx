@@ -282,13 +282,22 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
 
 
     const publishAd = async () => {
-        if (!user?.id) return;
+        if (!user?.id) {
+            alert("Erro: Usuário não identificado. Tente fazer login novamente.");
+            return;
+        }
 
         try {
+            // Garante que os dados básicos existam
+            if (!adData.title || !adData.category) {
+                alert("Por favor, preencha o título e selecione uma categoria.");
+                return;
+            }
+
             const newItem = {
                 user_id: user.id, 
-                title: adData.title,
-                description: adData.description,
+                title: adData.title.trim().toUpperCase(),
+                description: adData.description.trim(),
                 category: adData.category,
                 price: adData.priceType === 'negotiable' ? 'A COMBINAR' : `R$ ${adData.price}`,
                 price_type: adData.priceType,
@@ -302,21 +311,25 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                 created_at: new Date().toISOString()
             };
 
-            // 1. Try to save to Supabase FIRST
-            const { error: dbError } = await supabase.from('market_items').insert(newItem);
+            // 1. Salva no banco e pede o retorno para ter o ID real
+            const { data: savedData, error: dbError } = await supabase
+                .from('market_items')
+                .insert(newItem)
+                .select()
+                .single();
 
-            if (dbError) {
-                console.error("DB Insert failed:", dbError);
-                alert("Erro ao salvar no banco: " + dbError.message);
-                return;
+            if (dbError) throw dbError;
+
+            // 2. Com sucesso, atualiza estado e UI
+            if (savedData) {
+                setPublishedAds(prev => [savedData, ...prev]);
             }
-
-            // 2. ONLY after Success, update state and UI
-            setPublishedAds(prev => [newItem, ...prev]);
+            
             setShowConfirm(false);
             setShowSuccess(true);
             setStep(1);
 
+            // Limpa o formulário para evitar envios duplicados
             setAdData({
                 category: '',
                 title: '',
@@ -325,18 +338,33 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                 priceType: 'fixed',
                 uf: '',
                 city: '',
+                condition: '',
                 photos: [],
-                contactName: user?.name || ''
+                contactName: user?.name || 'Vendedor',
+                showPhone: false,
+                contactPref: 'chat',
+                horseBreed: '',
+                horseAge: '',
+                horseSex: '',
+                horseTraining: '',
+                horseDocs: '',
+                vehicleYear: '',
+                vehicleKM: '',
+                vehicleType: '',
+                vehicleDocs: '',
+                itemBrand: '',
+                itemSize: '',
+                itemNF: ''
             });
 
-            fetchAds(); // Refresh the list
+            fetchAds(); // Atualiza a lista global
 
         } catch (err: any) {
-
             console.error('Error publishing ad:', err);
-            alert(`Erro ao publicar: ${err.message}`);
+            alert(`Erro ao publicar: ${err.message || 'Verifique sua conexão e tente novamente.'}`);
         }
     };
+
 
 
 

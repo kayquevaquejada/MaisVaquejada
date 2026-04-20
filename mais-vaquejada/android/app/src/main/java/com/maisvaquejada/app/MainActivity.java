@@ -1,4 +1,4 @@
-package com.arenavaquejada.app;
+package com.maisvaquejada.app;
 
 import com.getcapacitor.BridgeActivity;
 

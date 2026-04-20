@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
+import { Capacitor } from '@capacitor/core';
 
 interface SignUpViewProps {
   onBack: () => void;
@@ -192,23 +194,52 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
                 setLoading(true);
                 setError(null);
                 try {
-                  // Usar window.location.origin é o caminho mais seguro para evitar Erro 400
-                  const redirectTo = window.location.origin;
+                  const isCapacitor = Capacitor.isNativePlatform();
 
-                  const { error } = await supabase.auth.signInWithOAuth({
-                    provider: 'google',
-                    options: { 
-                      redirectTo,
-                      queryParams: {
-                        access_type: 'offline',
+                  if (isCapacitor) {
+                    // FLUXO NATIVO (Estilo TikTok / Credential Manager)
+                    // Inicialização obrigatória para evitar crash no Android (NullPointerException)
+                    await GoogleAuth.initialize({
+                      clientId: '833804814174-iqpspdjar3kj5qsadmug4if3mu90m6sm.apps.googleusercontent.com',
+                      scopes: ['profile', 'email'],
+                      grantOfflineAccess: true,
+                    });
+
+                    const googleUser = await GoogleAuth.signIn();
+                    const idToken = googleUser.authentication.idToken;
+
+                    if (!idToken) throw new Error('Não foi possível obter o ID Token do Google.');
+
+                    const { data: authData, error: authError } = await supabase.auth.signInWithIdToken({
+                      provider: 'google',
+                      token: idToken,
+                    });
+
+                    if (authError) throw authError;
+                  } else {
+                    // FALLBACK WEB (Navegador)
+                    const redirectTo = window.location.origin;
+
+                    const { error } = await supabase.auth.signInWithOAuth({
+                      provider: 'google',
+                      options: { 
+                        redirectTo,
+                        queryParams: {
+                          access_type: 'offline',
+                        }
                       }
-                    }
-                  });
-                  
-                  if (error) throw error;
+                    });
+                    
+                    if (error) throw error;
+                  }
                 } catch (err: any) {
-                  console.error('Erro no Google Login:', err);
-                  setError(err.message || 'Erro ao entrar com Google');
+                  if (err.message?.includes('User cancelled') || err.message?.includes('cancel')) {
+                    console.log('Login cancelado pelo usuário');
+                  } else {
+                    console.error('Erro no Google Login:', err);
+                    setError(err.message || 'Erro ao entrar com Google');
+                  }
+                } finally {
                   setLoading(false);
                 }
               }}

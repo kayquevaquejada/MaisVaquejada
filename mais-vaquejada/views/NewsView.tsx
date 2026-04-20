@@ -92,67 +92,141 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
 
   // ---- LEITURA DE NOTÍCIA ----
   if (selectedNews) {
+    // Função auxiliar para quebrar texto em parágrafos, adicionar formatação premium e citações
+    const renderContent = (text: string) => {
+      if (!text) return null;
+      let paragraphs = text.split('\n').filter(p => p.trim().length > 0);
+      
+      // Se for apenas um bloco, quebra por sentenças para leitura escaneável (evitar blocos de texto gigantes)
+      if (paragraphs.length === 1) {
+        const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+        paragraphs = [];
+        let currentP = '';
+        sentences.forEach((s, idx) => {
+          currentP += s.trim() + ' ';
+          if ((idx + 1) % 2 === 0 || idx === sentences.length - 1) {
+            paragraphs.push(currentP.trim());
+            currentP = '';
+          }
+        });
+      }
+
+      // Destacar números importantes
+      const highlightRegex = /(R\$\s*[\d.,]+\s*(?:mil|milhões|milhão)?|[0-9]+(?:[.,][0-9]+)*(?:\s*(?:mil|milhões|milhão|km|anos|horas|dias|%))?)/gi;
+
+      return paragraphs.map((charSeq, index) => {
+        const isQuote = charSeq.startsWith('"') || charSeq.startsWith('“') || charSeq.startsWith('”');
+        
+        if (isQuote) {
+          return (
+            <blockquote key={index} className="pl-5 py-3 mb-8 border-l-[3px] border-[#ECA413] bg-[#F8F9FA] text-[#555] italic text-[17px] leading-relaxed rounded-r-xl">
+              {charSeq}
+            </blockquote>
+          );
+        }
+
+        const parts = charSeq.split(highlightRegex);
+        return (
+          <p key={index} className="mb-6 leading-[1.7] text-[17px] text-[#444] font-normal tracking-[-0.01em]">
+            {parts.map((p, i) => 
+              highlightRegex.test(p) ? <strong key={i} className="text-[#111] font-bold">{p}</strong> : p
+            )}
+          </p>
+        );
+      });
+    };
+
     return (
-      <div className="min-h-[100vh] bg-[#F5F1E9] p-6 pb-48 animate-in slide-in-from-right duration-300 relative z-[50] -m-6 rounded-xl">
-        <header className="flex justify-between items-center mb-8 pt-6">
-          <button onClick={() => setSelectedNews(null)} className="w-10 h-10 rounded-full bg-[#1A1108]/10 flex items-center justify-center border border-[#1A1108]/20 active:scale-95 transition-transform">
-            <span className="material-icons text-[#1A1108]">arrow_back</span>
+      <div className="min-h-[100vh] bg-white animate-in fade-in duration-300 relative z-[50] -m-6 pb-20">
+        <header className="sticky top-0 z-[60] px-5 py-4 flex items-center justify-between bg-white/90 backdrop-blur-md border-b border-[#F0F0F0] shadow-sm">
+          <button onClick={() => setSelectedNews(null)} className="w-10 h-10 rounded-full bg-[#F5F5F5] flex items-center justify-center hover:bg-[#EAEAEA] active:scale-95 transition-transform">
+            <span className="material-icons text-[#222]">arrow_back</span>
           </button>
         </header>
 
-        <article className="max-w-xl mx-auto">
-          <div className="mb-6 flex items-center justify-between">
-            <span className="bg-[#ECA413] text-white text-[10px] font-black px-3 py-1.5 rounded flex items-center gap-1 shadow-md shadow-[#ECA413]/20">
-              <span className="material-icons text-[12px]">verified</span> {selectedNews.tag}
+        <article className="max-w-2xl mx-auto px-5 py-8">
+          {/* TOPO: TAG e Data */}
+          <div className="flex items-center justify-between mb-5">
+            <span className="bg-[#F4F4F4] text-[#222] text-[11px] font-bold px-3.5 py-1.5 rounded-full uppercase tracking-wider border border-[#E0E0E0]">
+              {selectedNews.tag || 'INFORMATIVO'}
             </span>
-            <span className="text-xs text-[#1A1108]/60 font-bold">{selectedNews.date}</span>
+            <span className="text-[13px] text-[#888] font-medium tracking-wide">
+              {selectedNews.date}
+            </span>
           </div>
 
-          <h1 className="text-4xl font-black text-[#1A1108] uppercase leading-none font-display mb-6">{selectedNews.title}</h1>
-          <div className="w-12 h-1 bg-[#ECA413] mb-8 rounded-full"></div>
+          {/* TÍTULO */}
+          <h1 className="text-[32px] sm:text-[36px] font-black text-[#111] leading-[1.1] mb-5 line-clamp-3 tracking-[-0.02em] font-display animate-in fade-in slide-in-from-bottom-2 duration-500">
+            {selectedNews.title}
+          </h1>
 
-          <div className="w-full text-[#1A1108]/80 font-medium leading-relaxed text-base space-y-6">
-            <p>{selectedNews.description}</p>
-            <p className="p-4 bg-white/80 border border-[#1A1108]/10 rounded-xl text-sm shadow-sm mt-8 text-[#1A1108]">
-              <b className="text-[#1A1108]">Aviso Informativo:</b> Recomendamos sempre verificar fontes oficiais no portal web caso ainda haja dúvidas.
+          {/* LINHA DECORATIVA */}
+          <div className="w-12 h-1 bg-[#ECA413] mb-6 rounded-full animate-in fade-in duration-500 delay-100"></div>
+
+          {/* SUBTÍTULO / RESUMO OPCIONAL */}
+          {selectedNews.subtitle && (
+            <p className="text-[18px] text-[#666] leading-relaxed mb-6 font-medium animate-in fade-in duration-500 delay-150">
+              {selectedNews.subtitle}
             </p>
-          </div>
+          )}
 
+          {/* IMAGEM PRINCIPAL */}
           {selectedNews.image_url && (
-            <div className="mt-8 rounded-2xl overflow-hidden shadow-xl border border-[#1A1108]/10 bg-white">
-              <img src={selectedNews.image_url} className="w-full h-auto object-cover" alt="Notícia Imagem" />
+            <div className="mb-10 w-full aspect-[4/3] sm:aspect-video rounded-[24px] overflow-hidden relative border border-[#F0F0F0] bg-[#F9F9F9] animate-in fade-in duration-700 delay-200">
+              <img src={selectedNews.image_url} className="w-full h-full object-cover" alt="Notícia Imagem" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent"></div>
             </div>
           )}
 
-          {selectedNews.pdf_url && (
-            <div className="mt-12 bg-[#1A1108]/5 border border-[#1A1108]/10 rounded-2xl p-6">
-              <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#1A1108]/40 mb-4">Documento Anexo</h4>
-              <a href={selectedNews.pdf_url} target="_blank" rel="noopener noreferrer"
-                className="w-full bg-white border border-[#1A1108]/10 p-4 rounded-xl flex items-center justify-between group active:scale-95 transition-transform shadow-sm"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-red-500/10 rounded-lg flex items-center justify-center shrink-0">
-                    <span className="material-icons text-red-500">picture_as_pdf</span>
-                  </div>
-                  <div className="text-left flex-1 min-w-0 pr-3 text-[#1A1108]">
-                    <p className="text-sm font-bold truncate">Abrir PDF Oficial</p>
-                    <p className="text-[10px] opacity-60 font-bold uppercase">Clique para visualizar</p>
-                  </div>
-                </div>
-                <span className="material-icons text-[#1A1108]/20 group-hover:text-[#ECA413] transition-colors shrink-0">open_in_new</span>
-              </a>
-            </div>
-          )}
+          {/* CORPO DA NOTÍCIA */}
+          <div className="animate-in fade-in duration-700 delay-300 max-w-prose mx-auto font-sans">
+            {renderContent(selectedNews.description)}
 
-          {selectedNews.external_link && (
-            <div className="mt-6">
-              <a href={selectedNews.external_link} target="_blank" rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full p-4 bg-[#1A1108] text-white rounded-xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all shadow-xl"
-              >
-                <span className="material-icons text-sm">link</span> Saiba mais / Ver fonte
-              </a>
+            {/* CARD AVISO INFORMATIVO (REFINADO) */}
+            <div className="mt-12 bg-[#F8F9FA] p-6 rounded-[20px] border border-[#EAEAEA] flex items-start gap-4">
+              <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center shrink-0 border border-blue-100/50">
+                <span className="material-icons text-blue-500 text-[20px]">info_outline</span>
+              </div>
+              <div className="flex-1 pt-1">
+                <h4 className="text-[#222] font-bold text-[15px] mb-1">Aviso Informativo</h4>
+                <p className="text-[#666] text-[14px] leading-relaxed font-normal">
+                  Recomendamos sempre verificar fontes oficiais no portal web caso haja dúvidas sobre as informações acima.
+                </p>
+              </div>
             </div>
-          )}
+
+            {/* DOCUMENTO ANEXO */}
+            {selectedNews.pdf_url && (
+              <div className="mt-8 bg-white border border-[#EAEAEA] shadow-sm rounded-[20px] p-5">
+                <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#888] mb-4">Documento Anexo</h4>
+                <a href={selectedNews.pdf_url} target="_blank" rel="noopener noreferrer"
+                  className="w-full bg-[#FAFAFA] border border-[#EAEAEA] p-4 rounded-xl flex items-center justify-between group active:scale-[0.98] transition-transform"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center shrink-0 border border-red-100/50">
+                      <span className="material-icons text-red-500">picture_as_pdf</span>
+                    </div>
+                    <div className="text-left flex-1 min-w-0">
+                      <p className="text-[15px] font-bold text-[#222] truncate">Abrir PDF Oficial</p>
+                      <p className="text-[12px] text-[#888] font-medium mt-0.5">Toque para visualizar</p>
+                    </div>
+                  </div>
+                  <span className="material-icons text-[#CCC] group-hover:text-[#ECA413] transition-colors">arrow_forward_ios</span>
+                </a>
+              </div>
+            )}
+
+            {/* LINK EXTERNO */}
+            {selectedNews.external_link && (
+              <div className="mt-6">
+                <a href={selectedNews.external_link} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full p-4 bg-[#111] text-white rounded-[16px] font-bold text-[14px] uppercase tracking-wide active:scale-[0.98] transition-transform shadow-md"
+                >
+                  <span className="material-icons text-[18px]">open_in_new</span> Saiba mais / Ver original
+                </a>
+              </div>
+            )}
+          </div>
         </article>
       </div>
     );
