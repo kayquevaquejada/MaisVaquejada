@@ -120,6 +120,32 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
     if (posts.length > 0) initFromFeed(posts);
   }, [posts, initFromFeed]);
 
+  // Handle cross-view navigation to DM
+  useEffect(() => {
+    const pending = sessionStorage.getItem('arena_pending_dm');
+    if (pending) {
+      sessionStorage.removeItem('arena_pending_dm');
+      try {
+        const parsed = JSON.parse(pending);
+        // Inject into searchResults transiently so activePartner resolves it 
+        setSearchResults(prev => {
+           if (!prev.find(p => p.id === parsed.id)) {
+              return [...prev, { id: parsed.id, username: parsed.username, avatar_url: parsed.avatar_url }];
+           }
+           return prev;
+        });
+        setIsDMScreenOpen(true);
+        setActiveChatPartnerId(parsed.id);
+        fetchMessages(parsed.id);
+      } catch (e) {
+        // Fallback
+        setIsDMScreenOpen(true);
+        setActiveChatPartnerId(pending);
+        fetchMessages(pending);
+      }
+    }
+  }, [fetchMessages]);
+
   const handlePostComment = async (postId: string, text: string) => {
     const post = posts.find(p => p.id === postId);
     await postComment(postId, text, post?.userId);

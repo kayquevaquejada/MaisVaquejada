@@ -497,6 +497,22 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                             >
                                 {isFollowing ? 'Seguindo' : 'Seguir'}
                             </button>
+                            {isFollowing && (
+                                <button 
+                                    onClick={() => {
+                                        sessionStorage.setItem('arena_pending_dm', JSON.stringify({
+                                            id: finalProfile.id,
+                                            username: finalProfile.username,
+                                            avatar_url: finalProfile.avatar_url
+                                        }));
+                                        window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'SOCIAL' } }));
+                                    }}
+                                    className="flex-1 bg-white text-black py-2.5 rounded-lg font-black text-[11px] uppercase tracking-wider flex items-center justify-center active:scale-95 transition-all gap-1.5"
+                                >
+                                    <span className="material-icons text-[14px]">chat_bubble_outline</span>
+                                    Mensagem
+                                </button>
+                            )}
                         </>
                     )}
                 </div>
