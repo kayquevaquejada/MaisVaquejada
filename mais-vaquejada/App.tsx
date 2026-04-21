@@ -262,6 +262,12 @@ const App: React.FC = () => {
           }).catch(e => console.warn('GoogleAuth init warning:', e));
         }
 
+        // RESILIÊNCIA WEB: Se estivermos vindo de um login Google na Web (?code=)
+        // aguarda um breve momento para o sistema processar o token.
+        if (!Capacitor.isNativePlatform() && (window.location.hash || window.location.search.includes('code='))) {
+          await new Promise(r => setTimeout(r, 1000));
+        }
+
         // Tentar hidratar do cache primeiro para dar feedback instantâneo
 
         const cached = await getCachedProfile();
