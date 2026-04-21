@@ -282,16 +282,20 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
 
 
     const publishAd = async () => {
+        console.log('MERCADO: Iniciando processo de publicação...');
         if (!user?.id) {
-            alert("Erro: Usuário não identificado. Tente fazer login novamente.");
+            alert("Erro: Usuário não identificado. Por favor, saia e entre novamente no app.");
             return;
         }
 
         try {
-            // Garante que os dados básicos existam
             if (!adData.title || !adData.category) {
                 alert("Por favor, preencha o título e selecione uma categoria.");
                 return;
+            }
+
+            if (adData.photos.length === 0) {
+                if (!confirm("Seu anúncio está sem fotos. Deseja publicar assim mesmo?")) return;
             }
 
             const newItem = {
@@ -302,14 +306,16 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                 price: adData.priceType === 'negotiable' ? 'A COMBINAR' : `R$ ${adData.price}`,
                 price_type: adData.priceType,
                 is_new: adData.condition === 'NOVO',
-                loc: `${adData.city}, ${adData.uf}`,
-                city: adData.city,
-                uf: adData.uf,
+                loc: `${adData.city || 'Não informada'}, ${adData.uf || '??'}`,
+                city: adData.city || '',
+                uf: adData.uf || '',
                 img: adData.photos[0] || '',
                 photos: adData.photos,
                 status: 'approved', 
                 created_at: new Date().toISOString()
             };
+
+            console.log('MERCADO: Enviando para o Supabase...', newItem);
 
             // 1. Salva no banco e pede o retorno para ter o ID real
             const { data: savedData, error: dbError } = await supabase
@@ -318,8 +324,13 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                 .select()
                 .single();
 
-            if (dbError) throw dbError;
+            if (dbError) {
+                console.error('MERCADO: Erro de banco de dados:', dbError);
+                throw dbError;
+            }
 
+            console.log('MERCADO: Publicado com sucesso!', savedData);
+            
             // 2. Com sucesso, atualiza estado e UI
             if (savedData) {
                 setPublishedAds(prev => [savedData, ...prev]);
@@ -329,7 +340,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
             setShowSuccess(true);
             setStep(1);
 
-            // Limpa o formulário para evitar envios duplicados
+            // Limpa o formulário
             setAdData({
                 category: '',
                 title: '',
@@ -357,11 +368,11 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                 itemNF: ''
             });
 
-            fetchAds(); // Atualiza a lista global
+            fetchAds();
 
         } catch (err: any) {
-            console.error('Error publishing ad:', err);
-            alert(`Erro ao publicar: ${err.message || 'Verifique sua conexão e tente novamente.'}`);
+            console.error('MERCADO: Erro fatal na publicação:', err);
+            alert(`Erro ao publicar anúncio: ${err.message || 'Erro desconhecido. Verifique sua internet.'}`);
         }
     };
 
