@@ -262,15 +262,16 @@ const App: React.FC = () => {
           }).catch(e => console.warn('GoogleAuth init warning:', e));
         }
 
-        // Tentar hidratar do cache primeiro para dar feedback instantâneo
+        // RESILIÊNCIA DE LOGIN: Se o app abrir com um código ou hash de autenticação, 
+        // aguarda um breve momento para o SDK processar o token antes da verificação inicial.
+        if (window.location.hash || window.location.search.includes('code=')) {
+          await new Promise(r => setTimeout(r, 800));
+        }
 
+        // Tentar hidratar do cache primeiro para dar feedback instantâneo
         const cached = await getCachedProfile();
         if (cached && isMountedRef.current) {
           setUser(cached);
-          // Se o perfil parece completo, já liberamos a view
-          if (cached.profile_completed && !initializing) {
-             // Mantemos initializing true inicialmente para garantir splash, mas se cache existe, soltamos logo após getSession
-          }
         }
 
         const { data: { session } } = await supabase.auth.getSession();
