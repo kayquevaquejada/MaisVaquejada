@@ -32,12 +32,14 @@ const CapacitorPreferencesStorage = {
   },
 };
 
-    // CRÍTICO: Na Web (Vercel), PRECISA ser true para processar o retorno do Google.
-    // No Nativo, desativamos para evitar loops.
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    // CRÍTICO: Na Web (Vercel), PRECISA ser true. No Nativo, PRECISA ser false.
     detectSessionInUrl: !Capacitor.isNativePlatform(), 
-    storage: Capacitor.isNativePlatform() ? CapacitorPreferencesStorage : window.localStorage,
+    storage: Capacitor.isNativePlatform() ? CapacitorPreferencesStorage : (typeof window !== 'undefined' ? window.localStorage : undefined),
     storageKey: 'vaquejada_auth_session',
     flowType: 'pkce',
   }
 });
-
