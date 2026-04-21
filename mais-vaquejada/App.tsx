@@ -143,9 +143,8 @@ const App: React.FC = () => {
       // Logout do Supabase (limpa o storage nativo)
       await supabase.auth.signOut();
       
-      // Configuração inteligente de armazenamento
-      const isNative = Capacitor.isNativePlatform();
-      if (isNative) {
+      // Logout do Google (limpa o seletor de contas se necessário)
+      if (Capacitor.isNativePlatform()) {
         try {
           await GoogleAuth.signOut();
         } catch (e) {
@@ -250,10 +249,11 @@ const App: React.FC = () => {
     isMountedRef.current = true;
 
     const startup = async () => {
+      // Se já inicializou, não faz nada (previne loops no multitarefa se o App re-renderizar)
       if (isInitializedRef.current) return;
-      console.log("🚀 STARTUP: Verificando sessão inicial...");
       
       try {
+        // Inicializar Google Auth globalmente no mobile
         if (Capacitor.isNativePlatform()) {
           GoogleAuth.initialize({
             clientId: '833804814174-iqpspdjar3kj5qsadmug4if3mu90m6sm.apps.googleusercontent.com',
@@ -262,24 +262,27 @@ const App: React.FC = () => {
           }).catch(e => console.warn('GoogleAuth init warning:', e));
         }
 
-        if (window.location.hash || window.location.search.includes('code=')) {
-          console.log("📍 Redirecionamento OAuth detectado. Aguardando processamento...");
-          await new Promise(r => setTimeout(r, 1000));
-        }
+        // Tentar hidratar do cache primeiro para dar feedback instantâneo
 
         const cached = await getCachedProfile();
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) console.error("❌ Erro ao obter sessão:", sessionError);
-        console.log("🔑 Status da sessão:", session?.user ? `Logado como ${session.user.email}` : "Sem sessão ativa");
+        if (cached && isMountedRef.current) {
+          setUser(cached);
+          // Se o perfil parece completo, já liberamos a view
+          if (cached.profile_completed && !initializing) {
+             // Mantemos initializing true inicialmente para garantir splash, mas se cache existe, soltamos logo após getSession
+          }
+        }
 
+        const { data: { session } } = await supabase.auth.getSession();
+        
         if (session?.user) {
+          // Já temos o usuário em cache? Ótimo, solta o loading logo.
+          // O fetchProfile fará a atualização real em background.
           if (cached && cached.id === session.user.id) {
-            console.log("⚡ Usando perfil em cache...");
             setInitializing(false);
             fetchProfile(session.user.id, session.user);
           } else {
-            console.log("🛰️ Buscando perfil do servidor...");
+            // Se não tem cache ou é outro usuário, busca obrigatório antes de soltar splash
             await fetchProfile(session.user.id, session.user);
           }
         } else {
