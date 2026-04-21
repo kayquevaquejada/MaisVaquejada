@@ -32,15 +32,12 @@ const CapacitorPreferencesStorage = {
   },
 };
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    // Em apps nativos, nunca detectar sessão na URL para evitar conflitos com Deep Links e loops
-    detectSessionInUrl: false, 
-    storage: CapacitorPreferencesStorage,
-    storageKey: 'vaquejada_auth_session', // Chave única e explícita
-    flowType: 'pkce', // Usar PKCE para melhor segurança e compatibilidade mobile
+    // CRÍTICO: Na Web (Vercel), PRECISA ser true para processar o retorno do Google.
+    // No Nativo, desativamos para evitar loops.
+    detectSessionInUrl: !Capacitor.isNativePlatform(), 
+    storage: Capacitor.isNativePlatform() ? CapacitorPreferencesStorage : window.localStorage,
+    storageKey: 'vaquejada_auth_session',
+    flowType: 'pkce',
   }
 });
 
