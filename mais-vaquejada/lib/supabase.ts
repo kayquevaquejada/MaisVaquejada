@@ -32,16 +32,14 @@ const CapacitorPreferencesStorage = {
   },
 };
 
-// Configuração inteligente de armazenamento: LocalStorage na Web (mais estável), Preferences no Nativo
+// Configuração inteligente de armazenamento
 const isNative = Capacitor.isNativePlatform();
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    // CRÍTICO: Na Web (Vercel), PRECISA ser true para processar o retorno do Google (?code=...)
-    // No Nativo, desativamos para evitar conflitos com Deep Links
-    detectSessionInUrl: !isNative, 
+    detectSessionInUrl: true, // Mantemos true para Web (Vercel) funcionar
     storage: isNative ? CapacitorPreferencesStorage : window.localStorage,
     storageKey: 'vaquejada_auth_session',
     flowType: 'pkce',

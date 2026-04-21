@@ -143,8 +143,9 @@ const App: React.FC = () => {
       // Logout do Supabase (limpa o storage nativo)
       await supabase.auth.signOut();
       
-      // Logout do Google (limpa o seletor de contas se necessário)
-      if (Capacitor.isNativePlatform()) {
+      // Configuração inteligente de armazenamento
+      const isNative = Capacitor.isNativePlatform();
+      if (isNative) {
         try {
           await GoogleAuth.signOut();
         } catch (e) {
@@ -249,11 +250,10 @@ const App: React.FC = () => {
     isMountedRef.current = true;
 
     const startup = async () => {
-      // Se já inicializou, não faz nada (previne loops no multitarefa se o App re-renderizar)
       if (isInitializedRef.current) return;
+      console.log("🚀 STARTUP: Verificando sessão inicial...");
       
       try {
-        // Inicializar Google Auth globalmente no mobile
         if (Capacitor.isNativePlatform()) {
           GoogleAuth.initialize({
             clientId: '833804814174-iqpspdjar3kj5qsadmug4if3mu90m6sm.apps.googleusercontent.com',
@@ -262,28 +262,24 @@ const App: React.FC = () => {
           }).catch(e => console.warn('GoogleAuth init warning:', e));
         }
 
-        // RESILIÊNCIA DE LOGIN: Se o app abrir com um código ou hash de autenticação, 
-        // aguarda um breve momento para o SDK processar o token antes da verificação inicial.
         if (window.location.hash || window.location.search.includes('code=')) {
-          await new Promise(r => setTimeout(r, 800));
+          console.log("📍 Redirecionamento OAuth detectado. Aguardando processamento...");
+          await new Promise(r => setTimeout(r, 1000));
         }
 
-        // Tentar hidratar do cache primeiro para dar feedback instantâneo
         const cached = await getCachedProfile();
-        if (cached && isMountedRef.current) {
-          setUser(cached);
-        }
-
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
+        if (sessionError) console.error("❌ Erro ao obter sessão:", sessionError);
+        console.log("🔑 Status da sessão:", session?.user ? `Logado como ${session.user.email}` : "Sem sessão ativa");
+
         if (session?.user) {
-          // Já temos o usuário em cache? Ótimo, solta o loading logo.
-          // O fetchProfile fará a atualização real em background.
           if (cached && cached.id === session.user.id) {
+            console.log("⚡ Usando perfil em cache...");
             setInitializing(false);
             fetchProfile(session.user.id, session.user);
           } else {
-            // Se não tem cache ou é outro usuário, busca obrigatório antes de soltar splash
+            console.log("🛰️ Buscando perfil do servidor...");
             await fetchProfile(session.user.id, session.user);
           }
         } else {
