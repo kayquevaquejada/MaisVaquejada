@@ -214,8 +214,6 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
             )}
           </div>
         </div>
-          </div>
-        </div>
         <div className="flex items-center gap-3">
           {currentUser.id === currentUserId && !currentUser.isAd && (
             <button 
