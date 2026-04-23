@@ -445,6 +445,7 @@ const AdminAdsManager: React.FC<AdminAdsManagerProps> = ({ user, onBack }) => {
                                     <select value={formData.target_position} onChange={e => setFormData({...formData, target_position: e.target.value})} className="w-full bg-white px-4 py-3 rounded-xl border border-[#1A1108]/10 text-[11px] font-bold text-leather outline-none">
                                         <option value="all_screens">Em Todas as Telas (Full Patrocínio)</option>
                                         <option value="market_top_carousel">Somente Mercado (Topo)</option>
+                                        <option value="market_inline_banner">Somente Mercado (No meio da lista)</option>
                                         <option value="vaquejada_top_carousel">Somente Vaquejadas (Topo)</option>
                                         <option value="video_call_waiting">Chamada de Vídeo (Fundo)</option>
                                         <option value="audio_call_waiting">Chamada de Áudio (Fundo)</option>

@@ -633,7 +633,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
             </div>
 
             {/* Ads Carousel (Optional Banner) */}
-            <AdsCarousel />
+            <AdsCarousel targetPosition="market_top_carousel" />
 
             {/* Categories Filter */}
             <div className="px-6 py-4 overflow-x-auto hide-scrollbar flex gap-2">
@@ -657,21 +657,30 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                 ) : (
                     <div className="grid grid-cols-2 gap-4">
                         {filteredAds.map((ad, i) => (
-                            <div key={i} onClick={() => setViewingAd(ad)} className="bg-white rounded-2xl overflow-hidden shadow-sm border border-[#1A1108]/5 active:scale-[0.98] transition-transform">
-                                <div className="aspect-square relative bg-neutral-200">
-                                    <img src={ad.img || ad.photos?.[0]} className="w-full h-full object-cover" alt={ad.title} />
-                                    {ad.product_type === 'ingresso' && <div className="absolute top-2 left-2 bg-blue-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded uppercase">INGRESSO</div>}
-                                    {ad.stores?.is_official && <div className="absolute top-2 right-2 bg-green-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded uppercase flex items-center gap-1"><span className="material-icons text-[10px]">verified</span> OFICIAL</div>}
-                                </div>
-                                <div className="p-3">
-                                    <h3 className="text-xs font-black uppercase text-[#1A1108] leading-tight truncate">{ad.title}</h3>
-                                    <p className="text-sm font-black text-[#D4AF37] my-1 truncate">{ad.price}</p>
-                                    <div className="flex items-center gap-1 text-[#1A1108]/40">
-                                        <span className="material-icons text-[10px]">place</span>
-                                        <span className="text-[8px] font-bold uppercase truncate">{ad.loc}</span>
+                            <React.Fragment key={i}>
+                                <div onClick={() => setViewingAd(ad)} className="bg-white rounded-2xl overflow-hidden shadow-sm border border-[#1A1108]/5 active:scale-[0.98] transition-transform">
+                                    <div className="aspect-square relative bg-neutral-200">
+                                        <img src={ad.img || ad.photos?.[0]} className="w-full h-full object-cover" alt={ad.title} />
+                                        {ad.product_type === 'ingresso' && <div className="absolute top-2 left-2 bg-blue-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded uppercase">INGRESSO</div>}
+                                        {ad.stores?.is_official && <div className="absolute top-2 right-2 bg-green-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded uppercase flex items-center gap-1"><span className="material-icons text-[10px]">verified</span> OFICIAL</div>}
+                                    </div>
+                                    <div className="p-3">
+                                        <h3 className="text-xs font-black uppercase text-[#1A1108] leading-tight truncate">{ad.title}</h3>
+                                        <p className="text-sm font-black text-[#D4AF37] my-1 truncate">{ad.price}</p>
+                                        <div className="flex items-center gap-1 text-[#1A1108]/40">
+                                            <span className="material-icons text-[10px]">place</span>
+                                            <span className="text-[8px] font-bold uppercase truncate">{ad.loc}</span>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                                
+                                {/* A cada 20 anúncios, injeta um banner */}
+                                {(i + 1) % 20 === 0 && (
+                                    <div className="col-span-2 my-2">
+                                        <AdsCarousel targetPosition="market_inline_banner" />
+                                    </div>
+                                )}
+                            </React.Fragment>
                         ))}
                     </div>
                 )}
