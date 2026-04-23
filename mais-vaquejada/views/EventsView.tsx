@@ -229,7 +229,7 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
                 </div>
               </div>
               <div className="px-7 pb-8 -mt-6 relative z-10">
-                <h3 className="text-3xl font-black text-white uppercase tracking-tighter italic truncate">{event.title}</h3>
+                <h3 className="text-xl font-black text-white uppercase tracking-tighter italic truncate">{event.title}</h3>
                 <p className="text-sm font-bold text-white/80 truncate mt-1">{event.park}</p>
                 <div className="flex items-center gap-1.5 text-white/60 pt-1">
                   <span className="material-icons text-xs text-[#D4AF37]">place</span>
