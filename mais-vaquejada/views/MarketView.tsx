@@ -39,7 +39,8 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
         const saved = localStorage.getItem('arena_market_favorites');
         return saved ? JSON.parse(saved) : [];
     });
-    const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+    const [fullscreenGallery, setFullscreenGallery] = useState<{photos: string[], index: number} | null>(null);
+    const [touchStart, setTouchStart] = useState<number | null>(null);
     const [currentPhotoIdx, setCurrentPhotoIdx] = useState(0);
     const [publishedAds, setPublishedAds] = useState<any[]>([]);
     const [loadingAds, setLoadingAds] = useState(true);
@@ -218,7 +219,17 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
     // Filter Logic
     const filteredAds = useMemo(() => {
         return publishedAds.filter(ad => {
-            if (activeFilterCat !== 'all' && ad.category?.toUpperCase() !== activeFilterCat) return false;
+            if (activeFilterCat !== 'all') {
+                const cat = (ad.category || '').toUpperCase();
+                let matchCat = cat;
+                if (cat === 'CAVALOS') matchCat = 'ANIMAIS';
+                else if (cat === 'TRANSPORTE') matchCat = 'VEICULOS';
+                else if (cat === 'ALIMENTACAO') matchCat = 'ALIMENTACAO';
+                else if (cat === 'SERVIÇOS') matchCat = 'SERVICOS';
+                else if (cat === 'EQUIPAMENTOS') matchCat = 'EQUIPAMENTOS';
+
+                if (matchCat !== activeFilterCat) return false;
+            }
             if (searchTerm) {
                 const term = searchTerm.toLowerCase();
                 return ad.title?.toLowerCase().includes(term) || ad.description?.toLowerCase().includes(term) || ad.category?.toLowerCase().includes(term) || ad.subcategory?.toLowerCase().includes(term);
@@ -257,7 +268,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                             {Array.isArray(viewingAd.photos) && viewingAd.photos.length > 1 ? (
                                 <div className="flex w-full h-full overflow-x-auto snap-x snap-mandatory hide-scrollbar" onScroll={(e: any) => setCurrentPhotoIdx(Math.round(e.target.scrollLeft / e.target.offsetWidth))}>
                                     {viewingAd.photos.map((ph: string, idx: number) => (
-                                        <div key={idx} className="w-full h-full shrink-0 snap-center" onClick={() => setFullscreenImage(ph)}>
+                                        <div key={idx} className="w-full h-full shrink-0 snap-center" onClick={() => setFullscreenGallery({ photos: viewingAd.photos, index: idx })}>
                                             <img src={ph} className="w-full h-full object-cover" alt="Preview" />
                                         </div>
                                     ))}
@@ -268,7 +279,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                                     </div>
                                 </div>
                             ) : (
-                                <img src={viewingAd.img || viewingAd.photos?.[0]} className="w-full h-full object-cover" onClick={() => setFullscreenImage(viewingAd.img || viewingAd.photos?.[0])} alt="Preview" />
+                                <img src={viewingAd.img || viewingAd.photos?.[0]} className="w-full h-full object-cover" onClick={() => setFullscreenGallery({ photos: viewingAd.photos?.length ? viewingAd.photos : [viewingAd.img || ''], index: 0 })} alt="Preview" />
                             )}
                             <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#F5F1E9] to-transparent"></div>
                             <div className="absolute bottom-6 left-6 right-6 flex justify-between items-end">
@@ -381,10 +392,53 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                     </button>
                 </div>
 
-                {fullscreenImage && (
-                    <div className="fixed inset-0 z-[1000] bg-black/95 flex flex-col items-center justify-center" onClick={() => setFullscreenImage(null)}>
-                        <button className="absolute top-10 right-10 text-white p-2"><span className="material-icons text-3xl">close</span></button>
-                        <img src={fullscreenImage} className="max-w-full max-h-[85vh] object-contain" alt="zoom" />
+                {fullscreenGallery && (
+                    <div 
+                        className="fixed inset-0 z-[1000] bg-black/95 flex flex-col items-center justify-center" 
+                        onClick={() => setFullscreenGallery(null)}
+                        onTouchStart={(e) => setTouchStart(e.targetTouches[0].clientX)}
+                        onTouchEnd={(e) => {
+                            if (touchStart === null) return;
+                            const distance = touchStart - e.changedTouches[0].clientX;
+                            const isLeftSwipe = distance > 50;
+                            const isRightSwipe = distance < -50;
+                            if (isLeftSwipe) {
+                                e.stopPropagation();
+                                setFullscreenGallery(prev => prev ? {...prev, index: (prev.index + 1) % prev.photos.length} : null);
+                            } else if (isRightSwipe) {
+                                e.stopPropagation();
+                                setFullscreenGallery(prev => prev ? {...prev, index: (prev.index - 1 + prev.photos.length) % prev.photos.length} : null);
+                            }
+                            setTouchStart(null);
+                        }}
+                    >
+                        <button onClick={() => setFullscreenGallery(null)} className="absolute top-10 right-10 text-white p-2 z-[1010]"><span className="material-icons text-3xl">close</span></button>
+                        
+                        {fullscreenGallery.photos.length > 1 && (
+                            <>
+                                <button onClick={(e) => { e.stopPropagation(); setFullscreenGallery(prev => prev ? {...prev, index: (prev.index - 1 + prev.photos.length) % prev.photos.length} : null) }} className="absolute left-4 top-1/2 -translate-y-1/2 text-white p-3 bg-black/50 rounded-full z-[1010]"><span className="material-icons">chevron_left</span></button>
+                                <button onClick={(e) => { e.stopPropagation(); setFullscreenGallery(prev => prev ? {...prev, index: (prev.index + 1) % prev.photos.length} : null) }} className="absolute right-4 top-1/2 -translate-y-1/2 text-white p-3 bg-black/50 rounded-full z-[1010]"><span className="material-icons">chevron_right</span></button>
+                            </>
+                        )}
+                        
+                        <div className="w-full h-full flex items-center justify-center relative overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                            {fullscreenGallery.photos.map((ph, idx) => (
+                                <img 
+                                    key={idx} 
+                                    src={ph} 
+                                    className={`absolute max-w-full max-h-[85vh] object-contain transition-opacity duration-300 pointer-events-none ${idx === fullscreenGallery.index ? 'opacity-100 z-10' : 'opacity-0 z-0'}`} 
+                                    alt={`zoom-${idx}`} 
+                                />
+                            ))}
+                        </div>
+
+                        {fullscreenGallery.photos.length > 1 && (
+                            <div className="absolute bottom-10 flex gap-2 z-[1010]">
+                                {fullscreenGallery.photos.map((_, idx) => (
+                                    <div key={idx} className={`w-2 h-2 rounded-full transition-all ${idx === fullscreenGallery.index ? 'bg-white scale-125' : 'bg-white/30'}`} />
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
