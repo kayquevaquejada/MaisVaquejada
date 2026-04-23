@@ -479,7 +479,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                             >
                                 Editar Perfil
                             </button>
-                            {(user?.role === 'ADMIN' || user?.role === 'ADMIN_MASTER' || user?.isMaster) && (
+                            {(user?.role === 'ADMIN' || user?.role === 'ADMIN_MASTER' || user?.isMaster || user?.admin_eventos || user?.admin_social || user?.admin_mercado || user?.admin_noticias) && (
                                 <button 
                                     onClick={onAdminView}
                                     className="flex-1 bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/30 py-2.5 rounded-lg font-black text-[11px] uppercase tracking-wider flex items-center justify-center hover:bg-[#D4AF37]/20 active:scale-95 transition-all"
@@ -631,10 +631,21 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                                     {editingPost === selectedPost.id ? 'check' : 'edit'}
                                 </button>
                                 <button 
-                                    onClick={() => {
+                                    onClick={async () => {
                                         if (confirm('Tem certeza que deseja apagar essa publicação permanentemente?')) {
-                                            setProfilePosts(profilePosts.filter((p: any) => p.id !== selectedPost.id));
-                                            setSelectedPost(null);
+                                            try {
+                                                const { error } = await supabase
+                                                    .from('posts')
+                                                    .delete()
+                                                    .eq('id', selectedPost.id);
+                                                
+                                                if (error) throw error;
+                                                
+                                                setProfilePosts(profilePosts.filter((p: any) => p.id !== selectedPost.id));
+                                                setSelectedPost(null);
+                                            } catch (err: any) {
+                                                alert('Erro ao excluir: ' + err.message);
+                                            }
                                         }
                                     }}
                                     className="material-icons text-red-500/80 hover:text-red-500"

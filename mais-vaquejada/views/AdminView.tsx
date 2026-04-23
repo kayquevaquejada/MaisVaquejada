@@ -1173,7 +1173,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
             <div className="absolute inset-0 bg-[#F8F5F2] flex flex-col z-[120]">
                 <SubHeader title="Vaquejadas" />
                 <div className="flex-1 overflow-y-auto pb-10">
-                    {isMaster && (
+                    {hasEventos && (
                         <>
                             <SectionTitle title="Gestão Operacional" />
                             <div className="px-6 grid grid-cols-2 gap-3 mb-6">
