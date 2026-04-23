@@ -45,6 +45,9 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
     const [publishedAds, setPublishedAds] = useState<any[]>([]);
     const [loadingAds, setLoadingAds] = useState(true);
     const [isUploading, setIsUploading] = useState(false);
+    const [stores, setStores] = useState<any[]>([]);
+    const [loadingStores, setLoadingStores] = useState(true);
+    const [selectedStore, setSelectedStore] = useState<any>(null);
 
     // Filters
     const [searchTerm, setSearchTerm] = useState('');
@@ -104,12 +107,38 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
         }
     };
 
+    const fetchStores = async () => {
+        setLoadingStores(true);
+        try {
+            const { data, error } = await supabase
+                .from('stores')
+                .select('*')
+                .eq('active', true)
+                .order('is_official', { ascending: false });
+            if (error) throw error;
+            setStores(data || []);
+        } catch (err) {
+            console.error('Error fetching stores:', err);
+        } finally {
+            setLoadingStores(false);
+        }
+    };
+
     useEffect(() => {
         fetchAds();
+        fetchStores();
         const channel = supabase.channel('market_items_rt')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'market_items' }, fetchAds)
             .subscribe();
-        return () => { supabase.removeChannel(channel); };
+        
+        const storeChannel = supabase.channel('stores_rt')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'stores' }, fetchStores)
+            .subscribe();
+
+        return () => { 
+            supabase.removeChannel(channel); 
+            supabase.removeChannel(storeChannel);
+        };
     }, []);
 
     const deleteAdDirectly = async (ad: any) => {
@@ -178,6 +207,18 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
         const finalCategory = adData.category === 'OUTROS' ? (adData.customCategory || 'OUTROS') : adData.category;
         const finalSubcat = adData.subcategory === 'Outro' ? adData.customSubcategory : adData.subcategory;
 
+        // Find if user has an active store to link
+        let storeId = null;
+        try {
+            const { data: userStore } = await supabase
+                .from('stores')
+                .select('id')
+                .eq('user_id', user.id)
+                .eq('is_active', true)
+                .maybeSingle();
+            if (userStore) storeId = userStore.id;
+        } catch (e) { console.error("Error finding user store:", e); }
+
         const newItem = {
             user_id: user.id, 
             title: adData.title.trim().toUpperCase(),
@@ -194,7 +235,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
             status: 'approved',
             metadata: adData.metadata,
             product_type: adData.product_type,
-            store_id: null // To be implemented in Module 2
+            store_id: storeId
         };
 
         try {
@@ -230,13 +271,19 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
 
                 if (matchCat !== activeFilterCat) return false;
             }
+            if (selectedStore) {
+                // Filter by store_id or by owner's user_id to catch all items
+                const isFromStore = ad.store_id === selectedStore.id;
+                const isFromOwner = ad.user_id === selectedStore.user_id;
+                if (!isFromStore && !isFromOwner) return false;
+            }
             if (searchTerm) {
                 const term = searchTerm.toLowerCase();
                 return ad.title?.toLowerCase().includes(term) || ad.description?.toLowerCase().includes(term) || ad.category?.toLowerCase().includes(term) || ad.subcategory?.toLowerCase().includes(term);
             }
             return true;
         });
-    }, [publishedAds, activeFilterCat, searchTerm]);
+    }, [publishedAds, activeFilterCat, searchTerm, selectedStore]);
 
 
     // ==========================================
@@ -322,7 +369,11 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                                             </div>
                                         </div>
                                     </div>
-                                    <button className="text-[10px] font-black text-[#D4AF37] uppercase tracking-widest border border-[#D4AF37]/30 px-3 py-1.5 rounded-lg">Visitar Loja</button>
+                                    <button onClick={() => {
+                                        setSelectedStore(store);
+                                        setViewingAd(null);
+                                        setActiveFilterCat('all');
+                                    }} className="text-[10px] font-black text-[#D4AF37] uppercase tracking-widest border border-[#D4AF37]/30 px-3 py-1.5 rounded-lg">Visitar Loja</button>
                                 </div>
                             ) : (
                                 <div className="bg-white p-4 rounded-2xl shadow-sm border border-[#1A1108]/5 flex items-center justify-between">
@@ -462,20 +513,85 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
 
     if (showConfirm) {
         return (
-            <div className="absolute inset-0 z-[110] bg-[#F5F1E9] flex flex-col">
-                <header className="px-6 py-6 bg-white flex items-center gap-4">
-                    <button onClick={() => setShowConfirm(false)} className="material-icons">arrow_back</button>
-                    <h1 className="text-xl font-black uppercase">Revisar Anúncio</h1>
+            <div className="absolute inset-0 z-[110] bg-[#1A1108] flex flex-col">
+                <header className="px-6 pt-12 pb-6 flex items-center gap-4 bg-[#1A1108]/80 backdrop-blur-md border-b border-white/5">
+                    <button onClick={() => setShowConfirm(false)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white active:scale-90 transition-transform">
+                        <span className="material-icons">arrow_back</span>
+                    </button>
+                    <h1 className="text-sm font-black uppercase tracking-widest text-white italic">Revisar Anúncio</h1>
                 </header>
-                <div className="flex-1 overflow-y-auto p-6">
-                    <h3 className="text-2xl font-black mb-2">{adData.title}</h3>
-                    <p className="text-xl text-[#D4AF37] font-black">{adData.priceType === 'negotiable' ? 'A COMBINAR' : `R$ ${adData.price}`}</p>
-                    <p className="mt-4">{adData.description}</p>
-                    {/* Simplified for code brevity */}
+
+                <div className="flex-1 overflow-y-auto">
+                    {/* Photos Preview */}
+                    <div className="w-full aspect-square bg-neutral-900 relative">
+                        {adData.photos && adData.photos.length > 0 ? (
+                            <div className="flex overflow-x-auto snap-x snap-mandatory h-full scrollbar-hide">
+                                {adData.photos.map((photo, i) => (
+                                    <div key={i} className="min-w-full h-full snap-start relative">
+                                        <img src={photo} className="w-full h-full object-cover" alt={`Preview ${i}`} />
+                                        <div className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black text-white">
+                                            {i + 1} / {adData.photos.length}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center opacity-20">
+                                <span className="material-icons text-6xl mb-2">image</span>
+                                <span className="text-xs font-black uppercase tracking-widest text-white">Sem Fotos</span>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="p-8 space-y-8 pb-24">
+                        <div>
+                            <span className="text-[10px] font-black text-[#D4AF37] uppercase tracking-widest block mb-1">Título do Anúncio</span>
+                            <h3 className="text-2xl font-black text-white italic leading-tight">{adData.title}</h3>
+                        </div>
+
+                        <div className="flex items-end gap-3">
+                            <div className="flex-1">
+                                <span className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-1">Preço</span>
+                                <p className="text-3xl font-black text-[#D4AF37] italic">
+                                    {adData.priceType === 'negotiable' ? 'A COMBINAR' : `R$ ${adData.price}`}
+                                </p>
+                            </div>
+                            <div className="bg-white/5 px-4 py-2 rounded-xl border border-white/10">
+                                <span className="text-[9px] font-black text-white/40 uppercase tracking-widest block mb-0.5">Condição</span>
+                                <span className="text-xs font-black text-white uppercase">{adData.isNew ? 'Novo' : 'Usado'}</span>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                                <span className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Localização</span>
+                                <div className="flex items-center gap-2 text-white/90">
+                                    <span className="material-icons text-sm text-[#D4AF37]">place</span>
+                                    <span className="text-sm font-bold">{adData.city}, {adData.uf}</span>
+                                </div>
+                            </div>
+
+                            <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                                <span className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Descrição</span>
+                                <p className="text-sm text-white/70 leading-relaxed whitespace-pre-wrap">{adData.description}</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div className="p-6 bg-white flex gap-4">
-                    <button onClick={() => setShowConfirm(false)} className="flex-1 border-2 py-4 rounded-xl font-black">Editar</button>
-                    <button onClick={publishAd} className="flex-[2] bg-[#D4AF37] text-white py-4 rounded-xl font-black shadow-lg">Publicar</button>
+
+                <div className="p-6 bg-[#1A1108] border-t border-white/5 flex gap-4 safe-area-bottom">
+                    <button 
+                        onClick={() => setShowConfirm(false)} 
+                        className="flex-1 bg-white/5 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs border border-white/10 active:scale-95 transition-transform"
+                    >
+                        Editar
+                    </button>
+                    <button 
+                        onClick={publishAd} 
+                        className="flex-[2] bg-[#D4AF37] text-[#1A1108] py-5 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-[#D4AF37]/20 active:scale-95 transition-transform"
+                    >
+                        Publicar Agora
+                    </button>
                 </div>
             </div>
         );
@@ -640,6 +756,45 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
 
             {/* Ads Carousel (Optional Banner) */}
             <AdsCarousel targetPosition="market_top_carousel" />
+
+            {/* Partner Stores Section */}
+            {stores.length > 0 && (
+                <div className="py-6 border-b border-[#1A1108]/5">
+                    <div className="px-6 flex justify-between items-center mb-4">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#1A1108]/60">Lojas Parceiras</h3>
+                        {selectedStore && (
+                            <button onClick={() => setSelectedStore(null)} className="text-[9px] font-black uppercase text-[#D4AF37] tracking-widest bg-[#D4AF37]/10 px-3 py-1 rounded-full">Ver Todos</button>
+                        )}
+                    </div>
+                    <div className="flex overflow-x-auto px-6 gap-6 scrollbar-hide pb-2">
+                        {stores.map((store) => (
+                            <div 
+                                key={store.id} 
+                                onClick={() => {
+                                    setSelectedStore(store);
+                                    setActiveFilterCat('all');
+                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                }}
+                                className="flex flex-col items-center shrink-0 cursor-pointer active:scale-95 transition-all group"
+                            >
+                                <div className={`w-16 h-16 rounded-full border-2 p-0.5 transition-all mb-2 ${selectedStore?.id === store.id ? 'border-[#D4AF37] shadow-lg shadow-[#D4AF37]/20' : 'border-[#1A1108]/5 group-hover:border-[#1A1108]/20'}`}>
+                                    <div className="w-full h-full rounded-full bg-white overflow-hidden flex items-center justify-center border border-white/50">
+                                        {store.logo_url ? (
+                                            <img src={store.logo_url} className="w-full h-full object-cover" alt={store.name} />
+                                        ) : (
+                                            <span className="material-icons text-[#1A1108]/20 text-3xl">store</span>
+                                        )}
+                                    </div>
+                                </div>
+                                <span className={`text-[10px] font-black uppercase tracking-tight text-center max-w-[80px] truncate ${selectedStore?.id === store.id ? 'text-[#D4AF37]' : 'text-[#1A1108]/60'}`}>
+                                    {store.name}
+                                    {store.is_official && <span className="material-icons text-[10px] ml-0.5 align-middle text-[#D4AF37]">verified</span>}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Categories Filter */}
             <div className="px-6 py-4 overflow-x-auto hide-scrollbar flex gap-2">

@@ -200,6 +200,10 @@ export interface PostItem {
   isShadowbanned?: boolean;
   lat?: number;
   lng?: number;
+  aspect_ratio?: 'original' | '1:1' | '4:5' | '16:9';
+  zoom?: number;
+  offset_x?: number;
+  offset_y?: number;
 }
 
 export interface PostLike {

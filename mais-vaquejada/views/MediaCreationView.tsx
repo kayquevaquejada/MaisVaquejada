@@ -26,6 +26,13 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
     const [location, setLocation] = useState('');
     const [eventId, setEventId] = useState('');
 
+    // Framing Metadata
+    const [aspectRatio, setAspectRatio] = useState<'original' | '1:1' | '4:5' | '16:9'>('original');
+    const [zoom, setZoom] = useState(1);
+    const [offset, setOffset] = useState({ x: 0, y: 0 });
+    const isDragging = useRef(false);
+    const startPos = useRef({ x: 0, y: 0 });
+
     const videoRef = useRef<HTMLVideoElement>(null);
     const mediaStreamRef = useRef<MediaStream | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -254,7 +261,11 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
                         user_id: user.id,
                         media_url: publicUrl,
                         media_type: capturedMedia.type,
-                        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+                        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+                        aspect_ratio: aspectRatio,
+                        zoom,
+                        offset_x: offset.x,
+                        offset_y: offset.y
                     });
                 if (dbError) throw dbError;
             } else {
@@ -266,7 +277,11 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
                         media_type: capturedMedia.type,
                         caption,
                         location,
-                        event_id: eventId || null
+                        event_id: eventId || null,
+                        aspect_ratio: aspectRatio,
+                        zoom,
+                        offset_x: offset.x,
+                        offset_y: offset.y
                     });
                 if (dbError) throw dbError;
             }
@@ -371,35 +386,138 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
         </div>
     );
 
+    const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+        if (capturedMedia?.type !== 'image') return;
+        isDragging.current = true;
+        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+        startPos.current = { x: clientX - offset.x, y: clientY - offset.y };
+    };
+
+    const handleDragMove = (e: React.MouseEvent | React.TouchEvent) => {
+        if (!isDragging.current) return;
+        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+        setOffset({
+            x: clientX - startPos.current.x,
+            y: clientY - startPos.current.y
+        });
+    };
+
+    const handleDragEnd = () => {
+        isDragging.current = false;
+    };
+
     const renderPreview = () => (
         <div className={`absolute inset-0 bg-black flex flex-col z-[200] transition-all duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${previewAnim ? 'opacity-100 scale-100' : 'opacity-0 scale-105'}`}>
-            <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-neutral-900">
+            <header className="absolute top-0 left-0 right-0 pt-[calc(env(safe-area-inset-top)+1rem)] px-6 z-50 flex justify-between items-center pointer-events-none">
+                <button 
+                    onClick={() => { setCapturedMedia(null); setStep('CAMERA'); setZoom(1); setOffset({x:0, y:0}); }} 
+                    className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white border border-white/10 pointer-events-auto active:scale-90 transition-transform"
+                >
+                    <span className="material-icons">arrow_back</span>
+                </button>
+                <div className="bg-black/40 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 pointer-events-auto">
+                    <span className="text-[10px] font-black text-white uppercase tracking-widest italic">Ajustar Enquadramento</span>
+                </div>
+                <div className="w-10" />
+            </header>
+
+            <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-neutral-900 select-none">
                 {/* Blur backdrop overlay */}
                 {capturedMedia?.type === 'image' && (
-                    <div className="absolute inset-0 opacity-50 blur-[40px] scale-125 saturate-150" style={{ backgroundImage: `url(${capturedMedia.url})`, backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
+                    <div className="absolute inset-0 opacity-40 blur-[50px] scale-150 saturate-150 pointer-events-none" style={{ backgroundImage: `url(${capturedMedia.url})`, backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
                 )}
                 
-                <div className={`relative z-10 w-full h-full flex items-center justify-center transition-transform duration-500 delay-100 ${previewAnim ? 'scale-100' : 'scale-95'}`}>
+                <div 
+                    className={`relative z-10 w-full h-full flex items-center justify-center transition-transform duration-500 delay-100 ${previewAnim ? 'scale-100' : 'scale-95'}`}
+                    onMouseDown={handleDragStart}
+                    onMouseMove={handleDragMove}
+                    onMouseUp={handleDragEnd}
+                    onMouseLeave={handleDragEnd}
+                    onTouchStart={handleDragStart}
+                    onTouchMove={handleDragMove}
+                    onTouchEnd={handleDragEnd}
+                >
                     {capturedMedia?.type === 'video' ? (
-                        <video src={capturedMedia.url} controls autoPlay loop className="w-full h-full object-cover shadow-2xl" />
+                        <video src={capturedMedia.url} controls autoPlay loop className="w-full h-full object-contain shadow-2xl" />
                     ) : (
-                        <img src={capturedMedia?.url} className="w-full h-full object-contain drop-shadow-2xl" alt="Captured" />
+                        <div 
+                            className="relative shadow-2xl overflow-hidden transition-all duration-300 ease-out"
+                            style={{ 
+                                width: aspectRatio === 'original' ? '100%' : '100%',
+                                aspectRatio: aspectRatio === '1:1' ? '1/1' : aspectRatio === '4:5' ? '4/5' : aspectRatio === '16:9' ? '16/9' : 'auto',
+                                maxHeight: '80vh',
+                                backgroundColor: '#000'
+                            }}
+                        >
+                            <img 
+                                src={capturedMedia?.url} 
+                                className="absolute pointer-events-none transition-transform duration-100 ease-out max-w-none"
+                                style={{ 
+                                    transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
+                                    width: aspectRatio === 'original' ? '100%' : '100%',
+                                    height: aspectRatio === 'original' ? 'auto' : '100%',
+                                    objectFit: aspectRatio === 'original' ? 'contain' : 'cover'
+                                }} 
+                                alt="Captured" 
+                            />
+                        </div>
                     )}
                 </div>
+
+                {/* Aspect Ratio Selector */}
+                {capturedMedia?.type === 'image' && (
+                    <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-3 px-6 z-50">
+                        {(['original', '1:1', '4:5', '16:9'] as const).map((ratio) => (
+                            <button
+                                key={ratio}
+                                onClick={() => {
+                                    if (navigator.vibrate) navigator.vibrate(10);
+                                    setAspectRatio(ratio);
+                                    setZoom(1);
+                                    setOffset({ x: 0, y: 0 });
+                                }}
+                                className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${aspectRatio === ratio ? 'bg-[#ECA413] text-black border-[#ECA413] shadow-lg shadow-[#ECA413]/30 scale-110' : 'bg-black/40 text-white border-white/10'}`}
+                            >
+                                {ratio}
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
-            <div className="p-8 pb-12 bg-black flex gap-4">
-                <button
-                    onClick={() => { setCapturedMedia(null); setStep('CAMERA'); }}
-                    className="flex-1 bg-white/10 text-white font-black py-4 rounded-2xl uppercase tracking-widest text-xs border border-white/10"
-                >
-                    Refazer
-                </button>
-                <button
-                    onClick={() => setStep('PUBLISH')}
-                    className="flex-1 bg-[#ECA413] text-background-dark font-black py-4 rounded-2xl uppercase tracking-widest text-xs shadow-lg shadow-[#ECA413]/20"
-                >
-                    Usar
-                </button>
+
+            <div className="p-8 pb-[calc(env(safe-area-inset-bottom)+2rem)] bg-black flex flex-col gap-6 border-t border-white/5">
+                {capturedMedia?.type === 'image' && (
+                    <div className="flex items-center gap-6 px-2">
+                        <span className="material-icons text-white/40 text-lg">zoom_in</span>
+                        <input 
+                            type="range" 
+                            min="1" 
+                            max="3" 
+                            step="0.01" 
+                            value={zoom} 
+                            onChange={(e) => setZoom(parseFloat(e.target.value))}
+                            className="flex-1 accent-[#ECA413] h-1 bg-white/10 rounded-full appearance-none outline-none"
+                        />
+                        <span className="text-[10px] font-black text-white/40 uppercase w-8">{zoom.toFixed(1)}x</span>
+                    </div>
+                )}
+                
+                <div className="flex gap-4">
+                    <button
+                        onClick={() => { setCapturedMedia(null); setStep('CAMERA'); setZoom(1); setOffset({x:0, y:0}); }}
+                        className="flex-1 bg-white/5 text-white font-black py-4 rounded-2xl uppercase tracking-widest text-[10px] border border-white/10 active:scale-95 transition-all"
+                    >
+                        Refazer
+                    </button>
+                    <button
+                        onClick={() => setStep('PUBLISH')}
+                        className="flex-[2] bg-[#ECA413] text-black font-black py-4 rounded-2xl uppercase tracking-widest text-[10px] shadow-lg shadow-[#ECA413]/20 active:scale-95 transition-all"
+                    >
+                        Continuar
+                    </button>
+                </div>
             </div>
         </div>
     );

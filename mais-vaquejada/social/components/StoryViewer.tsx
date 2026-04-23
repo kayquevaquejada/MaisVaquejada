@@ -7,18 +7,20 @@ interface StoryViewerProps {
   onClose: () => void;
   onNavigateToProfile: (username: string) => void;
   onShare: (post: any) => void;
+  onDelete?: (storyId: string) => void;
   onAdClick?: (campaign: any) => void;
   onAdImpression?: (campaignId: string) => void;
+  currentUserId?: string;
 }
 
 export const StoryViewer: React.FC<StoryViewerProps> = ({
   stories,
   initialUserIndex,
-  onClose,
-  onNavigateToProfile,
   onShare,
+  onDelete,
   onAdClick,
-  onAdImpression
+  onAdImpression,
+  currentUserId
 }) => {
   const [activeUserIndex, setActiveUserIndex] = useState(initialUserIndex);
   const [activeItemIndex, setActiveItemIndex] = useState(0);
@@ -149,6 +151,13 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
     setIsPaused(false);
   };
 
+  const handleDelete = () => {
+    if (!currentItem || !onDelete) return;
+    if (confirm('Deseja excluir este story permanentemente?')) {
+      onDelete(currentItem.id);
+    }
+  };
+
   if (!currentUser || !currentItem) return null;
 
   const opacity = Math.max(0.3, 1 - dragY / 400);
@@ -205,7 +214,19 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
             )}
           </div>
         </div>
-        <button onClick={onClose} className="material-icons text-white drop-shadow-md">close</button>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          {currentUser.id === currentUserId && !currentUser.isAd && (
+            <button 
+              onClick={(e) => { e.stopPropagation(); handleDelete(); }} 
+              className="material-icons text-red-500 drop-shadow-md active:scale-90 transition-transform"
+            >
+              delete_outline
+            </button>
+          )}
+          <button onClick={onClose} className="material-icons text-white drop-shadow-md">close</button>
+        </div>
       </div>
 
       {/* Swipe hint */}
@@ -219,12 +240,19 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
 
       {/* Story Content — Full screen cover */}
       <div 
-        className="absolute inset-0 select-none"
+        className="absolute inset-0 select-none flex items-center justify-center bg-black overflow-hidden"
         onContextMenu={(e) => e.preventDefault()}
       >
         <img
           src={currentItem.url}
-          className="w-full h-full object-cover pointer-events-none"
+          className="w-full transition-transform duration-100 ease-out"
+          style={{
+            transform: `translate(${(currentItem as any).offset_x || 0}px, ${(currentItem as any).offset_y || 0}px) scale(${(currentItem as any).zoom || 1})`,
+            aspectRatio: (currentItem as any).aspect_ratio === '1:1' ? '1/1' : (currentItem as any).aspect_ratio === '4:5' ? '4/5' : (currentItem as any).aspect_ratio === '16:9' ? '16/9' : 'auto',
+            objectFit: ((currentItem as any).aspect_ratio && (currentItem as any).aspect_ratio !== 'original') ? 'cover' : 'contain',
+            maxHeight: '100%',
+            width: '100%'
+          }}
           alt="Story content"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60 pointer-events-none" />

@@ -81,18 +81,30 @@ export const PostCard: React.FC<PostCardProps> = ({
 
       {/* Post Media */}
       <div 
-        className="relative w-full overflow-hidden bg-neutral-900 group min-h-[300px] flex items-center justify-center"
+        className="relative w-full overflow-hidden bg-neutral-900 group flex items-center justify-center transition-all duration-300"
+        style={{ 
+          aspectRatio: post.aspect_ratio === '1:1' ? '1/1' : post.aspect_ratio === '4:5' ? '4/5' : post.aspect_ratio === '16:9' ? '16/9' : 'auto',
+          maxHeight: post.aspect_ratio === 'original' || !post.aspect_ratio ? 'none' : '80vh',
+          minHeight: !post.aspect_ratio ? '300px' : 'auto'
+        }}
         onDoubleClick={handleDoubleTap}
       >
         {!imgError ? (
           <img
-            className="w-full aspect-square object-cover"
+            className="w-full transition-transform duration-300"
             src={post.imageUrl}
+            style={{ 
+              transform: `translate(${post.offset_x || 0}px, ${post.offset_y || 0}px) scale(${post.zoom || 1})`,
+              aspectRatio: post.aspect_ratio === '1:1' ? '1/1' : post.aspect_ratio === '4:5' ? '4/5' : post.aspect_ratio === '16:9' ? '16/9' : 'auto',
+              objectFit: (post.aspect_ratio && post.aspect_ratio !== 'original') ? 'cover' : 'contain',
+              width: (post.aspect_ratio && post.aspect_ratio !== 'original') ? '100%' : '100%',
+              height: (post.aspect_ratio && post.aspect_ratio !== 'original') ? '100%' : 'auto'
+            }}
             alt="Post content"
             onError={() => setImgError(true)}
           />
         ) : (
-          <div className="flex flex-col items-center opacity-20">
+          <div className="flex flex-col items-center opacity-20 py-20">
             <span className="material-icons text-4xl mb-2">image_not_supported</span>
             <span className="text-[10px] font-black uppercase tracking-widest">Mídia não disponível</span>
           </div>

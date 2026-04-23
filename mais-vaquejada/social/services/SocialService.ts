@@ -111,7 +111,11 @@ export const SocialService = {
         url: s.media_url,
         type: s.media_type || 'image',
         duration: 5000,
-        created_at: s.created_at
+        created_at: s.created_at,
+        aspect_ratio: s.aspect_ratio,
+        zoom: s.zoom,
+        offset_x: s.offset_x,
+        offset_y: s.offset_y
       });
       return acc;
     }, {});
@@ -232,6 +236,38 @@ export const SocialService = {
       }
     }
 
+    return true;
+  },
+
+  async deleteStory(storyId: string) {
+    // 1. Get story data
+    const { data: story } = await supabase
+      .from('stories')
+      .select('media_url')
+      .eq('id', storyId)
+      .single();
+
+    if (!story) throw new Error('Story não encontrado');
+
+    // 2. Delete from database
+    const { error: dbError } = await supabase
+      .from('stories')
+      .delete()
+      .eq('id', storyId);
+
+    if (dbError) throw dbError;
+
+    // 3. Delete from storage
+    if (story.media_url && story.media_url.includes('/storage/v1/object/public/vaquejadas/')) {
+      try {
+        const path = story.media_url.split('/vaquejadas/')[1].split('?')[0];
+        if (path) {
+          await supabase.storage.from('vaquejadas').remove([path]);
+        }
+      } catch (e) {
+        console.warn('Falha ao remover arquivo do storage:', e);
+      }
+    }
     return true;
   }
 };

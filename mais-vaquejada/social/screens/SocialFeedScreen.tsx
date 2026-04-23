@@ -164,6 +164,16 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
     }
   };
 
+  const handleDeleteStory = async (storyId: string) => {
+    try {
+      await SocialService.deleteStory(storyId);
+      setActiveStoryIndex(null);
+      refresh(); // Refresh feed to update stories
+    } catch (err: any) {
+      alert('Erro ao excluir story: ' + err.message);
+    }
+  };
+
   const handleUpdatePost = async () => {
     if (!optionsPost) return;
     setSavingEdit(true);
@@ -324,6 +334,8 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
           }}
           onAdImpression={(id) => trackStoryImpression(id, activeStoryIndex)}
           onAdClick={trackStoryClick}
+          currentUserId={user?.id}
+          onDelete={handleDeleteStory}
         />
       )}
 
