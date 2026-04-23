@@ -15,6 +15,7 @@ import { ChatThread } from '../components/ChatThread';
 import { ShareSheet } from '../components/ShareSheet';
 import { SocialErrorBoundary } from '../components/SocialErrorBoundary';
 import { supabase } from '../../lib/supabase';
+import { SocialService } from '../services/SocialService';
 import { useCall } from '../../context/CallContext';
 
 interface SocialFeedScreenProps {
@@ -154,12 +155,12 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
   const handleDeletePost = async () => {
     if (!optionsPost || !confirm('Tem certeza que deseja excluir esta postagem permanentemente?')) return;
     try {
-      const { error } = await supabase.from('posts').delete().eq('id', optionsPost.id);
-      if (error) throw error;
+      await SocialService.deletePost(optionsPost.id);
       setOptionsPost(null);
       refresh(); // Refresh feed after delete
     } catch (err: any) {
-      alert('Erro ao excluir: ' + err.message);
+      console.error('Erro ao excluir post:', err);
+      alert('Erro ao excluir: ' + (err.message || 'Erro desconhecido'));
     }
   };
 
@@ -292,6 +293,7 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
                    setEditLocation(p.location || '');
                 }}
                 currentUserId={user?.id}
+                isAdmin={user?.isMaster || user?.admin_social || user?.role === 'ADMIN_MASTER'}
               />
             );
           })

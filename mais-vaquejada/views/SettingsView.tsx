@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { User } from '../types';
 import { supabase } from '../lib/supabase';
 import { useI18n } from '../lib/i18n';
+import { PushPreferenceManager } from '../lib/push/PushPreferenceManager';
+import { PushPreferences } from '../lib/push/types';
 
 interface SettingsViewProps {
     user: User | null;
@@ -29,13 +31,17 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
     });
 
     const [toggles, setToggles] = useState({
-        notificationsLikes: true,
-        notificationsComments: true,
-        notificationsNewFollowers: true,
-        notificationsMessages: true,
-        notificationsEvents: true,
         privateAccount: false,
         showOnlineStatus: true
+    });
+
+    const [pushPrefs, setPushPrefs] = useState<PushPreferences>({
+        news: true,
+        lives: true,
+        social: true,
+        messages: true,
+        campaigns: true,
+        system: true
     });
 
     const [connectionType, setConnectionType] = useState<string>('4G');
@@ -58,7 +64,10 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
             const conn = (navigator as any).connection;
             setConnectionType(conn.effectiveType?.toUpperCase() || 'WiFi');
         }
-    }, []);
+        if (user) {
+            PushPreferenceManager.getPreferences(user.id).then(prefs => setPushPrefs(prefs));
+        }
+    }, [user]);
 
     const fetchContactInfo = async () => {
         const { data } = await supabase.from('app_settings').select('value').eq('key', 'contact_info').single();
@@ -159,6 +168,22 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
         setTimeout(() => setSuccess(null), 2000);
     };
 
+    const togglePushPref = async (key: keyof PushPreferences) => {
+        if (!user) return;
+        setLoading(true);
+        const newPrefs = { ...pushPrefs, [key]: !pushPrefs[key] };
+        setPushPrefs(newPrefs);
+        try {
+            await PushPreferenceManager.updatePreferences(user.id, newPrefs);
+            setSuccess('Preferência atualizada!');
+            setTimeout(() => setSuccess(null), 2000);
+        } catch (e) {
+            console.error('Failed to update push pref', e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const SettingItem = ({ icon, label, onClick, color = "text-[#1A1108]", value, isToggle, toggleKey }: any) => (
         <div className="w-full flex items-center justify-between p-5 bg-white border-b border-black/5 active:bg-black/5 transition-colors">
             <button onClick={onClick} className="flex-1 flex items-center gap-4 text-left">
@@ -229,6 +254,69 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
             </div>
         </div>
     );
+
+    const renderNotifications = () => (
+        <div className="absolute inset-0 bg-[#FBFBFB] flex flex-col z-[120] animate-in slide-in-from-right duration-300">
+            <SubHeader title="Notificações Push" onBackTab="MAIN" />
+            <div className="flex-1 overflow-y-auto pt-4 pb-24">
+                <div className="px-6 py-6 bg-neutral-50 text-[10px] font-black text-black/30 uppercase tracking-[0.3em] border-b border-black/5">Notícias e Atualizações</div>
+                <div className="w-full flex items-center justify-between p-5 bg-white border-b border-black/5">
+                    <div className="flex-1 flex flex-col">
+                        <span className="text-[15px] font-bold text-[#1A1108]">TV e Lives</span>
+                        <span className="text-xs text-black/40 font-medium">Avisos quando uma transmissão começar</span>
+                    </div>
+                    <button onClick={() => togglePushPref('lives')} className={`w-11 h-6 rounded-full transition-all relative ${pushPrefs.lives ? 'bg-[#D4AF37]' : 'bg-black/10'}`}>
+                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-all ${pushPrefs.lives ? 'left-6' : 'left-1'}`} />
+                    </button>
+                </div>
+                <div className="w-full flex items-center justify-between p-5 bg-white border-b border-black/5">
+                    <div className="flex-1 flex flex-col">
+                        <span className="text-[15px] font-bold text-[#1A1108]">Notícias</span>
+                        <span className="text-xs text-black/40 font-medium">Fatos e matérias urgentes</span>
+                    </div>
+                    <button onClick={() => togglePushPref('news')} className={`w-11 h-6 rounded-full transition-all relative ${pushPrefs.news ? 'bg-[#D4AF37]' : 'bg-black/10'}`}>
+                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-all ${pushPrefs.news ? 'left-6' : 'left-1'}`} />
+                    </button>
+                </div>
+
+                <div className="px-6 py-6 bg-neutral-50 text-[10px] font-black text-black/30 uppercase tracking-[0.3em] border-b border-black/5 mt-4">Interações</div>
+                <div className="w-full flex items-center justify-between p-5 bg-white border-b border-black/5">
+                    <div className="flex-1 flex flex-col">
+                        <span className="text-[15px] font-bold text-[#1A1108]">Social</span>
+                        <span className="text-xs text-black/40 font-medium">Curtidas, comentários e seguidores</span>
+                    </div>
+                    <button onClick={() => togglePushPref('social')} className={`w-11 h-6 rounded-full transition-all relative ${pushPrefs.social ? 'bg-[#D4AF37]' : 'bg-black/10'}`}>
+                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-all ${pushPrefs.social ? 'left-6' : 'left-1'}`} />
+                    </button>
+                </div>
+                <div className="w-full flex items-center justify-between p-5 bg-white border-b border-black/5">
+                    <div className="flex-1 flex flex-col">
+                        <span className="text-[15px] font-bold text-[#1A1108]">Mensagens</span>
+                        <span className="text-xs text-black/40 font-medium">Mensagens diretas no chat</span>
+                    </div>
+                    <button onClick={() => togglePushPref('messages')} className={`w-11 h-6 rounded-full transition-all relative ${pushPrefs.messages ? 'bg-[#D4AF37]' : 'bg-black/10'}`}>
+                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-all ${pushPrefs.messages ? 'left-6' : 'left-1'}`} />
+                    </button>
+                </div>
+
+                <div className="px-6 py-6 bg-neutral-50 text-[10px] font-black text-black/30 uppercase tracking-[0.3em] border-b border-black/5 mt-4">Comercial e Campanhas</div>
+                <div className="w-full flex items-center justify-between p-5 bg-white border-b border-black/5">
+                    <div className="flex-1 flex flex-col">
+                        <span className="text-[15px] font-bold text-[#1A1108]">Campanhas e Ingressos</span>
+                        <span className="text-xs text-black/40 font-medium">Promoções, lembretes de eventos e ofertas do mercado</span>
+                    </div>
+                    <button onClick={() => togglePushPref('campaigns')} className={`w-11 h-6 rounded-full transition-all relative ${pushPrefs.campaigns ? 'bg-[#D4AF37]' : 'bg-black/10'}`}>
+                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-all ${pushPrefs.campaigns ? 'left-6' : 'left-1'}`} />
+                    </button>
+                </div>
+                
+                <div className="p-6">
+                    <p className="text-[10px] font-black uppercase text-black/30 text-center">Alertas de sistema (como redefinição de senha ou banimentos) não podem ser desativados e garantem sua segurança.</p>
+                </div>
+            </div>
+        </div>
+    );
+
 
     const renderHelp = () => (
         <div className="absolute inset-0 bg-[#FBFBFB] flex flex-col z-[120]">
@@ -449,6 +537,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
     if (activeTab === 'EDIT_PROFILE') return renderEditProfile();
     if (activeTab === 'HELP') return renderHelp();
     if (activeTab === 'ABOUT') return renderAbout();
+    if (activeTab === 'NOTIFICATIONS') return renderNotifications();
 
 
     return (
@@ -460,6 +549,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
             <div className="flex-1 overflow-y-auto">
                 <div className="px-6 py-6 bg-neutral-50 text-[10px] font-black text-black/30 uppercase tracking-[0.3em] border-b border-black/5">Conta</div>
                 <SettingItem icon="person_outline" label={t('editProfile')} value={user?.name} onClick={() => setActiveTab('EDIT_PROFILE')} />
+                <SettingItem icon="notifications_active" label="Notificações Push" onClick={() => setActiveTab('NOTIFICATIONS')} />
                 
                 <div className="px-6 py-6 bg-neutral-50 text-[10px] font-black text-black/30 uppercase tracking-[0.3em] border-b border-black/5">App</div>
                 <SettingItem icon="help_outline" label="Entrar em contato" onClick={() => setActiveTab('HELP')} />

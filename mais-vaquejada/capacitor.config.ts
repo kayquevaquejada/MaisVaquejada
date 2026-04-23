@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.maisvaquejada.app',
-  appName: 'Vaquerama',
+  appName: '+Vaquejada',
   webDir: 'dist',
   bundledWebRuntime: false,
   plugins: {

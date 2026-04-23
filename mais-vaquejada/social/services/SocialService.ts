@@ -199,6 +199,40 @@ export const SocialService = {
        .order('created_at', { ascending: false });
      if (error) { console.warn('Messages schema error:', error); return []; }
      return data;
+  },
+
+  async deletePost(postId: string) {
+    // 1. Get post data first to know the media URL
+    const { data: post } = await supabase
+      .from('posts')
+      .select('media_url, user_id')
+      .eq('id', postId)
+      .single();
+
+    if (!post) throw new Error('Postagem não encontrada');
+
+    // 2. Delete from database
+    const { error: dbError } = await supabase
+      .from('posts')
+      .delete()
+      .eq('id', postId);
+
+    if (dbError) throw dbError;
+
+    // 3. Try to delete from storage if it's a supabase URL
+    if (post.media_url && post.media_url.includes('/storage/v1/object/public/vaquejadas/')) {
+      try {
+        const path = post.media_url.split('/vaquejadas/')[1].split('?')[0];
+        if (path) {
+          await supabase.storage.from('vaquejadas').remove([path]);
+        }
+      } catch (e) {
+        console.warn('Falha ao remover arquivo do storage:', e);
+        // We don't throw here, the record is already gone
+      }
+    }
+
+    return true;
   }
 };
 

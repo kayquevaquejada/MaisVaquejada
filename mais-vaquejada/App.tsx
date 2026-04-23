@@ -30,6 +30,7 @@ import { CallBar } from './components/CallBar';
 import { CallScreen } from './components/CallScreen';
 import LegalConsentView from './views/LegalConsentView';
 import { TERMS_VERSION, PRIVACY_VERSION } from './lib/constants';
+import { PushOnboardingModal } from './components/PushOnboardingModal';
 
 const MASTER_EMAILS = ["kayquegusmao@icloud.com", "kayquegusmao276@gmail.com", "Kayquegusmao1@gmail.com", "maisvaquejada1@gmail.com", "contato@maisvaquejada.com.br"];
 
@@ -454,6 +455,7 @@ const App: React.FC = () => {
         {showNavbar && <Navbar currentView={currentView} user={user} />}
         <CallBar />
         <CallScreen />
+        {user && user.profile_completed && <PushOnboardingModal userId={user.id} />}
       </div>
     </CallProvider>
   );

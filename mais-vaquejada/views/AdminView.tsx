@@ -48,13 +48,14 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
     // View States for Events and News
     const [subviewEvents, setSubviewEvents] = useState<'HOME'|'CREATE'|'LIST'>('HOME');
     const [subviewNews, setSubviewNews] = useState<'HOME'|'CREATE'|'LIST'|'TV'>('HOME');
-    const [subviewMercado, setSubviewMercado] = useState<'HOME'|'LIST'>('HOME');
+    const [subviewMercado, setSubviewMercado] = useState<'HOME'|'LIST'|'STORES'>('HOME');
     const [subviewSocial, setSubviewSocial] = useState<'HOME'|'LIST'>('HOME');
 
     const [eventsList, setEventsList] = useState<any[]>([]);
     const [newsList, setNewsList] = useState<any[]>([]);
     const [transmissionsList, setTransmissionsList] = useState<any[]>([]);
     const [marketList, setMarketList] = useState<any[]>([]);
+    const [storesList, setStoresList] = useState<any[]>([]);
     const [postsList, setPostsList] = useState<any[]>([]);
     const [bannersList, setBannersList] = useState<any[]>([]);
 
@@ -62,6 +63,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
     const [newsForm, setNewsForm] = useState<any>({ type: 'info' });
     const [transmissionForm, setTransmissionForm] = useState<any>({});
     const [bannerForm, setBannerForm] = useState<any>({});
+    const [storeForm, setStoreForm] = useState<any>({});
 
     const isMaster = user?.isMaster || user?.role === 'ADMIN_MASTER' || false;
     const hasMercado = isMaster || user?.admin_mercado || user?.role === 'ADMIN' || false;
@@ -135,6 +137,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         if (hasMercado) {
             console.log("DEBUG: Perfil Admin Detectado. Role:", user?.role);
             fetchMarket();
+            fetchStores();
         } else {
             console.log("DEBUG: Acesso negado ao Mercado. Role atual:", user?.role);
         }
@@ -201,6 +204,16 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
             }
         } catch (err: any) {
             console.error("ERRO NO FLUXO:", err.message);
+        }
+    };
+
+    const fetchStores = async () => {
+        try {
+            const { data, error } = await supabase.from('stores').select(`*, profiles:user_id(username, name)`).order('created_at', { ascending: false });
+            if (error) console.error("Error fetching stores:", error.message);
+            if (data) setStoresList(data);
+        } catch(err) {
+            console.error("Error fetching stores:", err);
         }
     };
 
@@ -392,7 +405,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                 ...cleanForm,
                 youtube_video_id: videoId || transmissionForm.youtube_video_id,
                 thumbnail_url: thumbnail,
-                channel_name: transmissionForm.channel_name || 'Vaquerama Oficial',
+                channel_name: transmissionForm.channel_name || '+Vaquejada Oficial',
                 active: true,
             };
             let error;
@@ -402,7 +415,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                 ({ error } = await supabase.from('transmissions').insert([payload]));
             }
             if (error) throw error;
-            alert(transmissionForm.id ? 'Transmissão atualizada!' : '✅ Transmissão publicada na TV Vaquerama!');
+            alert(transmissionForm.id ? 'Transmissão atualizada!' : '✅ Transmissão publicada na TV +Vaquejada!');
             setTransmissionForm({});
             fetchTransmissions();
         } catch (err: any) { alert(err.message); }
@@ -461,7 +474,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                         user_id: ad.user_id,
                         actor_id: user.id,
                         type: 'system',
-                        message: `O Vaquerama retirou do mercado o seu produto "${ad.title}" por não condizer com a política do aplicativo.`
+                        message: `O +Vaquejada retirou do mercado o seu produto "${ad.title}" por não condizer com a política do aplicativo.`
                     });
                 }
             } catch (notifyErr) {
@@ -885,6 +898,95 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
             );
         }
 
+        if (subviewMercado === 'STORES') {
+            const handleSaveStore = async (e: React.FormEvent) => {
+                e.preventDefault();
+                setLoading(true);
+                try {
+                    const payload = {
+                        user_id: storeForm.user_id, // must be a valid user ID or we can find user by username
+                        name: storeForm.name,
+                        description: storeForm.description,
+                        is_official: storeForm.is_official || false,
+                    };
+                    let err;
+                    if (storeForm.id) {
+                        const { error } = await supabase.from('stores').update(payload).eq('id', storeForm.id);
+                        err = error;
+                    } else {
+                        const { error } = await supabase.from('stores').insert(payload);
+                        err = error;
+                    }
+                    if (err) throw err;
+                    setSuccess(storeForm.id ? 'Loja Atualizada' : 'Loja Criada');
+                    setStoreForm({});
+                    fetchStores();
+                    setTimeout(() => setSuccess(null), 2000);
+                } catch(error: any) {
+                    alert('Erro ao salvar loja: ' + error.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const toggleStoreStatus = async (id: string, currentStatus: boolean) => {
+                await supabase.from('stores').update({ is_active: !currentStatus }).eq('id', id);
+                fetchStores();
+            };
+
+            return (
+                <div className="absolute inset-0 bg-[#F8F5F2] flex flex-col z-[120]">
+                    <header className="px-6 py-6 border-b border-[#1A1108]/5 flex items-center gap-4 bg-[#F8F5F2] sticky top-0 z-10 w-full shadow-sm">
+                        <button onClick={() => setSubviewMercado('HOME')} className="material-icons text-leather active:scale-90 transition-transform">arrow_back</button>
+                        <h2 className="text-xl font-black uppercase italic tracking-tight text-leather">Lojas Parceiras</h2>
+                    </header>
+                    <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                        {/* FORMULÁRIO DE LOJA */}
+                        <form onSubmit={handleSaveStore} className="bg-white p-6 rounded-[32px] border border-[#1A1108]/5 shadow-sm space-y-4">
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-[#D4AF37]">{storeForm.id ? 'Editar Loja' : 'Nova Loja Parceira'}</h3>
+                            <div className="space-y-3">
+                                <input className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-4 text-sm font-bold outline-none" placeholder="Nome da Loja" value={storeForm.name || ''} onChange={e => setStoreForm({...storeForm, name: e.target.value})} required />
+                                <input className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-4 text-sm font-bold outline-none" placeholder="ID do Usuário Dono da Loja" value={storeForm.user_id || ''} onChange={e => setStoreForm({...storeForm, user_id: e.target.value})} required />
+                                <textarea className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-4 text-sm font-bold outline-none" placeholder="Descrição da Loja" rows={2} value={storeForm.description || ''} onChange={e => setStoreForm({...storeForm, description: e.target.value})} />
+                                <div className="flex items-center gap-2">
+                                    <input type="checkbox" checked={storeForm.is_official || false} onChange={e => setStoreForm({...storeForm, is_official: e.target.checked})} className="w-5 h-5" />
+                                    <span className="text-xs font-bold uppercase">Selo Oficial (Verificado)</span>
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                {storeForm.id && <button type="button" onClick={() => setStoreForm({})} className="flex-1 bg-neutral-200 text-black py-4 rounded-xl font-black uppercase text-xs">Cancelar</button>}
+                                <button type="submit" disabled={loading} className="flex-[2] bg-[#D4AF37] text-white py-4 rounded-xl font-black uppercase tracking-widest text-xs shadow-lg shadow-[#D4AF37]/20 disabled:opacity-50">{storeForm.id ? 'Salvar Alterações' : 'Criar Loja'}</button>
+                            </div>
+                        </form>
+
+                        {/* LISTA DE LOJAS */}
+                        <div className="space-y-4 mt-6">
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-leather/40">Lojas Cadastradas ({storesList.length})</h3>
+                            {storesList.map(store => (
+                                <div key={store.id} className={`bg-white border p-4 rounded-2xl flex flex-col gap-3 ${store.is_active ? 'border-[#1A1108]/10' : 'border-red-300 opacity-60'}`}>
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <h4 className="font-black text-sm uppercase text-leather">{store.name}</h4>
+                                                {store.is_official && <span className="material-icons text-[14px] text-green-500">verified</span>}
+                                            </div>
+                                            <p className="text-[10px] font-bold text-leather/40">Dono: @{store.profiles?.username || 'desconhecido'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2 pt-2 border-t border-[#1A1108]/5">
+                                        <button onClick={() => setStoreForm(store)} className="flex-1 text-[9px] font-black uppercase tracking-widest bg-neutral-100 text-leather rounded-lg py-2">Editar</button>
+                                        <button onClick={() => toggleStoreStatus(store.id, store.is_active)} className={`flex-1 text-[9px] font-black uppercase tracking-widest rounded-lg py-2 ${store.is_active ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
+                                            {store.is_active ? 'Desativar' : 'Ativar'}
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
         return (
             <div className="absolute inset-0 bg-[#F8F5F2] flex flex-col z-[120]">
                 <SubHeader title="Gestão do Mercado" />
@@ -917,9 +1019,23 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                             </div>
                             <span className="material-icons text-leather/20 group-hover:text-[#D4AF37] transition-colors">chevron_right</span>
                         </button>
+
+                        <button onClick={() => setSubviewMercado('STORES')} className="w-full bg-white border border-[#1A1108]/10 text-leather p-4 rounded-xl font-black uppercase tracking-widest text-xs flex items-center justify-between active:scale-95 shadow-sm group">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-green-500/10 w-10 h-10 rounded-lg flex items-center justify-center">
+                                    <span className="material-icons text-green-500">store</span>
+                                </div>
+                                <div className="text-left">
+                                    <p className="font-black text-sm text-leather">Gerenciar Lojas (Módulo 2)</p>
+                                    <p className="text-[9px] text-leather/40 uppercase">Lojas Oficiais e Parceiros</p>
+                                </div>
+                            </div>
+                            <span className="material-icons text-leather/20 group-hover:text-[#D4AF37] transition-colors">chevron_right</span>
+                        </button>
                     </div>
 
                 </div>
+
             </div>
         );
     };
@@ -1359,7 +1475,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                                 <span className="material-icons text-white text-lg">live_tv</span>
                             </div>
                             <div>
-                                <h2 className="text-lg font-black uppercase italic tracking-tight text-white">TV VAQUERAMA</h2>
+                                <h2 className="text-lg font-black uppercase italic tracking-tight text-white">TV +VAQUEJADA</h2>
                                 <p className="text-[9px] font-bold uppercase tracking-widest text-white/40">Gerenciar Transmissões</p>
                             </div>
                         </div>
@@ -1425,7 +1541,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                                 </div>
                                 <input 
                                     className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-4 text-sm font-bold text-leather outline-none focus:border-[#D4AF37] placeholder:text-leather/30" 
-                                    placeholder="Canal (ex: Vaquerama Oficial)" 
+                                    placeholder="Canal (ex: +Vaquejada Oficial)" 
                                     value={transmissionForm.channel_name || ''} 
                                     onChange={(e) => setTransmissionForm({...transmissionForm, channel_name: e.target.value})} 
                                 />
@@ -1479,7 +1595,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
 
                             <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-red-700 to-red-600 text-white p-5 rounded-2xl font-black uppercase text-sm tracking-widest active:scale-95 transition-transform shadow-xl shadow-red-600/20 flex items-center justify-center gap-2 disabled:opacity-50">
                                  {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <span className="material-icons">live_tv</span>}
-                                 {transmissionForm.id ? 'Atualizar Transmissão' : 'Publicar na TV Vaquerama'}
+                                 {transmissionForm.id ? 'Atualizar Transmissão' : 'Publicar na TV +Vaquejada'}
                             </button>
                             {transmissionForm.id && (
                                 <button type="button" onClick={() => setTransmissionForm({})} className="w-full text-[10px] font-black uppercase tracking-widest text-leather/40 py-2">Cancelar Edição</button>
@@ -1511,7 +1627,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-[11px] font-black uppercase text-leather leading-tight truncate">{t.title}</p>
-                                                <p className="text-[9px] font-bold text-[#D4AF37] truncate mt-0.5">{t.channel_name || 'Vaquerama'}</p>
+                                                <p className="text-[9px] font-bold text-[#D4AF37] truncate mt-0.5">{t.channel_name || '+Vaquejada'}</p>
                                                 <p className="text-[8px] text-leather/30 truncate font-mono">{t.youtube_url}</p>
                                             </div>
                                             <div className="flex flex-col gap-1 shrink-0">
@@ -1549,7 +1665,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                                 <span className="material-icons text-white text-2xl group-hover:scale-110 transition-transform">live_tv</span>
                             </div>
                             <div className="text-left">
-                                <h4 className="text-white font-black uppercase text-lg italic leading-none tracking-tighter">TV VAQUERAMA</h4>
+                                <h4 className="text-white font-black uppercase text-lg italic leading-none tracking-tighter">TV +VAQUEJADA</h4>
                                 <p className="text-white/60 text-[9px] font-bold uppercase tracking-widest mt-1">Gerenciar Transmissões Youtube</p>
                             </div>
                             <span className="material-icons text-white/40 ml-auto">settings</span>

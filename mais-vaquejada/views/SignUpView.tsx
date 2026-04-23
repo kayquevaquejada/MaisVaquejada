@@ -185,7 +185,7 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
               <span className="material-icons text-white">arrow_back</span>
             </button>
 
-            <h1 className="text-4xl font-black text-white italic tracking-tighter mb-2 uppercase">Junte-se a <span className="text-[#ECA413]">Vaquerama</span></h1>
+            <h1 className="text-4xl font-black text-white italic tracking-tighter mb-2 uppercase">Junte-se ao <span className="text-[#ECA413]">+Vaquejada</span></h1>
             <p className="text-white/40 text-xs font-bold uppercase tracking-widest mb-10">Faça parte da maior arena digital de vaquejada</p>
 
             <button

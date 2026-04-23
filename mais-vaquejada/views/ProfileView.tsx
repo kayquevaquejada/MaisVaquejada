@@ -3,6 +3,7 @@ import { User } from '../types';
 import { supabase } from '../lib/supabase';
 import { createNotification } from '../lib/notifications';
 import { compressImage } from '../lib/imageUtils';
+import { SocialService } from '../social/services/SocialService';
 
 interface ProfileViewProps {
     user: User | null;
@@ -187,8 +188,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
     const shareProfile = () => {
         if (navigator.share) {
             navigator.share({
-                title: `Perfil de ${profileData?.name} no Vaquerama`,
-                text: `Confira o perfil de @${profileData?.username} na Arena Vaquerama! 🐎`,
+                title: `Perfil de ${profileData?.name} no +Vaquejada`,
+                text: `Confira o perfil de @${profileData?.username} no +Vaquejada! 🐎`,
                 url: window.location.href,
             }).catch(err => console.error('Erro ao compartilhar', err));
         } else {
@@ -632,19 +633,26 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                                 </button>
                                 <button 
                                     onClick={async () => {
+                                        const canDelete = isMyProfile || user?.isMaster || user?.admin_social || user?.role === 'ADMIN_MASTER';
+                                        
+                                        if (!canDelete) {
+                                            alert('Você não tem permissão para excluir esta postagem.');
+                                            return;
+                                        }
+
                                         if (confirm('Tem certeza que deseja apagar essa publicação permanentemente?')) {
                                             try {
-                                                const { error } = await supabase
-                                                    .from('posts')
-                                                    .delete()
-                                                    .eq('id', selectedPost.id);
+                                                await SocialService.deletePost(selectedPost.id);
                                                 
-                                                if (error) throw error;
-                                                
+                                                // Update local state
                                                 setProfilePosts(profilePosts.filter((p: any) => p.id !== selectedPost.id));
                                                 setSelectedPost(null);
+                                                
+                                                // Optional: notify success
+                                                // alert('Publicação excluída com sucesso!');
                                             } catch (err: any) {
-                                                alert('Erro ao excluir: ' + err.message);
+                                                console.error('Erro ao deletar post:', err);
+                                                alert('Erro ao excluir: ' + (err.message || 'Erro desconhecido'));
                                             }
                                         }
                                     }}

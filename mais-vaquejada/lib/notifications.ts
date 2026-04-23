@@ -1,5 +1,5 @@
 /**
- * Arena Vaquerama — Sistema de Notificações
+ * +Vaquejada — Sistema de Notificações
  * Gerencia push notifications nativas + notificações Supabase
  */
 
@@ -81,16 +81,19 @@ export async function createNotification(params: {
   // mas aqui estamos no lado de quem ENVIA, então o receptor não vai receber via JS 
   // a menos que esteja usando Realtime ou Service Workers).
   // Para fins de demonstração imediata no navegador do próprio usuário (feedback):
-  // sendPushNotification('Arena Vaquerama', 'Sua ação foi registrada!');
+  // sendPushNotification('+Vaquejada', 'Sua ação foi registrada!');
 }
 
 // ─── Buscar Notificações do Usuário ─────────────────────────────────────────
 export async function fetchUserNotifications(userId: string): Promise<ArenaNotification[]> {
   try {
+    const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
+
     const { data, error } = await supabase
       .from('notifications')
       .select('*, profiles:actor_id(username, name, avatar_url)')
       .eq('user_id', userId)
+      .gte('created_at', fiveDaysAgo)
       .order('created_at', { ascending: false })
       .limit(50);
 
@@ -164,7 +167,7 @@ export function getNotifText(notif: ArenaNotification): string {
     case 'comment': return notif.message ? `${actor} comentou: "${notif.message}"` : `${actor} comentou em sua publicação.`;
     case 'message': return notif.message ? `${actor}: ${notif.message}` : `${actor} te enviou uma mensagem.`;
     case 'mention': return `${actor} te mencionou em um comentário.`;
-    case 'system':  return notif.message || 'O Vaquerama enviou um alerta sobre sua conta.';
+    case 'system':  return notif.message || 'O +Vaquejada enviou um alerta sobre sua conta.';
     default:        return `${actor} interagiu com você.`;
 
   }

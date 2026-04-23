@@ -12,6 +12,7 @@ interface PostCardProps {
   onNavigateToProfile: (username: string) => void;
   onOptions: (post: SocialPost) => void;
   currentUserId?: string;
+  isAdmin?: boolean;
 }
 
 export const PostCard: React.FC<PostCardProps> = ({
@@ -24,7 +25,8 @@ export const PostCard: React.FC<PostCardProps> = ({
   onShare,
   onNavigateToProfile,
   onOptions,
-  currentUserId
+  currentUserId,
+  isAdmin
 }) => {
   const [imgError, setImgError] = useState(false);
   const [showLikeAnim, setShowLikeAnim] = useState(false);
@@ -67,7 +69,7 @@ export const PostCard: React.FC<PostCardProps> = ({
             </div>
           </div>
         </div>
-        {currentUserId === post.userId && (
+        {(currentUserId === post.userId || isAdmin) && (
           <button
             onClick={() => onOptions(post)}
             className="material-icons text-white/40 text-xl hover:text-white transition-colors"
