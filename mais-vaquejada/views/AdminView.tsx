@@ -903,8 +903,22 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                 e.preventDefault();
                 setLoading(true);
                 try {
+                    let finalUserId = storeForm.user_id?.trim();
+                    if (!finalUserId) throw new Error("ID ou Username obrigatório.");
+
+                    // Convert username to UUID if it's not already a UUID
+                    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(finalUserId);
+                    if (!isUuid) {
+                        const cleanUsername = finalUserId.replace('@', '').toLowerCase();
+                        const { data: profile, error: profErr } = await supabase.from('profiles').select('id').eq('username', cleanUsername).maybeSingle();
+                        if (profErr || !profile) {
+                            throw new Error(`Usuário não encontrado com o username: @${cleanUsername}`);
+                        }
+                        finalUserId = profile.id;
+                    }
+
                     const payload = {
-                        user_id: storeForm.user_id, // must be a valid user ID or we can find user by username
+                        user_id: finalUserId,
                         name: storeForm.name,
                         description: storeForm.description,
                         is_official: storeForm.is_official || false,
@@ -945,12 +959,12 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                         <form onSubmit={handleSaveStore} className="bg-white p-6 rounded-[32px] border border-[#1A1108]/5 shadow-sm space-y-4">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-[#D4AF37]">{storeForm.id ? 'Editar Loja' : 'Nova Loja Parceira'}</h3>
                             <div className="space-y-3">
-                                <input className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-4 text-sm font-bold outline-none" placeholder="Nome da Loja" value={storeForm.name || ''} onChange={e => setStoreForm({...storeForm, name: e.target.value})} required />
-                                <input className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-4 text-sm font-bold outline-none" placeholder="ID do Usuário Dono da Loja" value={storeForm.user_id || ''} onChange={e => setStoreForm({...storeForm, user_id: e.target.value})} required />
-                                <textarea className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-4 text-sm font-bold outline-none" placeholder="Descrição da Loja" rows={2} value={storeForm.description || ''} onChange={e => setStoreForm({...storeForm, description: e.target.value})} />
+                                <input className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-4 text-sm font-bold text-leather outline-none placeholder:text-leather/30" placeholder="Nome da Loja" value={storeForm.name || ''} onChange={e => setStoreForm({...storeForm, name: e.target.value})} required />
+                                <input className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-4 text-sm font-bold text-leather outline-none placeholder:text-leather/30" placeholder="ID ou Username (@) do Dono" value={storeForm.user_id || ''} onChange={e => setStoreForm({...storeForm, user_id: e.target.value})} required />
+                                <textarea className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-4 text-sm font-bold text-leather outline-none placeholder:text-leather/30" placeholder="Descrição da Loja" rows={2} value={storeForm.description || ''} onChange={e => setStoreForm({...storeForm, description: e.target.value})} />
                                 <div className="flex items-center gap-2">
                                     <input type="checkbox" checked={storeForm.is_official || false} onChange={e => setStoreForm({...storeForm, is_official: e.target.checked})} className="w-5 h-5" />
-                                    <span className="text-xs font-bold uppercase">Selo Oficial (Verificado)</span>
+                                    <span className="text-xs font-bold uppercase text-leather">Selo Oficial (Verificado)</span>
                                 </div>
                             </div>
                             <div className="flex gap-2">
@@ -958,6 +972,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                                 <button type="submit" disabled={loading} className="flex-[2] bg-[#D4AF37] text-white py-4 rounded-xl font-black uppercase tracking-widest text-xs shadow-lg shadow-[#D4AF37]/20 disabled:opacity-50">{storeForm.id ? 'Salvar Alterações' : 'Criar Loja'}</button>
                             </div>
                         </form>
+
 
                         {/* LISTA DE LOJAS */}
                         <div className="space-y-4 mt-6">
