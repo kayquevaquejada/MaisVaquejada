@@ -224,16 +224,27 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
                   <p className="text-lg font-black text-white">{event.date.day}</p>
                 </div>
                 <div className="absolute top-[160px] right-5 flex flex-col gap-3 z-20">
-                  <button onClick={(e) => toggleFavorite(event.id, e)} className={`w-11 h-11 rounded-2xl flex items-center justify-center backdrop-blur-xl border border-white/20 ${isFav ? 'bg-[#D4AF37] text-black' : 'bg-black/40 text-white'}`}><span className="material-icons text-xl">{isFav ? 'favorite' : 'favorite_border'}</span></button>
+                  <div className="flex flex-col items-center gap-0.5">
+                    <button onClick={(e) => toggleFavorite(event.id, e)} className={`w-11 h-11 rounded-2xl flex items-center justify-center backdrop-blur-xl border border-white/20 ${isFav ? 'bg-[#D4AF37] text-black' : 'bg-black/40 text-white'}`}><span className="material-icons text-xl">{isFav ? 'favorite' : 'favorite_border'}</span></button>
+                    {(likesCount[event.id] || 0) > 0 && (
+                      <span className="text-[10px] font-black text-white drop-shadow-lg">{likesCount[event.id]}</span>
+                    )}
+                  </div>
                   <button onClick={(e) => handleShare(event, e)} className="w-11 h-11 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/20 text-white"><span className="material-icons text-xl">share</span></button>
                 </div>
               </div>
               <div className="px-7 pb-8 -mt-6 relative z-10">
                 <h3 className="text-xl font-black text-white uppercase tracking-tighter italic truncate">{event.title}</h3>
                 <p className="text-sm font-bold text-white/80 truncate mt-1">{event.park}</p>
-                <div className="flex items-center gap-1.5 text-white/60 pt-1">
-                  <span className="material-icons text-xs text-[#D4AF37]">place</span>
-                  <span className="text-[10px] font-black uppercase tracking-widest truncate">{event.location}</span>
+                <div className="flex items-center justify-between pt-1">
+                  <div className="flex items-center gap-1.5 text-white/60">
+                    <span className="material-icons text-xs text-[#D4AF37]">place</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest truncate">{event.location}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-white/50">
+                    <span className="material-icons text-sm text-[#D4AF37]">favorite</span>
+                    <span className="text-[10px] font-black">{likesCount[event.id] || 0}</span>
+                  </div>
                 </div>
               </div>
             </div>

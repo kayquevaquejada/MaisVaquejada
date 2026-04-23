@@ -396,7 +396,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
     return (
         <div className="min-h-full bg-background-dark text-white font-sans pb-24 font-display">
             {/* Header / Actions */}
-            <div className="px-6 pt-10 pb-4 flex justify-between items-center sticky top-0 bg-background-dark/90 backdrop-blur-md z-10 border-b border-white/5">
+            <div className="px-6 pt-[env(safe-area-inset-top,12px)] pb-4 flex justify-between items-center sticky top-0 bg-background-dark/90 backdrop-blur-md z-10 border-b border-white/5" style={{paddingTop: 'max(env(safe-area-inset-top, 0px), 44px)'}}>
                 <button
                    onClick={() => window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'SOCIAL' } }))}
                    className="material-icons opacity-100 text-white transition-all hover:scale-110 active:scale-90"

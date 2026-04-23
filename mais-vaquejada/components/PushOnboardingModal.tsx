@@ -1,10 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { PushPermissionManager } from '../lib/push/PushPermissionManager';
-import { Preferences } from '@capacitor/preferences';
+import { Capacitor } from '@capacitor/core';
 
 interface PushOnboardingModalProps {
     userId: string;
 }
+
+// Unified storage helper: uses @capacitor/preferences on native, localStorage on web
+const storageGet = async (key: string): Promise<string | null> => {
+    if (Capacitor.isNativePlatform()) {
+        const { Preferences } = await import('@capacitor/preferences');
+        const { value } = await Preferences.get({ key });
+        return value;
+    }
+    return localStorage.getItem(key);
+};
+
+const storageSet = async (key: string, value: string): Promise<void> => {
+    if (Capacitor.isNativePlatform()) {
+        const { Preferences } = await import('@capacitor/preferences');
+        await Preferences.set({ key, value });
+    } else {
+        localStorage.setItem(key, value);
+    }
+};
 
 export const PushOnboardingModal: React.FC<PushOnboardingModalProps> = ({ userId }) => {
     const [isVisible, setIsVisible] = useState(false);
@@ -16,13 +35,15 @@ export const PushOnboardingModal: React.FC<PushOnboardingModalProps> = ({ userId
                 setLoading(false);
                 return;
             }
-            // Check if we've already asked
-            const { value } = await Preferences.get({ key: `push_requested_${userId}` });
+            const value = await storageGet(`push_requested_${userId}`);
             if (value !== 'true') {
-                setIsVisible(true);
+                // Small delay so UI settles before showing the modal
+                setTimeout(() => setIsVisible(true), 2000);
             } else {
-                // If they already accepted previously, initialize push listeners silently
-                await PushPermissionManager.initialize(userId);
+                // Already answered — silently init on native only
+                if (Capacitor.isNativePlatform()) {
+                    await PushPermissionManager.initialize(userId);
+                }
             }
             setLoading(false);
         };
@@ -31,13 +52,13 @@ export const PushOnboardingModal: React.FC<PushOnboardingModalProps> = ({ userId
 
     const handleAllow = async () => {
         setIsVisible(false);
+        await storageSet(`push_requested_${userId}`, 'true');
         await PushPermissionManager.requestPermission(userId);
     };
 
     const handleDeny = async () => {
         setIsVisible(false);
-        // We still mark it as requested so we don't bother them again
-        await Preferences.set({ key: `push_requested_${userId}`, value: 'true' });
+        await storageSet(`push_requested_${userId}`, 'true');
     };
 
     if (!isVisible || loading) return null;

@@ -500,44 +500,44 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                         <div className="space-y-6">
                             <div>
                                 <label className="text-xs font-black uppercase text-[#1A1108]/50 block mb-2">Categoria Principal</label>
-                                <select value={adData.category} onChange={e => setAdData({...adData, category: e.target.value, subcategory: ''})} className="w-full p-4 rounded-xl border border-[#1A1108]/10 font-bold outline-none">
+                                <select value={adData.category} onChange={e => setAdData({...adData, category: e.target.value, subcategory: ''})} className="w-full p-4 rounded-xl border border-[#1A1108]/10 font-bold outline-none text-[#1A1108] bg-white">
                                     <option value="">Selecione...</option>
                                     {Object.keys(CATEGORIES).map(cat => <option key={cat} value={cat}>{cat}</option>)}
                                 </select>
                                 {adData.category === 'OUTROS' && (
-                                    <input placeholder="Digite a categoria" value={adData.customCategory} onChange={e => setAdData({...adData, customCategory: e.target.value})} className="w-full mt-2 p-4 rounded-xl border font-bold" />
+                                    <input placeholder="Digite a categoria" value={adData.customCategory} onChange={e => setAdData({...adData, customCategory: e.target.value})} className="w-full mt-2 p-4 rounded-xl border font-bold text-[#1A1108]" />
                                 )}
                             </div>
 
                             {adData.category && adData.category !== 'OUTROS' && (
                                 <div>
                                     <label className="text-xs font-black uppercase text-[#1A1108]/50 block mb-2">Subcategoria</label>
-                                    <select value={adData.subcategory} onChange={e => setAdData({...adData, subcategory: e.target.value})} className="w-full p-4 rounded-xl border border-[#1A1108]/10 font-bold outline-none">
+                                    <select value={adData.subcategory} onChange={e => setAdData({...adData, subcategory: e.target.value})} className="w-full p-4 rounded-xl border border-[#1A1108]/10 font-bold outline-none text-[#1A1108] bg-white">
                                         <option value="">Selecione...</option>
                                         {(CATEGORIES as any)[adData.category]?.map((sub: string) => <option key={sub} value={sub}>{sub}</option>)}
                                     </select>
                                     {adData.subcategory === 'Outro' && (
-                                        <input placeholder="Especifique" value={adData.customSubcategory} onChange={e => setAdData({...adData, customSubcategory: e.target.value})} className="w-full mt-2 p-4 rounded-xl border font-bold" />
+                                        <input placeholder="Especifique" value={adData.customSubcategory} onChange={e => setAdData({...adData, customSubcategory: e.target.value})} className="w-full mt-2 p-4 rounded-xl border font-bold text-[#1A1108]" />
                                     )}
                                 </div>
                             )}
 
                             <div>
                                 <label className="text-xs font-black uppercase text-[#1A1108]/50 block mb-2">Título do Anúncio</label>
-                                <input value={adData.title} onChange={e => setAdData({...adData, title: e.target.value})} maxLength={60} placeholder="EX: CAVALO QUARTO DE MILHA" className="w-full p-4 rounded-xl border border-[#1A1108]/10 font-bold uppercase outline-none" />
+                                <input value={adData.title} onChange={e => setAdData({...adData, title: e.target.value})} maxLength={60} placeholder="EX: CAVALO QUARTO DE MILHA" className="w-full p-4 rounded-xl border border-[#1A1108]/10 font-bold uppercase outline-none text-[#1A1108]" />
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="text-xs font-black uppercase text-[#1A1108]/50 block mb-2">Estado</label>
-                                    <select value={adData.uf} onChange={e => setAdData({...adData, uf: e.target.value})} className="w-full p-4 rounded-xl border font-bold">
+                                    <select value={adData.uf} onChange={e => setAdData({...adData, uf: e.target.value})} className="w-full p-4 rounded-xl border font-bold text-[#1A1108] bg-white">
                                         <option value="">UF</option>
                                         {STATES.map(s => <option key={s} value={s}>{s}</option>)}
                                     </select>
                                 </div>
                                 <div>
                                     <label className="text-xs font-black uppercase text-[#1A1108]/50 block mb-2">Cidade</label>
-                                    <select value={adData.city} onChange={e => setAdData({...adData, city: e.target.value})} disabled={loadingCities || !adData.uf} className="w-full p-4 rounded-xl border font-bold">
+                                    <select value={adData.city} onChange={e => setAdData({...adData, city: e.target.value})} disabled={loadingCities || !adData.uf} className="w-full p-4 rounded-xl border font-bold text-[#1A1108] bg-white disabled:text-[#1A1108]/40">
                                         <option value="">Cidade</option>
                                         {cities.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
                                     </select>
@@ -556,30 +556,30 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                             {adData.priceType === 'fixed' && (
                                 <div>
                                     <label className="text-xs font-black uppercase text-[#1A1108]/50 block mb-2">Valor (R$)</label>
-                                    <input type="number" value={adData.price} onChange={e => setAdData({...adData, price: e.target.value})} placeholder="0,00" className="w-full p-4 rounded-xl border font-black text-xl" />
+                                    <input type="number" value={adData.price} onChange={e => setAdData({...adData, price: e.target.value})} placeholder="0,00" className="w-full p-4 rounded-xl border font-black text-xl text-[#1A1108]" />
                                 </div>
                             )}
 
                             {/* Dynamic Fields based on Category */}
                             {adData.category === 'ANIMAIS' && (
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div><label className="text-xs font-bold">Sexo</label><select onChange={e=>setAdData(p=>({...p, metadata: {...p.metadata, sexo: e.target.value}}))} className="w-full p-3 border rounded-lg"><option value="">Selecione</option><option value="Macho">Macho</option><option value="Fêmea">Fêmea</option></select></div>
-                                    <div><label className="text-xs font-bold">Raça</label><input onChange={e=>setAdData(p=>({...p, metadata: {...p.metadata, raca: e.target.value}}))} className="w-full p-3 border rounded-lg" placeholder="Ex: Quarto de Milha" /></div>
+                                    <div><label className="text-xs font-bold text-[#1A1108]/60">Sexo</label><select onChange={e=>setAdData(p=>({...p, metadata: {...p.metadata, sexo: e.target.value}}))} className="w-full p-3 border rounded-lg text-[#1A1108] bg-white"><option value="">Selecione</option><option value="Macho">Macho</option><option value="Fêmea">Fêmea</option></select></div>
+                                    <div><label className="text-xs font-bold text-[#1A1108]/60">Raça</label><input onChange={e=>setAdData(p=>({...p, metadata: {...p.metadata, raca: e.target.value}}))} className="w-full p-3 border rounded-lg text-[#1A1108]" placeholder="Ex: Quarto de Milha" /></div>
                                 </div>
                             )}
                             {(adData.category === 'EQUIPAMENTOS' || adData.category === 'VEICULOS') && (
-                                <div><label className="text-xs font-bold">Condição</label><select onChange={e=>setAdData(p=>({...p, metadata: {...p.metadata, estado_uso: e.target.value}}))} className="w-full p-3 border rounded-lg"><option value="">Selecione</option><option value="NOVO">NOVO</option><option value="SEMINOVO">SEMINOVO</option><option value="USADO">USADO</option></select></div>
+                                <div><label className="text-xs font-bold text-[#1A1108]/60">Condição</label><select onChange={e=>setAdData(p=>({...p, metadata: {...p.metadata, estado_uso: e.target.value}}))} className="w-full p-3 border rounded-lg text-[#1A1108] bg-white"><option value="">Selecione</option><option value="NOVO">NOVO</option><option value="SEMINOVO">SEMINOVO</option><option value="USADO">USADO</option></select></div>
                             )}
                             {adData.category === 'EVENTOS' && (
                                 <div>
                                     <label className="text-xs font-bold">Tipo de Produto</label>
-                                    <select value={adData.product_type} onChange={e=>setAdData(p=>({...p, product_type: e.target.value}))} className="w-full p-3 border rounded-lg"><option value="ingresso">Ingresso</option><option value="senha">Senha de Vaquejada</option></select>
+                                    <select value={adData.product_type} onChange={e=>setAdData(p=>({...p, product_type: e.target.value}))} className="w-full p-3 border rounded-lg text-[#1A1108] bg-white"><option value="ingresso">Ingresso</option><option value="senha">Senha de Vaquejada</option></select>
                                 </div>
                             )}
 
                             <div>
                                 <label className="text-xs font-black uppercase text-[#1A1108]/50 block mb-2">Descrição</label>
-                                <textarea value={adData.description} onChange={e => setAdData({...adData, description: e.target.value})} rows={4} className="w-full p-4 rounded-xl border font-medium outline-none" placeholder="Detalhes do produto..."></textarea>
+                                <textarea value={adData.description} onChange={e => setAdData({...adData, description: e.target.value})} rows={4} className="w-full p-4 rounded-xl border font-medium outline-none text-[#1A1108]" placeholder="Detalhes do produto..."></textarea>
                             </div>
                         </div>
                     )}
@@ -599,8 +599,14 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                     )}
                 </div>
 
-                <div className="p-6 bg-white">
-                    <button onClick={() => { if(step < 3) setStep(step + 1); else setShowConfirm(true); }} className="w-full bg-[#D4AF37] text-white py-4 rounded-xl font-black uppercase shadow-lg disabled:opacity-50">
+                <div className="p-6 bg-white flex gap-3">
+                    {step > 1 && (
+                        <button onClick={() => setStep(step - 1)} className="flex-shrink-0 bg-white border-2 border-[#1A1108]/10 text-[#1A1108] px-5 py-4 rounded-xl font-black uppercase flex items-center gap-1">
+                            <span className="material-icons text-lg">arrow_back</span>
+                            Voltar
+                        </button>
+                    )}
+                    <button onClick={() => { if(step < 3) setStep(step + 1); else setShowConfirm(true); }} className="flex-1 bg-[#D4AF37] text-white py-4 rounded-xl font-black uppercase shadow-lg disabled:opacity-50">
                         {step === 3 ? 'Finalizar e Revisar' : 'Próximo Passo'}
                     </button>
                 </div>
