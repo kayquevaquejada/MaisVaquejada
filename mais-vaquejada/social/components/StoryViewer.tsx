@@ -16,6 +16,8 @@ interface StoryViewerProps {
 export const StoryViewer: React.FC<StoryViewerProps> = ({
   stories,
   initialUserIndex,
+  onClose,
+  onNavigateToProfile,
   onShare,
   onDelete,
   onAdClick,
