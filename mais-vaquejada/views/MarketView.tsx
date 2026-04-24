@@ -29,6 +29,12 @@ interface MarketViewProps {
 
 const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, onWizardClose, onViewChange }) => {
     const [showCreateWizard, setShowCreateWizard] = useState(forceShowWizard);
+    
+    const handleCloseWizard = () => {
+        setShowCreateWizard(false);
+        if (onWizardClose) onWizardClose();
+    };
+
     useEffect(() => setShowCreateWizard(forceShowWizard), [forceShowWizard]);
 
     const [step, setStep] = useState(1);
@@ -603,12 +609,17 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
     if (showCreateWizard) {
         return (
             <div className="absolute inset-0 z-[60] bg-[#F5F1E9] flex flex-col">
-                <header className="px-6 py-6 bg-white flex justify-between items-center shadow-sm">
+                <header className="px-6 py-6 bg-white flex justify-between items-center shadow-sm relative">
                     <div className="flex items-center gap-4">
-                        <button onClick={() => { if (step > 1) setStep(step - 1); else handleCloseWizard(); }} className="material-icons">arrow_back</button>
+                        <button onClick={() => { if (step > 1) setStep(step - 1); else handleCloseWizard(); }} className="material-icons active:scale-90 transition-transform">arrow_back</button>
                         <h1 className="text-xl font-black uppercase">Criar Anúncio</h1>
                     </div>
-                    <span className="font-black text-[#D4AF37]">Passo {step}/3</span>
+                    <div className="flex items-center gap-4">
+                        <span className="font-black text-[#D4AF37]">Passo {step}/3</span>
+                        <button onClick={handleCloseWizard} className="w-8 h-8 flex items-center justify-center rounded-full bg-red-50 text-red-500 active:scale-90 transition-transform">
+                            <span className="material-icons text-lg">close</span>
+                        </button>
+                    </div>
                 </header>
 
                 <div className="flex-1 overflow-y-auto p-6 space-y-6">

@@ -33,3 +33,33 @@ ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Allow public read access to app_config" ON public.app_config FOR SELECT USING (true);
 CREATE POLICY "Allow public read access to app_settings" ON public.app_settings FOR SELECT USING (true);
+
+-- ==========================================
+-- CORREÇÃO: PERMISSÃO PARA ADMINS CRIAREM LOJAS
+-- ==========================================
+-- Esta política permite que Administradores criem e editem lojas em nome de outros usuários.
+-- Copie e cole este bloco no SQL Editor do Supabase e clique em RUN.
+
+CREATE POLICY "Admins_Insert_Stores" 
+ON public.stores 
+FOR INSERT 
+WITH CHECK (
+  auth.uid() = user_id OR
+  EXISTS (
+    SELECT 1 FROM public.profiles 
+    WHERE profiles.id = auth.uid() 
+    AND (profiles.role = 'ADMIN' OR profiles.role = 'ADMIN_MASTER' OR profiles.is_master = true)
+  )
+);
+
+CREATE POLICY "Admins_Update_Stores" 
+ON public.stores 
+FOR UPDATE 
+USING (
+  auth.uid() = user_id OR
+  EXISTS (
+    SELECT 1 FROM public.profiles 
+    WHERE profiles.id = auth.uid() 
+    AND (profiles.role = 'ADMIN' OR profiles.role = 'ADMIN_MASTER' OR profiles.is_master = true)
+  )
+);
