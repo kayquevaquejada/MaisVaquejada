@@ -229,7 +229,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
                       key={idx} 
                       src={s.url} 
                       alt="Sponsor" 
-                      className="h-20 w-auto object-contain grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all shrink-0" 
+                      className="h-32 sm:h-40 w-auto object-contain grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all shrink-0" 
                     />
                   ))}
                 </div>
@@ -248,7 +248,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
                       key={idx} 
                       src={p.url} 
                       alt="Partner" 
-                      className="h-14 w-auto object-contain grayscale opacity-40 hover:grayscale-0 hover:opacity-100 transition-all shrink-0" 
+                      className="h-24 sm:h-32 w-auto object-contain grayscale opacity-40 hover:grayscale-0 hover:opacity-100 transition-all shrink-0" 
                     />
                   ))}
                 </div>
