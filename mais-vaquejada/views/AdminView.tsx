@@ -72,6 +72,40 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
     const [transmissionForm, setTransmissionForm] = useState<any>({});
     const [bannerForm, setBannerForm] = useState<any>({});
     const [storeForm, setStoreForm] = useState<any>({ is_official: true });
+    const [managerSuggestions, setManagerSuggestions] = useState<any[]>([]);
+    const [showManagerSuggestions, setShowManagerSuggestions] = useState(false);
+
+    useEffect(() => {
+        const fetchSuggestions = async () => {
+            if (!storeForm.user_id || storeForm.user_id.length < 2) {
+                setManagerSuggestions([]);
+                setShowManagerSuggestions(false);
+                return;
+            }
+            const query = storeForm.user_id.replace('@', '').toLowerCase();
+            const { data } = await supabase
+                .from('profiles')
+                .select('id, username, name, avatar_url')
+                .ilike('username', `%${query}%`)
+                .limit(5);
+            
+            if (data && data.length > 0) {
+                // don't show if it's an exact match already chosen
+                if (data.length === 1 && `@${data[0].username}` === storeForm.user_id) {
+                    setShowManagerSuggestions(false);
+                } else {
+                    setManagerSuggestions(data);
+                    setShowManagerSuggestions(true);
+                }
+            } else {
+                setManagerSuggestions([]);
+                setShowManagerSuggestions(false);
+            }
+        };
+
+        const timeoutId = setTimeout(fetchSuggestions, 300);
+        return () => clearTimeout(timeoutId);
+    }, [storeForm.user_id]);
 
     const isMaster = user?.isMaster || user?.role === 'ADMIN_MASTER' || false;
     const hasMercado = isMaster || user?.admin_mercado || user?.role === 'ADMIN' || false;
@@ -1039,7 +1073,38 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                                 
                                 <div className="grid grid-cols-2 gap-3">
                                     <input className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-4 text-sm font-bold text-leather outline-none placeholder:text-leather/30" placeholder="CNPJ da Loja" value={storeForm.cnpj || ''} onChange={e => setStoreForm({...storeForm, cnpj: e.target.value})} required />
-                                    <input className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-4 text-sm font-bold text-leather outline-none placeholder:text-leather/30" placeholder="@username do Gestor" value={storeForm.user_id || ''} onChange={e => setStoreForm({...storeForm, user_id: e.target.value})} required />
+                                    <div className="relative w-full">
+                                        <input 
+                                            className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-4 text-sm font-bold text-leather outline-none placeholder:text-leather/30" 
+                                            placeholder="@username do Gestor" 
+                                            value={storeForm.user_id || ''} 
+                                            onChange={e => {
+                                                setStoreForm({...storeForm, user_id: e.target.value});
+                                                setShowManagerSuggestions(true);
+                                            }} 
+                                            required 
+                                        />
+                                        {showManagerSuggestions && managerSuggestions.length > 0 && (
+                                            <div className="absolute z-50 w-full mt-2 bg-white border border-[#1A1108]/10 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
+                                                {managerSuggestions.map(s => (
+                                                    <div 
+                                                        key={s.id} 
+                                                        onClick={() => {
+                                                            setStoreForm({...storeForm, user_id: `@${s.username}`});
+                                                            setShowManagerSuggestions(false);
+                                                        }}
+                                                        className="flex items-center gap-3 p-3 hover:bg-[#F8F5F2] cursor-pointer transition-colors border-b border-[#1A1108]/5 last:border-0"
+                                                    >
+                                                        <img src={s.avatar_url || `https://ui-avatars.com/api/?name=${s.name}`} className="w-8 h-8 rounded-full object-cover bg-neutral-200" />
+                                                        <div className="flex-1 overflow-hidden">
+                                                            <p className="text-xs font-black text-leather truncate uppercase">{s.name}</p>
+                                                            <p className="text-[10px] font-bold text-[#D4AF37] truncate">@{s.username}</p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <textarea className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-4 text-sm font-bold text-leather outline-none placeholder:text-leather/30" placeholder="Descrição curta (Opcional)" rows={2} value={storeForm.description || ''} onChange={e => setStoreForm({...storeForm, description: e.target.value})} />
