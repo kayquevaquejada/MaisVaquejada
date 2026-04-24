@@ -71,7 +71,21 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
     const [newsForm, setNewsForm] = useState<any>({ type: 'info' });
     const [transmissionForm, setTransmissionForm] = useState<any>({});
     const [bannerForm, setBannerForm] = useState<any>({});
-    const [storeForm, setStoreForm] = useState<any>({ is_official: true });
+    
+    // Auto-save form data to prevent loss on multitasking
+    const [storeForm, setStoreForm] = useState<any>(() => {
+        try {
+            const saved = localStorage.getItem('arena_admin_store_form');
+            return saved ? JSON.parse(saved) : { is_official: true };
+        } catch {
+            return { is_official: true };
+        }
+    });
+
+    useEffect(() => {
+        localStorage.setItem('arena_admin_store_form', JSON.stringify(storeForm));
+    }, [storeForm]);
+
     const [managerSuggestions, setManagerSuggestions] = useState<any[]>([]);
     const [showManagerSuggestions, setShowManagerSuggestions] = useState(false);
 
@@ -1022,6 +1036,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
 
                     setSuccess(storeForm.id ? 'Loja Atualizada' : 'Loja Criada com Sucesso!');
                     setStoreForm({ is_official: true });
+                    localStorage.removeItem('arena_admin_store_form'); // Clear persistence after save
                     fetchStores();
                     setTimeout(() => setSuccess(null), 2000);
                 } catch(error: any) {
