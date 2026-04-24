@@ -30,11 +30,6 @@ interface MarketViewProps {
 const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, onWizardClose, onViewChange }) => {
     const [showCreateWizard, setShowCreateWizard] = useState(forceShowWizard);
     
-    const handleCloseWizard = () => {
-        setShowCreateWizard(false);
-        if (onWizardClose) onWizardClose();
-    };
-
     useEffect(() => setShowCreateWizard(forceShowWizard), [forceShowWizard]);
 
     const [step, setStep] = useState(1);
