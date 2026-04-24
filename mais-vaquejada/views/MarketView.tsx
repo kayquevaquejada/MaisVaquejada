@@ -114,7 +114,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
             const { data, error } = await supabase
                 .from('stores')
                 .select('*')
-                .eq('active', true)
+                .eq('is_active', true)
                 .order('is_official', { ascending: false });
             if (error) throw error;
             setStores(data || []);
