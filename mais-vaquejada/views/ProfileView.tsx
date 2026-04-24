@@ -117,6 +117,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
     const [profilePosts, setProfilePosts] = useState<any[]>([]);
     const [marketPosts, setMarketPosts] = useState<any[]>([]);
     const [hasActiveStory, setHasActiveStory] = useState(false);
+    const [userStore, setUserStore] = useState<any>(null);
 
     // Persist profilePosts
     useEffect(() => {
@@ -279,11 +280,22 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                     if (marketData) {
                         setMarketPosts(marketData.map(m => ({
                             id: m.id,
-                            img: m.image_url || m.media_url,
+                            img: m.image_url || m.media_url || m.img,
                             price: m.price || 'A combinar',
                             title: m.title || m.name,
                             status: m.status
                         })));
+                    }
+
+                    // Check for owned store
+                    const { data: storeData } = await supabase
+                        .from('stores')
+                        .select('*')
+                        .eq('user_id', profileId)
+                        .eq('is_active', true)
+                        .maybeSingle();
+                    if (storeData) {
+                        setUserStore(storeData);
                     }
 
                     // Check for active stories (expires_at > now)
@@ -487,6 +499,15 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                                 >
                                     <span className="material-icons text-[16px] mr-1">shield</span>
                                     Painel Admin
+                                </button>
+                            )}
+                            {userStore && (
+                                <button 
+                                    onClick={() => window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'AD_CREATION' } }))}
+                                    className="flex-1 bg-green-500/10 text-green-500 border border-green-500/30 py-2.5 rounded-lg font-black text-[11px] uppercase tracking-wider flex items-center justify-center hover:bg-green-500/20 active:scale-95 transition-all"
+                                >
+                                    <span className="material-icons text-[16px] mr-1">storefront</span>
+                                    Minha Loja
                                 </button>
                             )}
                         </>

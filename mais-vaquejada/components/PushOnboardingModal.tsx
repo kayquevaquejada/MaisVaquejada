@@ -31,17 +31,13 @@ export const PushOnboardingModal: React.FC<PushOnboardingModalProps> = ({ userId
 
     useEffect(() => {
         const checkStatus = async () => {
-            if (!userId) {
-                setLoading(false);
-                return;
-            }
-            const value = await storageGet(`push_requested_${userId}`);
+            const value = await storageGet('vaquejada_push_prompt_seen');
             if (value !== 'true') {
                 // Small delay so UI settles before showing the modal
-                setTimeout(() => setIsVisible(true), 2000);
+                setTimeout(() => setIsVisible(true), 2500);
             } else {
-                // Already answered — silently init on native only
-                if (Capacitor.isNativePlatform()) {
+                // Already answered — silently init on native only if we have userId
+                if (Capacitor.isNativePlatform() && userId) {
                     await PushPermissionManager.initialize(userId);
                 }
             }
@@ -52,13 +48,15 @@ export const PushOnboardingModal: React.FC<PushOnboardingModalProps> = ({ userId
 
     const handleAllow = async () => {
         setIsVisible(false);
-        await storageSet(`push_requested_${userId}`, 'true');
-        await PushPermissionManager.requestPermission(userId);
+        await storageSet('vaquejada_push_prompt_seen', 'true');
+        if (userId) {
+            await PushPermissionManager.requestPermission(userId);
+        }
     };
 
     const handleDeny = async () => {
         setIsVisible(false);
-        await storageSet(`push_requested_${userId}`, 'true');
+        await storageSet('vaquejada_push_prompt_seen', 'true');
     };
 
     if (!isVisible || loading) return null;

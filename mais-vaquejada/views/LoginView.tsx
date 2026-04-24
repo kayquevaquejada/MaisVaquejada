@@ -17,8 +17,11 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
   const [error, setError] = useState<string | null>(null);
   const DEFAULT_BG = 'https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80';
   const [loginBg, setLoginBg] = useState(DEFAULT_BG);
+  const [sponsors, setSponsors] = useState<any[]>([]);
+  const [partners, setPartners] = useState<any[]>([]);
 
   useEffect(() => {
+    // Carregar Background
     supabase
       .from('app_settings')
       .select('value')
@@ -27,13 +30,40 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
       .then(({ data }) => {
         if (data?.value?.url) setLoginBg(data.value.url);
       });
+
+    // Carregar Patrocinadores e Parceiros
+    supabase
+      .from('app_settings')
+      .select('*')
+      .in('key', ['official_sponsors', 'official_partners'])
+      .then(({ data }) => {
+        if (data) {
+          const s = data.find(i => i.key === 'official_sponsors')?.value || [];
+          const p = data.find(i => i.key === 'official_partners')?.value || [];
+          setSponsors(Array.isArray(s) ? s : []);
+          setPartners(Array.isArray(p) ? p : []);
+        }
+      });
   }, []);
 
-  const handleDevLogin = () => {
-    // ID do usuário "kayquegusmao" para testes locais
-    onLogin({ id: 'e417ceb0-b306-4156-87a6-32e459afb4eb' });
+  const handleAppleLogin = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'apple',
+        options: { 
+          redirectTo: Capacitor.isNativePlatform() 
+            ? 'com.arena.vaquejada://login-callback' 
+            : window.location.origin 
+        }
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      setError(err.message || 'Erro ao entrar com Apple');
+      setLoading(false);
+    }
   };
-
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
@@ -42,57 +72,53 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
       const isCapacitor = Capacitor.isNativePlatform();
 
       if (isCapacitor) {
-        // FLUXO NATIVO (Estilo TikTok / Credential Manager)
-        // Inicialização obrigatória para evitar crash no Android (NullPointerException)
+        const WEB_CLIENT_ID = '833804814174-iqpspdjar3kj5qsadmug4if3mu90m6sm.apps.googleusercontent.com';
+        
         await GoogleAuth.initialize({
-          clientId: '833804814174-iqpspdjar3kj5qsadmug4if3mu90m6sm.apps.googleusercontent.com',
+          clientId: WEB_CLIENT_ID,
           scopes: ['profile', 'email'],
           grantOfflineAccess: true,
         });
 
-        const googleUser = await GoogleAuth.signIn();
+        const googleUser = await GoogleAuth.signIn().catch(err => {
+          if (err.message?.includes('cancel')) throw new Error('USUARIO_CANCELOU');
+          throw new Error('ERRO_PLUGIN_NATIVO');
+        });
+
         const idToken = googleUser.authentication.idToken;
+        if (!idToken) throw new Error('ERRO_TOKEN_VAZIO');
 
-        if (!idToken) throw new Error('Não foi possível obter o ID Token do Google.');
-
-        const { data: authData, error: authError } = await supabase.auth.signInWithIdToken({
+        const { error: authError } = await supabase.auth.signInWithIdToken({
           provider: 'google',
           token: idToken,
         });
 
-        if (authError) throw authError;
-        
-        // Se o login for bem sucedido, o App.tsx via onAuthStateChange cuidará do resto
+        if (authError) throw new Error('ERRO_SUPABASE_TOKEN');
       } else {
-        // FALLBACK WEB (Navegador)
         const redirectTo = window.location.origin;
-
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
             redirectTo,
-            queryParams: {
-              access_type: 'offline',
-            }
+            queryParams: { access_type: 'offline' }
           }
         });
-        
         if (error) throw error;
       }
     } catch (err: any) {
-      console.error('Erro no Google Login:', err);
-      setError('Não foi possível entrar com o Google. Tente novamente.');
+      if (err.message === 'USUARIO_CANCELOU') {
+        setError('Login cancelado pelo usuário.');
+      } else {
+        setError('Não foi possível entrar com o Google. Tente novamente.');
+      }
     } finally {
-      setLoading(false);
       setGoogleLoading(false);
     }
-
   };
-
 
   return (
     <div className="min-h-full flex flex-col bg-[#0F0A05] relative overflow-hidden">
-      {/* Background Cinematográfico - Cavalos/Vaquejada */}
+      {/* Background Cinematográfico */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/40 to-[#0F0A05] z-10" />
         <img
@@ -102,37 +128,37 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
         />
       </div>
 
-      <div className="relative z-20 flex-1 flex flex-col px-8 justify-center" style={{ paddingTop: 'max(3rem, env(safe-area-inset-top, 3rem))', paddingBottom: '3rem' }}>
-        {/* Header Wow Factor */}
-        <div className="mb-12 text-center animate-in fade-in slide-in-from-top-10 duration-1000">
+      <div className="relative z-20 flex-1 flex flex-col px-8 pt-12 pb-6 overflow-y-auto">
+        {/* Header */}
+        <div className="mb-10 text-center animate-in fade-in slide-in-from-top-10 duration-1000">
           <div className="inline-block px-4 py-1.5 rounded-full bg-[#ECA413]/10 border border-[#ECA413]/20 mb-6">
             <span className="text-[#ECA413] text-[10px] font-black uppercase tracking-[0.3em]">Arena Digital Oficial</span>
           </div>
           <div className="flex justify-center mb-4">
             <p className="font-black tracking-tighter italic leading-none flex items-baseline">
-              <span className="text-[#ECA413]" style={{ fontSize: '4rem', lineHeight: 1, marginRight: '-0.1em' }}>+V</span>
-              <span className="text-white text-[2.5rem] tracking-tight">AQUEJADA</span>
+              <span className="text-[#ECA413]" style={{ fontSize: '3.5rem', lineHeight: 1, marginRight: '-0.1em' }}>+V</span>
+              <span className="text-white text-[2.2rem] tracking-tight">AQUEJADA</span>
             </p>
           </div>
-          <p className="text-white/40 text-xs font-bold uppercase tracking-widest italic">A maior paixão do Nordeste em um só lugar</p>
+          <p className="text-white/40 text-[10px] font-bold uppercase tracking-[0.2em] italic">A maior paixão do Nordeste em um só lugar</p>
         </div>
 
-        {/* Form Card */}
-        <div className="bg-[#1A1108]/80 backdrop-blur-2xl rounded-[40px] p-8 border border-white/5 shadow-[0_25px_100px_rgba(0,0,0,0.8)] animate-in fade-in zoom-in duration-700 delay-300">
-          <h2 className="text-xl font-black text-white uppercase italic tracking-tight mb-8 text-center">Acesse a Arena</h2>
+        {/* Login Card */}
+        <div className="bg-[#1A1108]/80 backdrop-blur-2xl rounded-[40px] p-8 border border-white/5 shadow-[0_25px_100px_rgba(0,0,0,0.8)] mb-10">
+          <h2 className="text-lg font-black text-white uppercase italic tracking-tight mb-8 text-center">Acesse a Arena</h2>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-right duration-300">
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3">
               <span className="material-icons text-red-500 text-lg">error_outline</span>
-              <p className="text-xs text-red-200 font-bold uppercase tracking-tight">{error}</p>
+              <p className="text-[10px] text-red-200 font-bold uppercase tracking-tight">{error}</p>
             </div>
           )}
 
           <div className="space-y-4">
             <button
               onClick={handleGoogleLogin}
-              disabled={googleLoading}
-              className="w-full bg-white text-black py-4 rounded-3xl font-black text-xs uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+              disabled={googleLoading || loading}
+              className="w-full bg-white text-black py-4 rounded-3xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
             >
               {googleLoading ? (
                 <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
@@ -144,63 +170,91 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
               )}
             </button>
 
-            {/* Botão Apple Oculto (Habilitar apenas quando as chaves .p8 estiverem prontas) */}
-            {/* 
             <button
-              onClick={async () => {
-                setLoading(true);
-                try {
-                  const { error } = await supabase.auth.signInWithOAuth({
-                    provider: 'apple',
-                    options: { redirectTo: window.location.origin }
-                  });
-                  if (error) throw error;
-                } catch (err: any) {
-                  setError(err.message);
-                  setLoading(false);
-                }
-              }}
-              className="w-full bg-black text-white border border-white/10 py-4 rounded-3xl font-black text-xs uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3"
+              onClick={handleAppleLogin}
+              disabled={googleLoading || loading}
+              className="w-full bg-black text-white border border-white/10 py-4 rounded-3xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
             >
-              <span className="material-icons text-lg">apple</span>
-              ENTRAR COM APPLE
+              {loading ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  <span className="material-icons text-lg">apple</span>
+                  ENTRAR COM APPLE ID
+                </>
+              )}
             </button>
-            */}
-
-            <button
-              onClick={async () => {
-                setError(null);
-                try {
-                  const { error } = await supabase.auth.signInWithOAuth({
-                    provider: 'facebook',
-                    options: { redirectTo: window.location.origin }
-                  });
-                  if (error) throw error;
-                } catch (err: any) {
-                  setError(err.message || 'Erro ao entrar com Facebook');
-                }
-              }}
-              className="w-full bg-[#1877F2] text-white py-4 rounded-3xl font-black text-xs uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3"
-            >
-              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/facebook.svg" alt="Facebook" className="w-5 h-5 brightness-0 invert" />
-              CONTINUAR COM FACEBOOK
-            </button>
-
           </div>
 
           <div className="mt-8 flex flex-col gap-4">
-            <p className="text-[9px] text-white/30 text-center font-bold uppercase tracking-widest leading-relaxed px-4">
+            <p className="text-[8px] text-white/30 text-center font-bold uppercase tracking-widest leading-relaxed px-4">
               Ao entrar, você concorda com nossos <br />
               <button onClick={onTerms} className="underline text-white/50">Termos de Uso</button> e <button onClick={onTerms} className="underline text-white/50">EULA</button>
             </p>
             
             <button
               onClick={onRecoveryAssisted}
-              className="w-full py-2 text-center text-[10px] font-black text-[#ECA413]/60 uppercase tracking-widest hover:text-[#ECA413] transition-colors"
+              className="w-full py-2 text-center text-[9px] font-black text-[#ECA413]/60 uppercase tracking-widest hover:text-[#ECA413]"
             >
-              Problemas para entrar? <span className="underline">Falar com suporte</span>
+              PROBLEMAS PARA ENTRAR? <span className="underline">FALAR COM SUPORTE</span>
             </button>
           </div>
+        </div>
+
+        {/* Parceiros e Patrocinadores */}
+        <div className="mt-auto space-y-10 pb-10 overflow-hidden">
+          <style>{`
+            @keyframes marquee {
+              0% { transform: translateX(0); }
+              100% { transform: translateX(-50%); }
+            }
+            .animate-marquee {
+              display: flex;
+              width: max-content;
+              animation: marquee 30s linear infinite;
+            }
+            .animate-marquee:hover {
+              animation-play-state: paused;
+            }
+          `}</style>
+
+          {/* Patrocinadores */}
+          {sponsors.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-[#ECA413] text-center opacity-80 italic">Patrocinadores Oficiais</h3>
+              <div className="relative flex overflow-hidden">
+                <div className="animate-marquee flex items-center gap-16 px-8">
+                  {[...sponsors, ...sponsors, ...sponsors].map((s, idx) => (
+                    <img 
+                      key={idx} 
+                      src={s.url} 
+                      alt="Sponsor" 
+                      className="h-20 w-auto object-contain grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all shrink-0" 
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Parceiros */}
+          {partners.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40 text-center italic">Parceiros Oficiais</h3>
+              <div className="relative flex overflow-hidden">
+                <div className="animate-marquee flex items-center gap-12 px-8" style={{ animationDirection: 'reverse', animationDuration: '40s' }}>
+                  {[...partners, ...partners, ...partners].map((p, idx) => (
+                    <img 
+                      key={idx} 
+                      src={p.url} 
+                      alt="Partner" 
+                      className="h-14 w-auto object-contain grayscale opacity-40 hover:grayscale-0 hover:opacity-100 transition-all shrink-0" 
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

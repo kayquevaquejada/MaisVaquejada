@@ -7,10 +7,15 @@ interface AdminAdsManagerProps {
 }
 
 const AdminAdsManager: React.FC<AdminAdsManagerProps> = ({ user, onBack }) => {
-    const [activeSubTab, setActiveSubTab] = useState<'DASHBOARD' | 'ADS' | 'SPONSORS'>('ADS');
+    const [activeSubTab, setActiveSubTab] = useState<'PARTNERS' | 'ADS' | 'SPONSORS'>('ADS');
 
     const [campaigns, setCampaigns] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    
+    // Sponsors & Partners State
+    const [sponsors, setSponsors] = useState<any[]>([]);
+    const [partners, setPartners] = useState<any[]>([]);
+    const [savingSettings, setSavingSettings] = useState(false);
 
     // Modal State
     const [showModal, setShowModal] = useState(false);
@@ -42,6 +47,8 @@ const AdminAdsManager: React.FC<AdminAdsManagerProps> = ({ user, onBack }) => {
     useEffect(() => {
         if (activeSubTab === 'ADS') {
             fetchCampaigns();
+        } else if (activeSubTab === 'PARTNERS') {
+            fetchSettings();
         }
     }, [activeSubTab]);
 
@@ -59,6 +66,42 @@ const AdminAdsManager: React.FC<AdminAdsManagerProps> = ({ user, onBack }) => {
             console.error('Erro ao buscar campanhas:', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchSettings = async () => {
+        setLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('app_settings')
+                .select('*')
+                .in('key', ['official_sponsors', 'official_partners']);
+            
+            if (error) throw error;
+            const s = data.find(i => i.key === 'official_sponsors')?.value || [];
+            const p = data.find(i => i.key === 'official_partners')?.value || [];
+            setSponsors(Array.isArray(s) ? s : []);
+            setPartners(Array.isArray(p) ? p : []);
+        } catch (err) {
+            console.error('Erro ao buscar configurações:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const saveSettings = async (key: string, value: any) => {
+        setSavingSettings(true);
+        try {
+            const { error } = await supabase
+                .from('app_settings')
+                .upsert({ key, value }, { onConflict: 'key' });
+            
+            if (error) throw error;
+        } catch (err) {
+            console.error('Erro ao salvar:', err);
+            alert('Erro ao salvar alterações');
+        } finally {
+            setSavingSettings(false);
         }
     };
 
@@ -137,6 +180,55 @@ const AdminAdsManager: React.FC<AdminAdsManagerProps> = ({ user, onBack }) => {
         }
     };
 
+    const handlePartnerUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'sponsor' | 'partner') => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setLoading(true);
+        try {
+            // Upload to storage
+            const ext = file.name.split('.').pop() || 'jpg';
+            const fileName = `branding/${Date.now()}.${ext}`;
+            const { error: uploadError } = await supabase.storage
+                .from('vaquejadas')
+                .upload(fileName, file);
+            
+            if (uploadError) throw uploadError;
+
+            const { data } = supabase.storage.from('vaquejadas').getPublicUrl(fileName);
+            const newUrl = data.publicUrl;
+
+            if (type === 'sponsor') {
+                const newList = [...sponsors, { url: newUrl }];
+                setSponsors(newList);
+                await saveSettings('official_sponsors', newList);
+            } else {
+                const newList = [...partners, { url: newUrl }];
+                setPartners(newList);
+                await saveSettings('official_partners', newList);
+            }
+        } catch (err: any) {
+            alert('Erro ao subir logo: ' + err.message);
+        } finally {
+            setLoading(false);
+            e.target.value = '';
+        }
+    };
+
+    const removePartner = async (idx: number, type: 'sponsor' | 'partner') => {
+        if (!confirm('Remover esta logo?')) return;
+        
+        if (type === 'sponsor') {
+            const newList = sponsors.filter((_, i) => i !== idx);
+            setSponsors(newList);
+            await saveSettings('official_sponsors', newList);
+        } else {
+            const newList = partners.filter((_, i) => i !== idx);
+            setPartners(newList);
+            await saveSettings('official_partners', newList);
+        }
+    };
+
 
     const handleSave = async () => {
         if (!formData.internal_name || !formData.image_url) {
@@ -200,7 +292,7 @@ const AdminAdsManager: React.FC<AdminAdsManagerProps> = ({ user, onBack }) => {
 
     const renderSubnav = () => (
         <div className="bg-white border-b border-[#1A1108]/5 px-4 flex gap-2 overflow-x-auto hide-scrollbar">
-            {['DASHBOARD', 'ADS', 'SPONSORS'].map(tab => (
+            {['PARTNERS', 'ADS'].map(tab => (
                 <button
                     key={tab}
                     onClick={() => setActiveSubTab(tab as any)}
@@ -208,9 +300,87 @@ const AdminAdsManager: React.FC<AdminAdsManagerProps> = ({ user, onBack }) => {
                         activeSubTab === tab ? 'border-[#D4AF37] text-[#D4AF37]' : 'border-transparent text-leather/40'
                     }`}
                 >
-                    {tab === 'ADS' ? 'Anúncios' : tab === 'DASHBOARD' ? 'Métricas' : 'Patrocinadores'}
+                    {tab === 'ADS' ? 'Campanhas de Feed' : 'Parceiros da Login'}
                 </button>
             ))}
+        </div>
+    );
+
+    const renderPartnersManager = () => (
+        <div className="p-6 space-y-10">
+            {/* Patrocinadores Section */}
+            <div className="space-y-4">
+                <div className="flex justify-between items-end">
+                    <div>
+                        <h3 className="font-black text-sm uppercase tracking-wide text-leather flex items-center gap-2">
+                            <span className="material-icons text-[#D4AF37]">verified</span>
+                            Patrocinadores Oficiais
+                        </h3>
+                        <p className="text-[10px] font-bold text-leather/40">Exibidos na parte superior do carrossel</p>
+                    </div>
+                    <label className="bg-[#D4AF37] text-white p-2 rounded-lg cursor-pointer active:scale-90 transition-transform">
+                        <span className="material-icons text-lg">add_photo_alternate</span>
+                        <input type="file" className="hidden" onChange={(e) => handlePartnerUpload(e, 'sponsor')} />
+                    </label>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-4">
+                    {sponsors.map((s, i) => (
+                        <div key={i} className="relative aspect-square bg-white rounded-2xl border border-[#1A1108]/5 p-4 flex items-center justify-center group shadow-sm">
+                            <img src={s.url} className="max-w-full max-h-full object-contain grayscale opacity-60" alt="" />
+                            <button 
+                                onClick={() => removePartner(i, 'sponsor')}
+                                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg active:scale-90"
+                            >
+                                <span className="material-icons text-sm">close</span>
+                            </button>
+                        </div>
+                    ))}
+                    {sponsors.length === 0 && (
+                        <div className="col-span-3 py-10 border-2 border-dashed border-[#1A1108]/5 rounded-2xl flex flex-col items-center justify-center opacity-20">
+                            <span className="material-icons text-4xl">cloud_upload</span>
+                            <p className="text-[8px] font-black uppercase mt-2">Nenhum patrocinador</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Parceiros Section */}
+            <div className="space-y-4 pt-6 border-t border-[#1A1108]/5">
+                <div className="flex justify-between items-end">
+                    <div>
+                        <h3 className="font-black text-sm uppercase tracking-wide text-leather flex items-center gap-2">
+                            <span className="material-icons text-leather/40">handshake</span>
+                            Parceiros Oficiais
+                        </h3>
+                        <p className="text-[10px] font-bold text-leather/40">Exibidos na parte inferior (logos menores)</p>
+                    </div>
+                    <label className="bg-leather text-white p-2 rounded-lg cursor-pointer active:scale-90 transition-transform">
+                        <span className="material-icons text-lg">add_photo_alternate</span>
+                        <input type="file" className="hidden" onChange={(e) => handlePartnerUpload(e, 'partner')} />
+                    </label>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-4">
+                    {partners.map((p, i) => (
+                        <div key={i} className="relative aspect-square bg-white rounded-2xl border border-[#1A1108]/5 p-4 flex items-center justify-center group shadow-sm">
+                            <img src={p.url} className="max-w-full max-h-full object-contain grayscale opacity-40" alt="" />
+                            <button 
+                                onClick={() => removePartner(i, 'partner')}
+                                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg active:scale-90"
+                            >
+                                <span className="material-icons text-sm">close</span>
+                            </button>
+                        </div>
+                    ))}
+                    {partners.length === 0 && (
+                        <div className="col-span-3 py-10 border-2 border-dashed border-[#1A1108]/5 rounded-2xl flex flex-col items-center justify-center opacity-20">
+                            <span className="material-icons text-4xl">cloud_upload</span>
+                            <p className="text-[8px] font-black uppercase mt-2">Nenhum parceiro</p>
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
     );
 
@@ -483,12 +653,7 @@ const AdminAdsManager: React.FC<AdminAdsManagerProps> = ({ user, onBack }) => {
             
             <div className="flex-1 overflow-y-auto pb-24">
                 {activeSubTab === 'ADS' && renderAdsList()}
-                {activeSubTab === 'DASHBOARD' && (
-                    <div className="p-6 text-center text-leather/40 py-20 font-bold text-sm">Dashboard em construção...</div>
-                )}
-                {activeSubTab === 'SPONSORS' && (
-                    <div className="p-6 text-center text-leather/40 py-20 font-bold text-sm">Patrocinadores em construção...</div>
-                )}
+                {activeSubTab === 'PARTNERS' && renderPartnersManager()}
             </div>
 
             {renderModal()}

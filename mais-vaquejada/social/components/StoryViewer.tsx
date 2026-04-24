@@ -16,7 +16,7 @@ interface StoryViewerProps {
 export const StoryViewer: React.FC<StoryViewerProps> = ({
   stories,
   initialUserIndex,
-  onClose,
+  onClose: handleCloseStory,
   onNavigateToProfile,
   onShare,
   onDelete,
@@ -47,7 +47,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
       setActiveItemIndex(0);
       setStoryProgress(0);
     } else {
-      onClose();
+      handleCloseStory();
     }
   };
 
@@ -61,7 +61,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
       setActiveItemIndex(stories[prevUserIndex].items.length - 1);
       setStoryProgress(0);
     } else {
-      onClose();
+      handleCloseStory();
     }
   };
 
@@ -83,7 +83,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
       if (progressInterval.current) clearInterval(progressInterval.current);
     }
     return () => { if (progressInterval.current) clearInterval(progressInterval.current); };
-  }, [activeUserIndex, activeItemIndex, isPaused]);
+  }, [activeUserIndex, activeItemIndex, isPaused, currentUser, currentItem, onAdImpression]);
 
   // Swipe-down & Pause handlers
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -102,7 +102,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
     setIsPaused(false); // RESUME ON RELEASE
     
     if (dragY > 120) {
-      onClose();
+      handleCloseStory();
     } else {
       setDragY(0);
     }
@@ -225,7 +225,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
               delete_outline
             </button>
           )}
-          <button onClick={onClose} className="material-icons text-white drop-shadow-md">close</button>
+          <button onClick={handleCloseStory} className="material-icons text-white drop-shadow-md">close</button>
         </div>
       </div>
 

@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "833804814174",
+    "project_id": "vaquejada-491200",
+    "storage_bucket": "vaquejada-491200.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:833804814174:android:adad763b0bacde973fb1cf",
+        "android_client_info": {
+          "package_name": "com.arena.vaquejada"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "833804814174-iqpspdjar3kj5qsadmug4if3mu90m6sm.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCwMp8lSX6GGNx8MT1FG9xIkzZPMFXCVpw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "833804814174-iqpspdjar3kj5qsadmug4if3mu90m6sm.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

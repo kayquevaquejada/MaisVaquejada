@@ -30,7 +30,7 @@ type AdminTab = 'MAIN' | 'USERS' | 'MERCADO' | 'SOCIAL' | 'EVENTOS' | 'NOTICIAS'
 
 
 const AdminView: React.FC<AdminViewProps> = ({ user }) => {
-    const [activeTab, setActiveTab] = useState<AdminTab>('MAIN');
+    const [activeTab, setActiveTab] = useState<AdminTab>(() => (localStorage.getItem('arena_admin_active_tab') as AdminTab) || 'MAIN');
     const [loadingTasks, setLoadingTasks] = useState(0);
     const loading = loadingTasks > 0;
     const setLoading = (isLoading: boolean) => {
@@ -46,10 +46,18 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
     const [totalUsersCount, setTotalUsersCount] = useState(0);
 
     // View States for Events and News
-    const [subviewEvents, setSubviewEvents] = useState<'HOME'|'CREATE'|'LIST'>('HOME');
-    const [subviewNews, setSubviewNews] = useState<'HOME'|'CREATE'|'LIST'|'TV'>('HOME');
-    const [subviewMercado, setSubviewMercado] = useState<'HOME'|'LIST'|'STORES'>('HOME');
-    const [subviewSocial, setSubviewSocial] = useState<'HOME'|'LIST'>('HOME');
+    const [subviewEvents, setSubviewEvents] = useState<'HOME'|'CREATE'|'LIST'>(() => (localStorage.getItem('arena_admin_sub_events') as any) || 'HOME');
+    const [subviewNews, setSubviewNews] = useState<'HOME'|'CREATE'|'LIST'|'TV'>(() => (localStorage.getItem('arena_admin_sub_news') as any) || 'HOME');
+    const [subviewMercado, setSubviewMercado] = useState<'HOME'|'LIST'|'STORES'>(() => (localStorage.getItem('arena_admin_sub_mercado') as any) || 'HOME');
+    const [subviewSocial, setSubviewSocial] = useState<'HOME'|'LIST'>(() => (localStorage.getItem('arena_admin_sub_social') as any) || 'HOME');
+
+    useEffect(() => {
+        localStorage.setItem('arena_admin_active_tab', activeTab);
+        localStorage.setItem('arena_admin_sub_events', subviewEvents);
+        localStorage.setItem('arena_admin_sub_news', subviewNews);
+        localStorage.setItem('arena_admin_sub_mercado', subviewMercado);
+        localStorage.setItem('arena_admin_sub_social', subviewSocial);
+    }, [activeTab, subviewEvents, subviewNews, subviewMercado, subviewSocial]);
 
     const [eventsList, setEventsList] = useState<any[]>([]);
     const [newsList, setNewsList] = useState<any[]>([]);
@@ -63,7 +71,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
     const [newsForm, setNewsForm] = useState<any>({ type: 'info' });
     const [transmissionForm, setTransmissionForm] = useState<any>({});
     const [bannerForm, setBannerForm] = useState<any>({});
-    const [storeForm, setStoreForm] = useState<any>({});
+    const [storeForm, setStoreForm] = useState<any>({ is_official: true });
 
     const isMaster = user?.isMaster || user?.role === 'ADMIN_MASTER' || false;
     const hasMercado = isMaster || user?.admin_mercado || user?.role === 'ADMIN' || false;
@@ -899,20 +907,39 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         }
 
         if (subviewMercado === 'STORES') {
+            const handleStoreLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setLoading(true);
+                try {
+                    const fileExt = file.name.split('.').pop();
+                    const fileName = `${Date.now()}_store_logo.${fileExt}`;
+                    const { error: uploadError } = await supabase.storage.from('vaquejadas').upload(fileName, file);
+                    if (uploadError) throw uploadError;
+                    const { data: { publicUrl } } = supabase.storage.from('vaquejadas').getPublicUrl(fileName);
+                    setStoreForm({ ...storeForm, logo_url: publicUrl });
+                } catch (err: any) { alert(err.message); }
+                finally { setLoading(false); }
+            };
+
             const handleSaveStore = async (e: React.FormEvent) => {
                 e.preventDefault();
                 setLoading(true);
                 try {
                     let finalUserId = storeForm.user_id?.trim();
-                    if (!finalUserId) throw new Error("ID ou Username obrigatório.");
+                    if (!finalUserId) throw new Error("ID ou Username (@) do Dono é obrigatório.");
 
-                    // Convert username to UUID if it's not already a UUID
-                    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(finalUserId);
-                    if (!isUuid) {
+                    // Validar @username e buscar ID
+                    if (finalUserId.startsWith('@')) {
                         const cleanUsername = finalUserId.replace('@', '').toLowerCase();
-                        const { data: profile, error: profErr } = await supabase.from('profiles').select('id').eq('username', cleanUsername).maybeSingle();
+                        const { data: profile, error: profErr } = await supabase
+                            .from('profiles')
+                            .select('id')
+                            .eq('username', cleanUsername)
+                            .maybeSingle();
+                        
                         if (profErr || !profile) {
-                            throw new Error(`Usuário não encontrado com o username: @${cleanUsername}`);
+                            throw new Error(`Usuário gestor não encontrado: @${cleanUsername}`);
                         }
                         finalUserId = profile.id;
                     }
@@ -920,20 +947,47 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                     const payload = {
                         user_id: finalUserId,
                         name: storeForm.name,
+                        cnpj: storeForm.cnpj,
+                        logo_url: storeForm.logo_url,
                         description: storeForm.description,
                         is_official: storeForm.is_official || false,
                     };
-                    let err;
+
+                    let error;
+                    let storeId;
+
                     if (storeForm.id) {
-                        const { error } = await supabase.from('stores').update(payload).eq('id', storeForm.id);
-                        err = error;
+                        const { data, error: updateError } = await supabase
+                            .from('stores')
+                            .update(payload)
+                            .eq('id', storeForm.id)
+                            .select();
+                        error = updateError;
+                        storeId = storeForm.id;
                     } else {
-                        const { error } = await supabase.from('stores').insert(payload);
-                        err = error;
+                        const { data, error: insertError } = await supabase
+                            .from('stores')
+                            .insert(payload)
+                            .select();
+                        error = insertError;
+                        if (data?.[0]) storeId = data[0].id;
                     }
-                    if (err) throw err;
-                    setSuccess(storeForm.id ? 'Loja Atualizada' : 'Loja Criada');
-                    setStoreForm({});
+
+                    if (error) throw error;
+
+                    // Enviar Notificação para o Gestor
+                    if (finalUserId && !storeForm.id) {
+                        await supabase.from('notifications').insert({
+                            user_id: finalUserId,
+                            actor_id: user.id,
+                            type: 'system',
+                            message: `Você agora é gestor da loja ${storeForm.name}! 🚀`,
+                            metadata: { type: 'store_manager', store_id: storeId }
+                        });
+                    }
+
+                    setSuccess(storeForm.id ? 'Loja Atualizada' : 'Loja Criada com Sucesso!');
+                    setStoreForm({ is_official: true });
                     fetchStores();
                     setTimeout(() => setSuccess(null), 2000);
                 } catch(error: any) {
@@ -957,20 +1011,48 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                     <div className="flex-1 overflow-y-auto p-6 space-y-6">
                         {/* FORMULÁRIO DE LOJA */}
                         <form onSubmit={handleSaveStore} className="bg-white p-6 rounded-[32px] border border-[#1A1108]/5 shadow-sm space-y-4">
-                            <h3 className="text-[10px] font-black uppercase tracking-widest text-[#D4AF37]">{storeForm.id ? 'Editar Loja' : 'Nova Loja Parceira'}</h3>
-                            <div className="space-y-3">
-                                <input className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-4 text-sm font-bold text-leather outline-none placeholder:text-leather/30" placeholder="Nome da Loja" value={storeForm.name || ''} onChange={e => setStoreForm({...storeForm, name: e.target.value})} required />
-                                <input className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-4 text-sm font-bold text-leather outline-none placeholder:text-leather/30" placeholder="ID ou Username (@) do Dono" value={storeForm.user_id || ''} onChange={e => setStoreForm({...storeForm, user_id: e.target.value})} required />
-                                <textarea className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-4 text-sm font-bold text-leather outline-none placeholder:text-leather/30" placeholder="Descrição da Loja" rows={2} value={storeForm.description || ''} onChange={e => setStoreForm({...storeForm, description: e.target.value})} />
-                                <div className="flex items-center gap-2">
-                                    <input type="checkbox" checked={storeForm.is_official || false} onChange={e => setStoreForm({...storeForm, is_official: e.target.checked})} className="w-5 h-5" />
-                                    <span className="text-xs font-bold uppercase text-leather">Selo Oficial (Verificado)</span>
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-[10px] font-black uppercase tracking-widest text-[#D4AF37]">{storeForm.id ? 'Editar Loja' : 'Nova Loja Parceira'}</h3>
+                                {storeForm.id && <button type="button" onClick={() => setStoreForm({ is_official: true })} className="text-[8px] font-black text-red-500 uppercase">Cancelar Edição</button>}
+                            </div>
+
+                            {/* Upload Logo PNG */}
+                            <div className="flex items-center gap-4 bg-neutral-50 p-4 rounded-2xl border border-dashed border-leather/10">
+                                <div className="w-16 h-16 bg-white rounded-xl border border-leather/5 flex items-center justify-center overflow-hidden">
+                                    {storeForm.logo_url ? (
+                                        <img src={storeForm.logo_url} className="w-full h-full object-contain" />
+                                    ) : (
+                                        <span className="material-icons text-leather/20 text-3xl">add_business</span>
+                                    )}
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-[10px] font-black uppercase text-leather/60 mb-1">Logo PNG da Loja</p>
+                                    <label className="bg-[#D4AF37] text-white px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest cursor-pointer active:scale-95 transition-transform inline-block">
+                                        Selecionar PNG
+                                        <input type="file" className="hidden" accept="image/png" onChange={handleStoreLogoUpload} />
+                                    </label>
                                 </div>
                             </div>
-                            <div className="flex gap-2">
-                                {storeForm.id && <button type="button" onClick={() => setStoreForm({})} className="flex-1 bg-neutral-200 text-black py-4 rounded-xl font-black uppercase text-xs">Cancelar</button>}
-                                <button type="submit" disabled={loading} className="flex-[2] bg-[#D4AF37] text-white py-4 rounded-xl font-black uppercase tracking-widest text-xs shadow-lg shadow-[#D4AF37]/20 disabled:opacity-50">{storeForm.id ? 'Salvar Alterações' : 'Criar Loja'}</button>
+
+                            <div className="space-y-3">
+                                <input className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-4 text-sm font-bold text-leather outline-none placeholder:text-leather/30" placeholder="Nome da Loja / Parque" value={storeForm.name || ''} onChange={e => setStoreForm({...storeForm, name: e.target.value})} required />
+                                
+                                <div className="grid grid-cols-2 gap-3">
+                                    <input className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-4 text-sm font-bold text-leather outline-none placeholder:text-leather/30" placeholder="CNPJ da Loja" value={storeForm.cnpj || ''} onChange={e => setStoreForm({...storeForm, cnpj: e.target.value})} required />
+                                    <input className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-4 text-sm font-bold text-leather outline-none placeholder:text-leather/30" placeholder="@username do Gestor" value={storeForm.user_id || ''} onChange={e => setStoreForm({...storeForm, user_id: e.target.value})} required />
+                                </div>
+
+                                <textarea className="w-full bg-neutral-50 border border-[#1A1108]/5 rounded-xl p-4 text-sm font-bold text-leather outline-none placeholder:text-leather/30" placeholder="Descrição curta (Opcional)" rows={2} value={storeForm.description || ''} onChange={e => setStoreForm({...storeForm, description: e.target.value})} />
+                                
+                                <div className="flex items-center gap-3 bg-neutral-50 p-3 rounded-xl border border-leather/5">
+                                    <input type="checkbox" id="official_chk" checked={storeForm.is_official || false} onChange={e => setStoreForm({...storeForm, is_official: e.target.checked})} className="w-5 h-5 accent-[#D4AF37]" />
+                                    <label htmlFor="official_chk" className="text-[10px] font-black uppercase text-leather cursor-pointer">Selo de Loja Oficial / Parceira</label>
+                                </div>
                             </div>
+
+                            <button type="submit" disabled={loading} className="w-full bg-[#1A1108] text-white py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl active:scale-95 transition-transform disabled:opacity-50">
+                                {loading ? 'Processando...' : storeForm.id ? 'Atualizar Loja' : 'Criar e Notificar Gestor'}
+                            </button>
                         </form>
 
 

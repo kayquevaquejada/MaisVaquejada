@@ -757,6 +757,14 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
             {/* Ads Carousel (Optional Banner) */}
             <AdsCarousel targetPosition="market_top_carousel" />
 
+            {/* Categories Filter */}
+            <div className="px-6 py-4 overflow-x-auto hide-scrollbar flex gap-2">
+                <button onClick={() => setActiveFilterCat('all')} className={`px-4 py-2 rounded-xl text-xs font-black uppercase whitespace-nowrap transition-all ${activeFilterCat === 'all' ? 'bg-[#D4AF37] text-white' : 'bg-white border border-[#1A1108]/10 text-[#1A1108]/60'}`}>TODOS</button>
+                {Object.keys(CATEGORIES).map(cat => (
+                    <button key={cat} onClick={() => setActiveFilterCat(cat)} className={`px-4 py-2 rounded-xl text-xs font-black uppercase whitespace-nowrap transition-all ${activeFilterCat === cat ? 'bg-[#D4AF37] text-white' : 'bg-white border border-[#1A1108]/10 text-[#1A1108]/60'}`}>{cat}</button>
+                ))}
+            </div>
+
             {/* Partner Stores Section */}
             {stores.length > 0 && (
                 <div className="py-6 border-b border-[#1A1108]/5">
@@ -796,13 +804,6 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                 </div>
             )}
 
-            {/* Categories Filter */}
-            <div className="px-6 py-4 overflow-x-auto hide-scrollbar flex gap-2">
-                <button onClick={() => setActiveFilterCat('all')} className={`px-4 py-2 rounded-xl text-xs font-black uppercase whitespace-nowrap transition-all ${activeFilterCat === 'all' ? 'bg-[#D4AF37] text-white' : 'bg-white border border-[#1A1108]/10 text-[#1A1108]/60'}`}>TODOS</button>
-                {Object.keys(CATEGORIES).map(cat => (
-                    <button key={cat} onClick={() => setActiveFilterCat(cat)} className={`px-4 py-2 rounded-xl text-xs font-black uppercase whitespace-nowrap transition-all ${activeFilterCat === cat ? 'bg-[#D4AF37] text-white' : 'bg-white border border-[#1A1108]/10 text-[#1A1108]/60'}`}>{cat}</button>
-                ))}
-            </div>
 
             {/* Grid */}
             <div className="px-6">
