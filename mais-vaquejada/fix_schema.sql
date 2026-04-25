@@ -48,7 +48,7 @@ WITH CHECK (
   EXISTS (
     SELECT 1 FROM public.profiles 
     WHERE profiles.id = auth.uid() 
-    AND (profiles.role = 'ADMIN' OR profiles.role = 'ADMIN_MASTER' OR profiles.is_master = true)
+    AND (profiles.role = 'ADMIN' OR profiles.role = 'ADMIN_MASTER')
   )
 );
 
@@ -60,6 +60,8 @@ USING (
   EXISTS (
     SELECT 1 FROM public.profiles 
     WHERE profiles.id = auth.uid() 
-    AND (profiles.role = 'ADMIN' OR profiles.role = 'ADMIN_MASTER' OR profiles.is_master = true)
+    AND (profiles.role = 'ADMIN' OR profiles.role = 'ADMIN_MASTER')
   )
 );
+
+CREATE POLICY "Allow public read access to stores" ON public.stores FOR SELECT USING (true);

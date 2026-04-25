@@ -53,5 +53,24 @@
 	<string>Precisamos de acesso ao microfone para chamadas de áudio e vídeo no Arena +Vaquejada.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Precisamos de sua localização para mostrar eventos próximos de você no Arena +Vaquejada.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.maisvaquejada.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.maisvaquejada.app</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>REVERSED_CLIENT_ID</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.833804814174-32b10mqpqrm14h4n77ndcrnnr5p72308</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

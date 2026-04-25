@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.arena.vaquejada',
+  appId: 'com.maisvaquejada.app',
   appName: '+Vaquejada',
   webDir: 'dist',
   bundledWebRuntime: false,
@@ -9,6 +9,7 @@ const config: CapacitorConfig = {
     GoogleAuth: {
       scopes: ['profile', 'email'],
       serverClientId: '833804814174-iqpspdjar3kj5qsadmug4if3mu90m6sm.apps.googleusercontent.com',
+      iosClientId: '833804814174-32b10mqpqrm14h4n77ndcrnnr5p72308.apps.googleusercontent.com',
       forceCodeForRefreshToken: true,
     },
   },

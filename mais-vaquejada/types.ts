@@ -18,7 +18,8 @@ export enum View {
   INTERNAL_ADS = 'INTERNAL_ADS',
   TERMS = 'TERMS',
   EVENT_DETAILS = 'EVENT_DETAILS',
-  LEGAL_CONSENT = 'LEGAL_CONSENT'
+  LEGAL_CONSENT = 'LEGAL_CONSENT',
+  STORE_DETAILS = 'STORE_DETAILS'
 }
 
 export type UserType = 'common' | 'seller' | 'organizer' | 'admin';

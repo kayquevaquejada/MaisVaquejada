@@ -48,7 +48,6 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
     const [isUploading, setIsUploading] = useState(false);
     const [stores, setStores] = useState<any[]>([]);
     const [loadingStores, setLoadingStores] = useState(true);
-    const [selectedStore, setSelectedStore] = useState<any>(null);
 
     // Filters
     const [searchTerm, setSearchTerm] = useState('');
@@ -96,7 +95,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
         try {
             const { data, error } = await supabase
                 .from('market_items')
-                .select('*, profiles:user_id(name, avatar_url, username), stores:store_id(name, is_official, logo_url)')
+                .select('*, profiles:user_id(name, avatar_url, username), lojas:loja_id(id, nome, verificado, logo_url, banner_url, whatsapp, instagram, cidade, estado)')
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
@@ -112,10 +111,10 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
         setLoadingStores(true);
         try {
             const { data, error } = await supabase
-                .from('stores')
+                .from('lojas')
                 .select('*')
-                .eq('is_active', true)
-                .order('is_official', { ascending: false });
+                .eq('ativo', true)
+                .order('verificado', { ascending: false });
             if (error) throw error;
             setStores(data || []);
         } catch (err) {
@@ -132,8 +131,8 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
             .on('postgres_changes', { event: '*', schema: 'public', table: 'market_items' }, fetchAds)
             .subscribe();
         
-        const storeChannel = supabase.channel('stores_rt')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'stores' }, fetchStores)
+        const storeChannel = supabase.channel('lojas_rt')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'lojas' }, fetchStores)
             .subscribe();
 
         return () => { 
@@ -272,12 +271,6 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
 
                 if (matchCat !== activeFilterCat) return false;
             }
-            if (selectedStore) {
-                // Filter by store_id or by owner's user_id to catch all items
-                const isFromStore = ad.store_id === selectedStore.id;
-                const isFromOwner = ad.user_id === selectedStore.user_id;
-                if (!isFromStore && !isFromOwner) return false;
-            }
             if (searchTerm) {
                 const term = searchTerm.toLowerCase();
                 return ad.title?.toLowerCase().includes(term) || ad.description?.toLowerCase().includes(term) || ad.category?.toLowerCase().includes(term) || ad.subcategory?.toLowerCase().includes(term);
@@ -292,7 +285,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
     // ==========================================
     if (viewingAd) {
         const seller = viewingAd.profiles || { name: 'Vendedor', username: 'vendedor', avatar_url: '' };
-        const store = viewingAd.stores; // Base para Módulo 2
+        const store = viewingAd.lojas; // Base para Módulo 2
         const isOwnerOrAdmin = user?.id === viewingAd.user_id || user?.role === 'ADMIN' || user?.role === 'ADMIN_MASTER' || user?.isMaster;
 
         return (
@@ -333,7 +326,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                             <div className="absolute bottom-6 left-6 right-6 flex justify-between items-end">
                                 <div>
                                     {viewingAd.product_type === 'ingresso' && <span className="bg-blue-500 text-white text-[10px] font-black px-2 py-1 rounded uppercase tracking-widest mb-2 inline-block shadow-lg mr-2">INGRESSO</span>}
-                                    {store?.is_official && <span className="bg-green-500 text-white text-[10px] font-black px-2 py-1 rounded uppercase tracking-widest mb-2 inline-block shadow-lg">LOJA OFICIAL</span>}
+                                    {store?.verificado && <span className="bg-green-500 text-white text-[10px] font-black px-2 py-1 rounded uppercase tracking-widest mb-2 inline-block shadow-lg">LOJA OFICIAL</span>}
                                     <h2 className="text-[#1A1108] text-2xl font-black uppercase leading-tight">{viewingAd.title}</h2>
                                 </div>
                             </div>
@@ -363,7 +356,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                                             <img src={store.logo_url || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" />
                                         </div>
                                         <div>
-                                            <p className="text-sm font-black uppercase text-[#1A1108] tracking-wide">{store.name}</p>
+                                            <p className="text-sm font-black uppercase text-[#1A1108] tracking-wide">{store.nome}</p>
                                             <div className="flex items-center gap-1">
                                                 <span className="material-icons text-[10px] text-green-500">store</span>
                                                 <p className="text-[9px] font-bold text-[#1A1108]/60">Loja Parceira</p>
@@ -371,9 +364,12 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                                         </div>
                                     </div>
                                     <button onClick={() => {
-                                        setSelectedStore(store);
-                                        setViewingAd(null);
-                                        setActiveFilterCat('all');
+                                        window.dispatchEvent(new CustomEvent('arena_navigate', { 
+                                            detail: { 
+                                                view: 'STORE_DETAILS', 
+                                                store: store 
+                                            } 
+                                        }));
                                     }} className="text-[10px] font-black text-[#D4AF37] uppercase tracking-widest border border-[#D4AF37]/30 px-3 py-1.5 rounded-lg">Visitar Loja</button>
                                 </div>
                             ) : (
@@ -776,25 +772,25 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                 <div className="py-6 border-b border-[#1A1108]/5">
                     <div className="px-6 flex justify-between items-center mb-4">
                         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#1A1108]/60">Lojas Parceiras</h3>
-                        {selectedStore && (
-                            <button onClick={() => setSelectedStore(null)} className="text-[9px] font-black uppercase text-[#D4AF37] tracking-widest bg-[#D4AF37]/10 px-3 py-1 rounded-full">Ver Todos</button>
-                        )}
                     </div>
                     <div className="flex overflow-x-auto px-6 gap-6 scrollbar-hide pb-2">
                         {stores.map((store) => (
                             <div 
                                 key={store.id} 
                                 onClick={() => {
-                                    setSelectedStore(store);
-                                    setActiveFilterCat('all');
-                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                    window.dispatchEvent(new CustomEvent('arena_navigate', { 
+                                        detail: { 
+                                            view: 'STORE_DETAILS', 
+                                            store: store 
+                                        } 
+                                    }));
                                 }}
                                 className="flex flex-col items-center shrink-0 cursor-pointer active:scale-95 transition-all group"
                             >
-                                <div className={`w-16 h-16 rounded-full border-2 p-0.5 transition-all mb-2 ${selectedStore?.id === store.id ? 'border-[#D4AF37] shadow-lg shadow-[#D4AF37]/20' : 'border-[#1A1108]/5 group-hover:border-[#1A1108]/20'}`}>
+                                <div className="w-16 h-16 rounded-full border-2 p-0.5 border-[#1A1108]/5 group-hover:border-[#1A1108]/20 transition-all mb-2">
                                     <div className="w-full h-full rounded-full bg-white overflow-hidden flex items-center justify-center border border-white/50">
                                         {store.logo_url ? (
-                                            <img src={store.logo_url} className="w-full h-full object-cover" alt={store.name} />
+                                            <img src={store.logo_url} className="w-full h-full object-cover" alt={store.nome} />
                                         ) : (
                                             <span className="material-icons text-[#1A1108]/20 text-3xl">store</span>
                                         )}

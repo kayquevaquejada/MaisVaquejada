@@ -1,0 +1,31 @@
+
+> arena-+vaquejada@0.0.0 build
+> npx vite build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 23 modules transformed.
+x Build failed in 515ms
+error during build:
+[vite:esbuild] Transform failed with 1 error:
+/Users/apple/Desktop/Apps/arena-+vaquejada1.0 - cópia/MaisVaquejada/mais-vaquejada/views/LoginView.tsx:201:12: ERROR: Unterminated regular expression
+file: /Users/apple/Desktop/Apps/arena-+vaquejada1.0 - cópia/MaisVaquejada/mais-vaquejada/views/LoginView.tsx:201:12
+
+Unterminated regular expression
+199|        </div>
+200|      </div>
+201|        </div>
+   |              ^
+202|      </div>
+203|    );
+
+    at failureErrorWithLog (/Users/apple/Desktop/Apps/arena-+vaquejada1.0 - cópia/MaisVaquejada/mais-vaquejada/node_modules/esbuild/lib/main.js:1472:15)
+    at /Users/apple/Desktop/Apps/arena-+vaquejada1.0 - cópia/MaisVaquejada/mais-vaquejada/node_modules/esbuild/lib/main.js:755:50
+    at responseCallbacks.<computed> (/Users/apple/Desktop/Apps/arena-+vaquejada1.0 - cópia/MaisVaquejada/mais-vaquejada/node_modules/esbuild/lib/main.js:622:9)
+    at handleIncomingPacket (/Users/apple/Desktop/Apps/arena-+vaquejada1.0 - cópia/MaisVaquejada/mais-vaquejada/node_modules/esbuild/lib/main.js:677:12)
+    at Socket.readFromStdout (/Users/apple/Desktop/Apps/arena-+vaquejada1.0 - cópia/MaisVaquejada/mais-vaquejada/node_modules/esbuild/lib/main.js:600:7)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+    at Readable.push (node:internal/streams/readable:390:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)

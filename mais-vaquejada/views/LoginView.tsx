@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { Capacitor } from '@capacitor/core';
+import LoginPremiumPartners from '../components/LoginPremiumPartners';
 
 interface LoginViewProps {
   onLogin: (userData: any) => void;
@@ -17,8 +18,6 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
   const [error, setError] = useState<string | null>(null);
   const DEFAULT_BG = 'https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80';
   const [loginBg, setLoginBg] = useState(DEFAULT_BG);
-  const [sponsors, setSponsors] = useState<any[]>([]);
-  const [partners, setPartners] = useState<any[]>([]);
 
   useEffect(() => {
     // Carregar Background
@@ -29,20 +28,6 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
       .maybeSingle()
       .then(({ data }) => {
         if (data?.value?.url) setLoginBg(data.value.url);
-      });
-
-    // Carregar Patrocinadores e Parceiros
-    supabase
-      .from('app_settings')
-      .select('*')
-      .in('key', ['official_sponsors', 'official_partners'])
-      .then(({ data }) => {
-        if (data) {
-          const s = data.find(i => i.key === 'official_sponsors')?.value || [];
-          const p = data.find(i => i.key === 'official_partners')?.value || [];
-          setSponsors(Array.isArray(s) ? s : []);
-          setPartners(Array.isArray(p) ? p : []);
-        }
       });
   }, []);
 
@@ -72,28 +57,42 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
       const isCapacitor = Capacitor.isNativePlatform();
 
       if (isCapacitor) {
+        console.log('[GoogleLogin] Starting native login flow');
         const WEB_CLIENT_ID = '833804814174-iqpspdjar3kj5qsadmug4if3mu90m6sm.apps.googleusercontent.com';
+        const IOS_CLIENT_ID = '833804814174-32b10mqpqrm14h4n77ndcrnnr5p72308.apps.googleusercontent.com';
+        const isIos = Capacitor.getPlatform() === 'ios';
         
+        console.log('[GoogleLogin] Initializing GoogleAuth');
         await GoogleAuth.initialize({
-          clientId: WEB_CLIENT_ID,
+          clientId: isIos ? IOS_CLIENT_ID : WEB_CLIENT_ID,
           scopes: ['profile', 'email'],
           grantOfflineAccess: true,
         });
 
+        console.log('[GoogleLogin] Calling GoogleAuth.signIn()');
         const googleUser = await GoogleAuth.signIn().catch(err => {
+          console.error('[GoogleLogin] Native error:', err);
           if (err.message?.includes('cancel')) throw new Error('USUARIO_CANCELOU');
           throw new Error('ERRO_PLUGIN_NATIVO');
         });
 
         const idToken = googleUser.authentication.idToken;
-        if (!idToken) throw new Error('ERRO_TOKEN_VAZIO');
+        if (!idToken) {
+          console.error('[GoogleLogin] Token is empty');
+          throw new Error('ERRO_TOKEN_VAZIO');
+        }
 
+        console.log('[GoogleLogin] Token received, signing in with Supabase');
         const { error: authError } = await supabase.auth.signInWithIdToken({
           provider: 'google',
           token: idToken,
         });
 
-        if (authError) throw new Error('ERRO_SUPABASE_TOKEN');
+        if (authError) {
+          console.error('[GoogleLogin] Supabase error:', authError);
+          throw new Error('ERRO_SUPABASE_TOKEN');
+        }
+        console.log('[GoogleLogin] Login success');
       } else {
         const redirectTo = window.location.origin;
         const { error } = await supabase.auth.signInWithOAuth({
@@ -106,10 +105,11 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
         if (error) throw error;
       }
     } catch (err: any) {
+      console.error('[GoogleLogin] General error:', err);
       if (err.message === 'USUARIO_CANCELOU') {
         setError('Login cancelado pelo usuário.');
       } else {
-        setError('Não foi possível entrar com o Google. Tente novamente.');
+        setError(`Erro no login: ${err.message || 'Tente novamente.'}`);
       }
     } finally {
       setGoogleLoading(false);
@@ -191,71 +191,11 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
               Ao entrar, você concorda com nossos <br />
               <button onClick={onTerms} className="underline text-white/50">Termos de Uso</button> e <button onClick={onTerms} className="underline text-white/50">EULA</button>
             </p>
-            
-            <button
-              onClick={onRecoveryAssisted}
-              className="w-full py-2 text-center text-[9px] font-black text-[#ECA413]/60 uppercase tracking-widest hover:text-[#ECA413]"
-            >
-              PROBLEMAS PARA ENTRAR? <span className="underline">FALAR COM SUPORTE</span>
-            </button>
           </div>
         </div>
 
-        {/* Parceiros e Patrocinadores */}
-        <div className="mt-auto space-y-10 pb-10 overflow-hidden">
-          <style>{`
-            @keyframes marquee {
-              0% { transform: translateX(0); }
-              100% { transform: translateX(-50%); }
-            }
-            .animate-marquee {
-              display: flex;
-              width: max-content;
-              animation: marquee 30s linear infinite;
-            }
-            .animate-marquee:hover {
-              animation-play-state: paused;
-            }
-          `}</style>
-
-          {/* Patrocinadores */}
-          {sponsors.length > 0 && (
-            <div className="space-y-4">
-              <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-[#ECA413] text-center opacity-80 italic">Patrocinadores Oficiais</h3>
-              <div className="relative flex overflow-hidden">
-                <div className="animate-marquee flex items-center gap-16 px-8">
-                  {[...sponsors, ...sponsors, ...sponsors].map((s, idx) => (
-                    <img 
-                      key={idx} 
-                      src={s.url} 
-                      alt="Sponsor" 
-                      className="h-32 sm:h-40 w-auto object-contain grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all shrink-0" 
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Parceiros */}
-          {partners.length > 0 && (
-            <div className="space-y-4">
-              <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40 text-center italic">Parceiros Oficiais</h3>
-              <div className="relative flex overflow-hidden">
-                <div className="animate-marquee flex items-center gap-12 px-8" style={{ animationDirection: 'reverse', animationDuration: '40s' }}>
-                  {[...partners, ...partners, ...partners].map((p, idx) => (
-                    <img 
-                      key={idx} 
-                      src={p.url} 
-                      alt="Partner" 
-                      className="h-24 sm:h-32 w-auto object-contain grayscale opacity-40 hover:grayscale-0 hover:opacity-100 transition-all shrink-0" 
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Módulo Premium de Parceiros */}
+        <LoginPremiumPartners />
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import React from 'react';
 import { NewsItem, User } from '../types';
 import { supabase } from '../lib/supabase';
+import SponsorMarquee from '../components/SponsorMarquee';
 
 const TABS = ['TUDO', 'EVENTOS', 'REGULAMENTO', 'NOTÍCIAS'];
 
@@ -137,59 +138,64 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
     };
 
     return (
-      <div className="min-h-[100vh] bg-white animate-in fade-in duration-300 relative z-[50] -m-6 pb-20">
-        <header className="sticky top-0 z-[60] px-5 py-4 flex items-center justify-between bg-white/90 backdrop-blur-md border-b border-[#F0F0F0] shadow-sm">
-          <button onClick={() => setSelectedNews(null)} className="w-10 h-10 rounded-full bg-[#F5F5F5] flex items-center justify-center hover:bg-[#EAEAEA] active:scale-95 transition-transform">
-            <span className="material-icons text-[#222]">arrow_back</span>
+      <div className="min-h-screen bg-white animate-in fade-in duration-300 relative z-[50] pb-32">
+        <header className="sticky top-0 z-[60] px-6 py-4 flex items-center justify-between bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm">
+          <button onClick={() => setSelectedNews(null)} className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-transform border border-gray-200/50">
+            <span className="material-icons text-gray-800">arrow_back</span>
           </button>
+          <div className="flex-1 text-center pr-10">
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Leitura de Notícia</p>
+          </div>
         </header>
 
-        <article className="max-w-2xl mx-auto px-5 py-8">
+        <article className="w-full max-w-3xl mx-auto px-6 py-8 sm:px-10">
           {/* TOPO: TAG e Data */}
-          <div className="flex items-center justify-between mb-5">
-            <span className="bg-[#F4F4F4] text-[#222] text-[11px] font-bold px-3.5 py-1.5 rounded-full uppercase tracking-wider border border-[#E0E0E0]">
+          <div className="flex items-center justify-between mb-6">
+            <span className="bg-gray-100 text-gray-700 text-[11px] font-black px-4 py-2 rounded-full uppercase tracking-widest border border-gray-200/50 shadow-sm">
               {selectedNews.tag || 'INFORMATIVO'}
             </span>
-            <span className="text-[13px] text-[#888] font-medium tracking-wide">
+            <span className="text-[12px] text-gray-400 font-bold tracking-tight">
               {selectedNews.date}
             </span>
           </div>
 
           {/* TÍTULO */}
-          <h1 className="text-[32px] sm:text-[36px] font-black text-[#111] leading-[1.1] mb-5 line-clamp-3 tracking-[-0.02em] font-display animate-in fade-in slide-in-from-bottom-2 duration-500">
+          <h1 className="text-[28px] sm:text-[42px] font-black text-gray-900 leading-[1.1] mb-6 tracking-[-0.03em] font-display animate-in fade-in slide-in-from-bottom-4 duration-500">
             {selectedNews.title}
           </h1>
 
           {/* LINHA DECORATIVA */}
-          <div className="w-12 h-1 bg-[#ECA413] mb-6 rounded-full animate-in fade-in duration-500 delay-100"></div>
+          <div className="w-16 h-1.5 bg-[#ECA413] mb-8 rounded-full animate-in fade-in duration-500 delay-100"></div>
 
           {/* SUBTÍTULO / RESUMO OPCIONAL */}
           {selectedNews.subtitle && (
-            <p className="text-[18px] text-[#666] leading-relaxed mb-6 font-medium animate-in fade-in duration-500 delay-150">
+            <p className="text-[19px] text-gray-600 leading-relaxed mb-8 font-medium animate-in fade-in duration-500 delay-150">
               {selectedNews.subtitle}
             </p>
           )}
 
           {/* IMAGEM PRINCIPAL */}
           {selectedNews.image_url && (
-            <div className="mb-10 w-full aspect-[4/3] sm:aspect-video rounded-[24px] overflow-hidden relative border border-[#F0F0F0] bg-[#F9F9F9] animate-in fade-in duration-700 delay-200">
-              <img src={selectedNews.image_url} className="w-full h-full object-cover" alt="Notícia Imagem" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent"></div>
+            <div className="mb-12 w-full rounded-[32px] overflow-hidden relative border border-gray-100 shadow-2xl animate-in fade-in duration-700 delay-200">
+              <img src={selectedNews.image_url} className="w-full h-auto object-cover" alt="Notícia Imagem" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
             </div>
           )}
 
           {/* CORPO DA NOTÍCIA */}
           <div className="animate-in fade-in duration-700 delay-300 max-w-prose mx-auto font-sans">
-            {renderContent(selectedNews.description)}
+            <div className="news-body-content overflow-visible">
+              {renderContent(selectedNews.description)}
+            </div>
 
             {/* CARD AVISO INFORMATIVO (REFINADO) */}
-            <div className="mt-12 bg-[#F8F9FA] p-6 rounded-[20px] border border-[#EAEAEA] flex items-start gap-4">
-              <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center shrink-0 border border-blue-100/50">
+            <div className="mt-16 bg-gray-50 p-6 rounded-[24px] border border-gray-100 flex items-start gap-4 shadow-sm">
+              <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center shrink-0 border border-blue-100/50">
                 <span className="material-icons text-blue-500 text-[20px]">info_outline</span>
               </div>
               <div className="flex-1 pt-1">
-                <h4 className="text-[#222] font-bold text-[15px] mb-1">Aviso Informativo</h4>
-                <p className="text-[#666] text-[14px] leading-relaxed font-normal">
+                <h4 className="text-gray-900 font-black text-[14px] uppercase tracking-wide mb-1">Aviso Informativo</h4>
+                <p className="text-gray-500 text-[13px] leading-relaxed font-medium">
                   Recomendamos sempre verificar fontes oficiais no portal web caso haja dúvidas sobre as informações acima.
                 </p>
               </div>
@@ -197,37 +203,39 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
 
             {/* DOCUMENTO ANEXO */}
             {selectedNews.pdf_url && (
-              <div className="mt-8 bg-white border border-[#EAEAEA] shadow-sm rounded-[20px] p-5">
-                <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#888] mb-4">Documento Anexo</h4>
+              <div className="mt-8 bg-white border border-gray-100 shadow-xl rounded-[28px] p-6">
+                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-5">Documento Anexo</h4>
                 <a href={selectedNews.pdf_url} target="_blank" rel="noopener noreferrer"
-                  className="w-full bg-[#FAFAFA] border border-[#EAEAEA] p-4 rounded-xl flex items-center justify-between group active:scale-[0.98] transition-transform"
+                  className="w-full bg-gray-50 border border-gray-200/50 p-5 rounded-[20px] flex items-center justify-between group active:scale-[0.98] transition-transform"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center shrink-0 border border-red-100/50">
-                      <span className="material-icons text-red-500">picture_as_pdf</span>
+                    <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center shrink-0 border border-red-100/50">
+                      <span className="material-icons text-red-500 text-2xl">picture_as_pdf</span>
                     </div>
                     <div className="text-left flex-1 min-w-0">
-                      <p className="text-[15px] font-bold text-[#222] truncate">Abrir PDF Oficial</p>
-                      <p className="text-[12px] text-[#888] font-medium mt-0.5">Toque para visualizar</p>
+                      <p className="text-[16px] font-black text-gray-900 truncate">PDF Oficial</p>
+                      <p className="text-[12px] text-gray-400 font-bold mt-0.5">Toque para baixar ou ler</p>
                     </div>
                   </div>
-                  <span className="material-icons text-[#CCC] group-hover:text-[#ECA413] transition-colors">arrow_forward_ios</span>
+                  <span className="material-icons text-gray-300 group-hover:text-[#ECA413] transition-colors">arrow_forward_ios</span>
                 </a>
               </div>
             )}
 
             {/* LINK EXTERNO */}
             {selectedNews.external_link && (
-              <div className="mt-6">
+              <div className="mt-8">
                 <a href={selectedNews.external_link} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full p-4 bg-[#111] text-white rounded-[16px] font-bold text-[14px] uppercase tracking-wide active:scale-[0.98] transition-transform shadow-md"
+                  className="flex items-center justify-center gap-3 w-full p-5 bg-gray-900 text-white rounded-[20px] font-black text-[13px] uppercase tracking-[0.1em] active:scale-[0.98] transition-transform shadow-xl shadow-black/10"
                 >
-                  <span className="material-icons text-[18px]">open_in_new</span> Saiba mais / Ver original
+                  <span className="material-icons text-[20px]">open_in_new</span> Saiba mais / Ver original
                 </a>
               </div>
             )}
           </div>
         </article>
+
+        <SponsorMarquee type="news_only" />
       </div>
     );
   }

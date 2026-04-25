@@ -7,7 +7,7 @@ interface AdminAdsManagerProps {
 }
 
 const AdminAdsManager: React.FC<AdminAdsManagerProps> = ({ user, onBack }) => {
-    const [activeSubTab, setActiveSubTab] = useState<'PARTNERS' | 'ADS' | 'SPONSORS'>('ADS');
+    const [activeSubTab, setActiveSubTab] = useState<'LOGIN_PARTNERS' | 'ADS' | 'SPONSORS_SETTINGS'>('ADS');
 
     const [campaigns, setCampaigns] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -15,6 +15,8 @@ const AdminAdsManager: React.FC<AdminAdsManagerProps> = ({ user, onBack }) => {
     // Sponsors & Partners State
     const [sponsors, setSponsors] = useState<any[]>([]);
     const [partners, setPartners] = useState<any[]>([]);
+    const [loginPartners, setLoginPartners] = useState<any[]>([]);
+    const [showMarqueeInNews, setShowMarqueeInNews] = useState(true);
     const [savingSettings, setSavingSettings] = useState(false);
 
     // Modal State
@@ -29,7 +31,7 @@ const AdminAdsManager: React.FC<AdminAdsManagerProps> = ({ user, onBack }) => {
     const [dragStartY, setDragStartY] = useState(0);
     const [dragStartOffset, setDragStartOffset] = useState(50);
 
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<any>({
         internal_name: '',
         ad_type: 'carrossel_top',
         title: '',
@@ -44,13 +46,46 @@ const AdminAdsManager: React.FC<AdminAdsManagerProps> = ({ user, onBack }) => {
         image_offset: 50
     });
 
+    const [partnerFormData, setPartnerFormData] = useState({
+        nome_empresa: '',
+        logo_url: '',
+        link_url: '',
+        tipo: 'parceiro',
+        ativo: true,
+        ordem: 0,
+        destaque: false,
+        data_inicio: new Date().toISOString().split('T')[0],
+        data_fim: ''
+    });
+
+    const [isPartnerModalOpen, setIsPartnerModalOpen] = useState(false);
+
     useEffect(() => {
         if (activeSubTab === 'ADS') {
             fetchCampaigns();
-        } else if (activeSubTab === 'PARTNERS') {
+        } else if (activeSubTab === 'SPONSORS_SETTINGS') {
             fetchSettings();
+        } else if (activeSubTab === 'LOGIN_PARTNERS') {
+            fetchLoginPartners();
         }
     }, [activeSubTab]);
+
+    const fetchLoginPartners = async () => {
+        setLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('parceiros_login')
+                .select('*')
+                .order('ordem', { ascending: true });
+            
+            if (error) throw error;
+            setLoginPartners(data || []);
+        } catch (err) {
+            console.error('Erro ao buscar parceiros de login:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const fetchCampaigns = async () => {
         setLoading(true);
@@ -75,13 +110,16 @@ const AdminAdsManager: React.FC<AdminAdsManagerProps> = ({ user, onBack }) => {
             const { data, error } = await supabase
                 .from('app_settings')
                 .select('*')
-                .in('key', ['official_sponsors', 'official_partners']);
+                .in('key', ['official_sponsors', 'official_partners', 'news_show_marquee']);
             
             if (error) throw error;
             const s = data.find(i => i.key === 'official_sponsors')?.value || [];
             const p = data.find(i => i.key === 'official_partners')?.value || [];
+            const sm = data.find(i => i.key === 'news_show_marquee')?.value;
+
             setSponsors(Array.isArray(s) ? s : []);
             setPartners(Array.isArray(p) ? p : []);
+            if (sm !== undefined) setShowMarqueeInNews(sm);
         } catch (err) {
             console.error('Erro ao buscar configurações:', err);
         } finally {
@@ -292,17 +330,142 @@ const AdminAdsManager: React.FC<AdminAdsManagerProps> = ({ user, onBack }) => {
 
     const renderSubnav = () => (
         <div className="bg-white border-b border-[#1A1108]/5 px-4 flex gap-2 overflow-x-auto hide-scrollbar">
-            {['PARTNERS', 'ADS'].map(tab => (
+            {[
+                { id: 'ADS', label: 'Campanhas de Feed' },
+                { id: 'LOGIN_PARTNERS', label: 'Parceiros da Login' },
+                { id: 'SPONSORS_SETTINGS', label: 'Configurações Globais' }
+            ].map(tab => (
                 <button
-                    key={tab}
-                    onClick={() => setActiveSubTab(tab as any)}
+                    key={tab.id}
+                    onClick={() => setActiveSubTab(tab.id as any)}
                     className={`py-4 px-2 whitespace-nowrap text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${
-                        activeSubTab === tab ? 'border-[#D4AF37] text-[#D4AF37]' : 'border-transparent text-leather/40'
+                        activeSubTab === tab.id ? 'border-[#D4AF37] text-[#D4AF37]' : 'border-transparent text-leather/40'
                     }`}
                 >
-                    {tab === 'ADS' ? 'Campanhas de Feed' : 'Parceiros da Login'}
+                    {tab.label}
                 </button>
             ))}
+        </div>
+    );
+
+    const handleSavePartner = async () => {
+        if (!partnerFormData.nome_empresa || !partnerFormData.logo_url) {
+            return alert("Nome e Logo são obrigatórios");
+        }
+
+        setSaving(true);
+        try {
+            const dataToSave = {
+                ...partnerFormData,
+                data_fim: partnerFormData.data_fim || null
+            };
+
+            if (editId) {
+                const { error } = await supabase.from('parceiros_login').update(dataToSave).eq('id', editId);
+                if (error) throw error;
+            } else {
+                const { error } = await supabase.from('parceiros_login').insert(dataToSave);
+                if (error) throw error;
+            }
+
+            setIsPartnerModalOpen(false);
+            setEditId(null);
+            fetchLoginPartners();
+        } catch (err: any) {
+            alert("Erro ao salvar parceiro: " + err.message);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const deletePartner = async (id: string) => {
+        if (!confirm("Excluir este parceiro permanentemente?")) return;
+        try {
+            const { error } = await supabase.from('parceiros_login').delete().eq('id', id);
+            if (error) throw error;
+            fetchLoginPartners();
+        } catch (err: any) {
+            alert("Erro ao excluir: " + err.message);
+        }
+    };
+
+    const renderLoginPartnersManager = () => (
+        <div className="p-6 space-y-6">
+            <div className="flex justify-between items-center mb-2">
+                <div>
+                    <h3 className="font-black text-sm uppercase tracking-wide text-leather">Parceiros da Tela de Login</h3>
+                    <p className="text-[10px] font-bold text-leather/40">Exibição premium no carrossel inferior</p>
+                </div>
+                <button onClick={() => {
+                    setEditId(null);
+                    setPartnerFormData({
+                        nome_empresa: '', logo_url: '', link_url: '', tipo: 'parceiro',
+                        ativo: true, ordem: 0, destaque: false,
+                        data_inicio: new Date().toISOString().split('T')[0], data_fim: ''
+                    });
+                    setIsPartnerModalOpen(true);
+                }} className="bg-[#D4AF37] text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95">
+                    Novo Parceiro
+                </button>
+            </div>
+
+            {loading ? (
+                <div className="py-20 flex flex-col items-center justify-center opacity-40">
+                    <div className="w-8 h-8 border-4 border-[#D4AF37] border-t-transparent rounded-full animate-spin mb-4"></div>
+                    <p className="text-[10px] font-black uppercase tracking-widest">Carregando...</p>
+                </div>
+            ) : loginPartners.length === 0 ? (
+                <div className="bg-white p-8 rounded-[24px] border border-[#1A1108]/5 text-center shadow-sm">
+                    <span className="material-icons text-4xl text-leather/20 mb-3 block">handshake</span>
+                    <p className="font-bold text-sm text-leather/60">Nenhum parceiro na tela de login.</p>
+                </div>
+            ) : (
+                <div className="space-y-4">
+                    {loginPartners.map(p => (
+                        <div key={p.id} className="bg-white p-4 rounded-[24px] border border-[#1A1108]/5 shadow-sm flex items-center gap-4">
+                            <div className="w-14 h-14 rounded-xl bg-neutral-50 overflow-hidden shrink-0 border border-black/5 flex items-center justify-center p-2">
+                                <img src={p.logo_url} alt="" className="max-w-full max-h-full object-contain" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${
+                                        p.tipo === 'patrocinador' ? 'bg-[#D4AF37] text-white' : 
+                                        p.tipo === 'parceiro' ? 'bg-leather/10 text-leather' : 'bg-gray-100 text-gray-400'
+                                    }`}>
+                                        {p.tipo}
+                                    </span>
+                                    {p.destaque && <span className="material-icons text-xs text-[#D4AF37]">stars</span>}
+                                    {!p.ativo && <span className="text-[8px] font-black uppercase text-red-400">Inativo</span>}
+                                </div>
+                                <h4 className="font-black text-sm truncate">{p.nome_empresa}</h4>
+                                <p className="text-[9px] font-bold text-leather/30 truncate mt-0.5">{p.link_url || 'Sem link'}</p>
+                            </div>
+                            <div className="flex gap-2">
+                                <button onClick={() => {
+                                    setEditId(p.id);
+                                    setPartnerFormData({
+                                        nome_empresa: p.nome_empresa,
+                                        logo_url: p.logo_url,
+                                        link_url: p.link_url || '',
+                                        tipo: p.tipo,
+                                        ativo: p.ativo,
+                                        ordem: p.ordem,
+                                        destaque: p.destaque,
+                                        data_inicio: p.data_inicio?.split('T')[0] || new Date().toISOString().split('T')[0],
+                                        data_fim: p.data_fim?.split('T')[0] || ''
+                                    });
+                                    setIsPartnerModalOpen(true);
+                                }} className="w-8 h-8 rounded-lg bg-[#D4AF37]/10 text-[#D4AF37] flex items-center justify-center active:scale-95">
+                                    <span className="material-icons text-sm">edit</span>
+                                </button>
+                                <button onClick={() => deletePartner(p.id)} className="w-8 h-8 rounded-lg bg-red-50 text-red-500 flex items-center justify-center active:scale-95">
+                                    <span className="material-icons text-sm">delete</span>
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 
@@ -379,6 +542,33 @@ const AdminAdsManager: React.FC<AdminAdsManagerProps> = ({ user, onBack }) => {
                             <p className="text-[8px] font-black uppercase mt-2">Nenhum parceiro</p>
                         </div>
                     )}
+                </div>
+            </div>
+
+            {/* Configurações de Exibição */}
+            <div className="space-y-4 pt-6 border-t border-[#1A1108]/5">
+                <h3 className="font-black text-sm uppercase tracking-wide text-leather flex items-center gap-2">
+                    <span className="material-icons text-[#D4AF37]">settings</span>
+                    Configurações de Exibição
+                </h3>
+                
+                <div className="bg-white p-6 rounded-3xl border border-[#1A1108]/5 space-y-6 shadow-sm">
+                    <div className="flex items-center justify-between">
+                        <div className="flex-1 pr-4">
+                            <p className="font-black text-xs uppercase text-leather">Letreiro de Patrocinadores nas Notícias</p>
+                            <p className="text-[10px] text-leather/40 font-bold mt-1">Exibir o carrossel de logos ao final de cada notícia</p>
+                        </div>
+                        <button 
+                            onClick={async () => {
+                                const newValue = !showMarqueeInNews;
+                                setShowMarqueeInNews(newValue);
+                                await saveSettings('news_show_marquee', newValue);
+                            }}
+                            className={`w-14 h-8 rounded-full transition-all flex items-center px-1 ${showMarqueeInNews ? 'bg-[#D4AF37] justify-end' : 'bg-gray-200 justify-start'}`}
+                        >
+                            <div className="w-6 h-6 bg-white rounded-full shadow-md" />
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -653,10 +843,118 @@ const AdminAdsManager: React.FC<AdminAdsManagerProps> = ({ user, onBack }) => {
             
             <div className="flex-1 overflow-y-auto pb-24">
                 {activeSubTab === 'ADS' && renderAdsList()}
-                {activeSubTab === 'PARTNERS' && renderPartnersManager()}
+                {activeSubTab === 'SPONSORS_SETTINGS' && renderPartnersManager()}
+                {activeSubTab === 'LOGIN_PARTNERS' && renderLoginPartnersManager()}
             </div>
 
             {renderModal()}
+
+            {/* Modal de Parceiros Login */}
+            {isPartnerModalOpen && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[300] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+                    <div className="bg-[#F8F5F2] w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] max-h-[90vh] flex flex-col shadow-2xl relative animate-in slide-in-from-bottom-8">
+                        <div className="p-6 border-b border-[#1A1108]/5 flex items-center justify-between bg-white rounded-t-[32px]">
+                            <div>
+                                <h2 className="text-xl font-black italic tracking-tight text-[#D4AF37] uppercase">{editId ? 'Editar Parceiro' : 'Novo Parceiro'}</h2>
+                                <p className="text-[10px] font-black tracking-widest uppercase text-leather/40">Tela de Login</p>
+                            </div>
+                            <button onClick={() => setIsPartnerModalOpen(false)} className="w-10 h-10 bg-neutral-100 rounded-full flex items-center justify-center text-leather/60">
+                                <span className="material-icons">close</span>
+                            </button>
+                        </div>
+
+                        <div className="p-6 overflow-y-auto space-y-6 pb-32">
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-black tracking-widest uppercase text-leather/60 ml-2">Logo do Parceiro</label>
+                                <div className="flex items-center gap-4">
+                                    <div className="w-20 h-20 rounded-2xl bg-white border border-[#1A1108]/10 flex items-center justify-center p-3 relative overflow-hidden shrink-0 shadow-inner">
+                                        {partnerFormData.logo_url ? (
+                                            <img src={partnerFormData.logo_url} className="max-w-full max-h-full object-contain" alt="" />
+                                        ) : (
+                                            <span className="material-icons text-leather/10 text-3xl">image</span>
+                                        )}
+                                        {uploadingImage && <div className="absolute inset-0 bg-white/80 flex items-center justify-center"><div className="w-5 h-5 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin"/></div>}
+                                    </div>
+                                    <label className="flex-1 bg-white border border-[#1A1108]/10 rounded-xl py-4 px-6 text-xs font-bold text-leather cursor-pointer text-center hover:bg-neutral-50 transition-colors">
+                                        {partnerFormData.logo_url ? 'Alterar Logo' : 'Anexar Logo'}
+                                        <input type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (!file) return;
+                                            setUploadingImage(true);
+                                            try {
+                                                const ext = file.name.split('.').pop() || 'jpg';
+                                                const fileName = `partners/${Date.now()}.${ext}`;
+                                                const { error } = await supabase.storage.from('vaquejadas').upload(fileName, file);
+                                                if (error) throw error;
+                                                const { data } = supabase.storage.from('vaquejadas').getPublicUrl(fileName);
+                                                setPartnerFormData(prev => ({ ...prev, logo_url: data.publicUrl }));
+                                            } catch (err: any) {
+                                                alert("Erro no upload: " + err.message);
+                                            } finally {
+                                                setUploadingImage(false);
+                                            }
+                                        }} />
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-black tracking-widest uppercase text-leather/60 ml-2">Nome da Empresa</label>
+                                <input type="text" placeholder="Ex: Haras PFF" value={partnerFormData.nome_empresa} onChange={e => setPartnerFormData({...partnerFormData, nome_empresa: e.target.value})} className="w-full bg-white px-5 py-4 rounded-xl border border-[#1A1108]/10 text-sm font-bold text-leather" />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-black tracking-widest uppercase text-leather/60 ml-2">Link Externo (URL / WhatsApp / Insta)</label>
+                                <input type="text" placeholder="https://... ou 55819..." value={partnerFormData.link_url} onChange={e => setPartnerFormData({...partnerFormData, link_url: e.target.value})} className="w-full bg-white px-5 py-4 rounded-xl border border-[#1A1108]/10 text-sm font-bold text-leather" />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[9px] font-black tracking-widest uppercase text-leather/60 ml-2">Tipo</label>
+                                    <select value={partnerFormData.tipo} onChange={e => setPartnerFormData({...partnerFormData, tipo: e.target.value})} className="w-full bg-white px-4 py-4 rounded-xl border border-[#1A1108]/10 text-xs font-bold text-leather outline-none">
+                                        <option value="patrocinador">Patrocinador (+20% logo)</option>
+                                        <option value="parceiro">Parceiro (Padrão)</option>
+                                        <option value="apoiador">Apoiador (Menor)</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[9px] font-black tracking-widest uppercase text-leather/60 ml-2">Ordem</label>
+                                    <input type="number" value={partnerFormData.ordem} onChange={e => setPartnerFormData({...partnerFormData, ordem: parseInt(e.target.value)})} className="w-full bg-white px-4 py-4 rounded-xl border border-[#1A1108]/10 text-xs font-bold text-leather" />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <button onClick={() => setPartnerFormData({...partnerFormData, destaque: !partnerFormData.destaque})} className={`py-4 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 border transition-all ${partnerFormData.destaque ? 'bg-[#D4AF37]/10 border-[#D4AF37] text-[#D4AF37]' : 'bg-white border-[#1A1108]/10 text-leather/40'}`}>
+                                    <span className="material-icons text-sm">{partnerFormData.destaque ? 'star' : 'star_outline'}</span>
+                                    Destaque
+                                </button>
+                                <button onClick={() => setPartnerFormData({...partnerFormData, ativo: !partnerFormData.ativo})} className={`py-4 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 border transition-all ${partnerFormData.ativo ? 'bg-green-50/10 border-green-500 text-green-600' : 'bg-white border-[#1A1108]/10 text-leather/40'}`}>
+                                    <span className="material-icons text-sm">{partnerFormData.ativo ? 'check_circle' : 'pause_circle'}</span>
+                                    {partnerFormData.ativo ? 'Ativo' : 'Pausado'}
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[9px] font-black tracking-widest uppercase text-leather/60 ml-2">Data Início</label>
+                                    <input type="date" value={partnerFormData.data_inicio} onChange={e => setPartnerFormData({...partnerFormData, data_inicio: e.target.value})} className="w-full bg-white px-4 py-4 rounded-xl border border-[#1A1108]/10 text-xs font-bold text-leather" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[9px] font-black tracking-widest uppercase text-leather/60 ml-2">Data Fim (Opcional)</label>
+                                    <input type="date" value={partnerFormData.data_fim} onChange={e => setPartnerFormData({...partnerFormData, data_fim: e.target.value})} className="w-full bg-white px-4 py-4 rounded-xl border border-[#1A1108]/10 text-xs font-bold text-leather" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#F8F5F2] via-[#F8F5F2] to-transparent pt-12">
+                            <button disabled={saving || uploadingImage} onClick={handleSavePartner} className="w-full bg-[#1A1108] text-white font-black py-4 rounded-xl uppercase tracking-widest shadow-xl disabled:opacity-50 flex items-center justify-center gap-2">
+                                {saving ? <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"/> : <span className="material-icons">{editId ? 'save' : 'add_circle'}</span>}
+                                {saving ? 'Salvando...' : (editId ? 'Salvar Alterações' : 'Adicionar Parceiro')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             
             {/* Modal de Detalhes da Autoria/Criação */}
             {detailsAd && (
