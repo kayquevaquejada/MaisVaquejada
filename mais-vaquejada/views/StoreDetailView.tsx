@@ -15,6 +15,7 @@ const StoreDetailView: React.FC<StoreDetailViewProps> = ({ store, user, onBack }
     const [activeCategory, setActiveCategory] = useState('all');
     const [isFollowed, setIsFollowed] = useState(false);
     const [showAddProduct, setShowAddProduct] = useState(false);
+    const [showEditStore, setShowEditStore] = useState(false);
 
     useEffect(() => {
         if (store?.id) {
@@ -39,6 +40,33 @@ const StoreDetailView: React.FC<StoreDetailViewProps> = ({ store, user, onBack }
             console.error('Error fetching store products:', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const toggleProductVisibility = async (product: any) => {
+        try {
+            const { error } = await supabase
+                .from('produtos_loja')
+                .update({ ativo: !product.ativo })
+                .eq('id', product.id);
+            if (error) throw error;
+            fetchProducts();
+        } catch (err) {
+            console.error('Error toggling product visibility:', err);
+        }
+    };
+
+    const deleteProduct = async (id: string) => {
+        if (!confirm('Deseja excluir este produto permanentemente?')) return;
+        try {
+            const { error } = await supabase
+                .from('produtos_loja')
+                .delete()
+                .eq('id', id);
+            if (error) throw error;
+            fetchProducts();
+        } catch (err) {
+            console.error('Error deleting product:', err);
         }
     };
 
@@ -98,6 +126,16 @@ const StoreDetailView: React.FC<StoreDetailViewProps> = ({ store, user, onBack }
                     >
                         <span className="material-icons">arrow_back</span>
                     </button>
+
+                    {/* Botão Configurações da Loja (Apenas Dono) */}
+                    {user?.id === store.user_id && (
+                        <button 
+                            onClick={() => setShowEditStore(true)}
+                            className="absolute top-12 right-6 w-10 h-10 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center text-white z-20 active:scale-90"
+                        >
+                            <span className="material-icons">settings</span>
+                        </button>
+                    )}
                 </div>
 
                 {/* Identidade da Loja (Overlay) */}
@@ -197,14 +235,29 @@ const StoreDetailView: React.FC<StoreDetailViewProps> = ({ store, user, onBack }
                                                     </div>
                                                 )}
                                             </div>
-                                            <div className="p-3 flex-1 flex flex-col justify-between">
-                                                <div>
-                                                    <p className="text-[10px] font-black text-[#1A1108] uppercase tracking-tight line-clamp-1 mb-1">{product.nome}</p>
-                                                    <p className="text-xs font-black text-[#D4AF37] italic">{product.preco || 'Sob Consulta'}</p>
-                                                </div>
-                                                <div className="mt-2 flex items-center gap-1 opacity-40">
-                                                    <span className="material-icons text-[10px]">category</span>
-                                                    <span className="text-[8px] font-bold uppercase">{product.categoria}</span>
+                                                <div className="mt-2 flex items-center justify-between">
+                                                    <div className="flex items-center gap-1 opacity-40">
+                                                        <span className="material-icons text-[10px]">category</span>
+                                                        <span className="text-[8px] font-bold uppercase">{product.categoria}</span>
+                                                    </div>
+                                                    
+                                                    {/* Ações do Dono no Produto */}
+                                                    {user?.id === store.user_id && (
+                                                        <div className="flex gap-2">
+                                                            <button 
+                                                                onClick={(e) => { e.stopPropagation(); toggleProductVisibility(product); }}
+                                                                className={`w-6 h-6 rounded-full flex items-center justify-center ${product.ativo ? 'text-blue-500' : 'text-gray-400'}`}
+                                                            >
+                                                                <span className="material-icons text-sm">{product.ativo ? 'visibility' : 'visibility_off'}</span>
+                                                            </button>
+                                                            <button 
+                                                                onClick={(e) => { e.stopPropagation(); deleteProduct(product.id); }}
+                                                                className="w-6 h-6 rounded-full flex items-center justify-center text-red-500"
+                                                            >
+                                                                <span className="material-icons text-sm">delete</span>
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -306,6 +359,126 @@ const StoreDetailView: React.FC<StoreDetailViewProps> = ({ store, user, onBack }
                     }}
                 />
             )}
+
+            {/* Modal de Configurações da Loja */}
+            {showEditStore && (
+                <EditStoreModal 
+                    store={store} 
+                    onClose={() => setShowEditStore(false)} 
+                    onSuccess={() => {
+                        setShowEditStore(false);
+                        window.location.reload(); // Simplest way to refresh store data in this context
+                    }}
+                />
+            )}
+        </div>
+    );
+};
+
+// Componente Interno para Editar Loja
+const EditStoreModal: React.FC<{ store: any, onClose: () => void, onSuccess: () => void }> = ({ store, onClose, onSuccess }) => {
+    const [loading, setLoading] = useState(false);
+    const [formData, setFormData] = useState({
+        nome: store.nome || '',
+        cidade: store.cidade || '',
+        logo_url: store.logo_url || '',
+        banner_url: store.banner_url || '',
+        descricao: store.descricao || '',
+        whatsapp: store.whatsapp || '',
+        instagram: store.instagram || '',
+        ativo: store.ativo ?? true
+    });
+
+    const handleSave = async () => {
+        setLoading(true);
+        try {
+            const { error } = await supabase
+                .from('lojas')
+                .update(formData)
+                .eq('id', store.id);
+            if (error) throw error;
+            onSuccess();
+        } catch (err: any) {
+            alert('Erro ao salvar: ' + err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!confirm('ATENÇÃO: Isso excluirá sua loja e todos os produtos permanentemente. Tem certeza?')) return;
+        setLoading(true);
+        try {
+            const { error } = await supabase.from('lojas').delete().eq('id', store.id);
+            if (error) throw error;
+            window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'MERCADO' } }));
+        } catch (err: any) {
+            alert('Erro ao excluir: ' + err.message);
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-md flex items-end md:items-center justify-center p-0 md:p-6 animate-in fade-in duration-300">
+            <div className="bg-white w-full max-w-lg rounded-t-[40px] md:rounded-[40px] p-8 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-center">
+                    <h2 className="text-xl font-black uppercase italic text-[#1A1108]">Configurações da Loja</h2>
+                    <button onClick={onClose} className="w-10 h-10 rounded-full bg-[#1A1108]/5 flex items-center justify-center">
+                        <span className="material-icons">close</span>
+                    </button>
+                </div>
+
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Nome da Loja</label>
+                        <input value={formData.nome} onChange={e => setFormData({...formData, nome: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold" />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Logo (URL)</label>
+                            <input value={formData.logo_url} onChange={e => setFormData({...formData, logo_url: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold" placeholder="Circular" />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Capa/Banner (URL)</label>
+                            <input value={formData.banner_url} onChange={e => setFormData({...formData, banner_url: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold" placeholder="Recomendado: 1200x400px" />
+                            <p className="text-[8px] text-[#D4AF37] font-bold mt-1 uppercase">Ideal: 1200x400px para melhor encaixe</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">WhatsApp</label>
+                            <input value={formData.whatsapp} onChange={e => setFormData({...formData, whatsapp: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold" />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Cidade/UF</label>
+                            <input value={formData.cidade} onChange={e => setFormData({...formData, cidade: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold" />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Descrição</label>
+                        <textarea value={formData.descricao} onChange={e => setFormData({...formData, descricao: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-medium" rows={3} />
+                    </div>
+
+                    <div className="flex items-center justify-between bg-neutral-50 p-4 rounded-2xl">
+                        <div className="flex items-center gap-3">
+                            <input type="checkbox" checked={formData.ativo} onChange={e => setFormData({...formData, ativo: e.target.checked})} className="w-5 h-5 accent-[#D4AF37]" />
+                            <span className="text-xs font-bold uppercase text-[#1A1108]">Loja Ativa (Visível)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex flex-col gap-3 pt-4">
+                    <button onClick={handleSave} disabled={loading} className="w-full h-16 bg-[#1A1108] text-white rounded-2xl font-black uppercase tracking-widest shadow-xl active:scale-95 disabled:opacity-50">
+                        {loading ? 'Salvando...' : 'Salvar Alterações'}
+                    </button>
+                    <button onClick={handleDelete} disabled={loading} className="w-full py-4 text-red-500 font-black uppercase text-[10px] tracking-widest active:scale-95">
+                        Excluir Loja Permanentemente
+                    </button>
+                </div>
+            </div>
         </div>
     );
 };
