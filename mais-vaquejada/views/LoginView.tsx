@@ -194,8 +194,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
           </div>
         </div>
 
-        {/* Módulo Premium de Parceiros */}
-        <LoginPremiumPartners />
+        {/* Módulo Premium de Parceiros removido temporariamente para testes */}
       </div>
     </div>
   );
