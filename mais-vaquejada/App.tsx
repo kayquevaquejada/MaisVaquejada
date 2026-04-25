@@ -32,6 +32,7 @@ import LegalConsentView from './views/LegalConsentView';
 import { TERMS_VERSION, PRIVACY_VERSION } from './lib/constants';
 import { PushOnboardingModal } from './components/PushOnboardingModal';
 import StoreDetailView from './views/StoreDetailView';
+import ResultDetailView from './views/ResultDetailView';
 
 const MASTER_EMAILS = ["kayquegusmao@icloud.com", "kayquegusmao276@gmail.com", "Kayquegusmao1@gmail.com", "maisvaquejada1@gmail.com", "contato@maisvaquejada.com.br"];
 
@@ -40,6 +41,7 @@ interface ViewRendererProps {
   currentView: View;
   selectedEvent: any;
   selectedStore: any;
+  selectedResultId: string | null;
   user: User | null;
   profileUsername: string | null;
   onFetchProfile: (userId: string, authUser?: any) => Promise<void>;
@@ -51,6 +53,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
   currentView,
   selectedEvent,
   selectedStore,
+  selectedResultId,
   user,
   profileUsername,
   onFetchProfile,
@@ -100,6 +103,8 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
       return <LegalConsentView user={user} onAccept={() => onFetchProfile(user?.id || '')} />;
     case View.STORE_DETAILS:
       return <StoreDetailView store={selectedStore} user={user} onBack={() => onSetCurrentView(View.MERCADO)} />;
+    case View.RESULT_DETAIL:
+      return <ResultDetailView resultId={selectedResultId || ''} onBack={() => onSetCurrentView(selectedEvent ? View.EVENT_DETAILS : View.NEWS)} />;
     default:
       if (!user || !user.profile_completed) return <LoginView onLogin={(u) => onFetchProfile(u.id, u)} onSignUp={() => onSetCurrentView(View.SIGNUP)} onForgotPassword={() => onSetCurrentView(View.FORGOT_PASSWORD)} onRecoveryAssisted={() => onSetCurrentView(View.RECOVERY_ASSISTED)} onTerms={() => onSetCurrentView(View.TERMS)} />;
       return <EventsView />;
@@ -112,6 +117,7 @@ const App: React.FC = () => {
   const [profileUsername, setProfileUsername] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [selectedStore, setSelectedStore] = useState<any>(null);
+  const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [initializing, setInitializing] = useState(true);
   const isFetchingProfile = useRef(false);
@@ -375,6 +381,7 @@ const App: React.FC = () => {
       const view = e.detail?.view || currentView;
       const username = e.detail?.username ?? null;
       const eventData = e.detail?.event ?? null;
+      const resultId = e.detail?.resultId ?? null;
 
       if (!user && ![View.LOGIN, View.SIGNUP, View.FORGOT_PASSWORD, View.RECOVERY_ASSISTED, View.TERMS].includes(view)) {
         setCurrentView(View.LOGIN);
@@ -392,6 +399,7 @@ const App: React.FC = () => {
       if (username !== undefined) setProfileUsername(username);
       if (eventData !== undefined) setSelectedEvent(eventData);
       if (e.detail?.store !== undefined) setSelectedStore(e.detail.store);
+      if (resultId !== undefined) setSelectedResultId(resultId);
 
       // Persistir última view para restauração no próximo boot
       if (user && ![View.LOGIN, View.SIGNUP, View.COMPLETE_PROFILE, View.LEGAL_CONSENT].includes(view)) {
@@ -474,6 +482,7 @@ const App: React.FC = () => {
               currentView={currentView}
               selectedEvent={selectedEvent}
               selectedStore={selectedStore}
+              selectedResultId={selectedResultId}
               user={user}
               profileUsername={profileUsername}
               onFetchProfile={fetchProfile}

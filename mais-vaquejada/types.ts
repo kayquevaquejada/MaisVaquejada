@@ -19,7 +19,56 @@ export enum View {
   TERMS = 'TERMS',
   EVENT_DETAILS = 'EVENT_DETAILS',
   LEGAL_CONSENT = 'LEGAL_CONSENT',
-  STORE_DETAILS = 'STORE_DETAILS'
+  STORE_DETAILS = 'STORE_DETAILS',
+  RESULT_DETAIL = 'RESULT_DETAIL'
+}
+
+export type ResultStatus = 'rascunho' | 'publicado' | 'arquivado';
+
+export interface ResultItem {
+  id: string;
+  evento_id: string;
+  titulo: string;
+  descricao?: string;
+  capa_url?: string;
+  status: ResultStatus;
+  parque_id?: string;
+  circuito_id?: string;
+  usuario_id?: string;
+  publicado_em?: string;
+  created_at?: string;
+  updated_at?: string;
+  // Campos para UI
+  event_title?: string;
+  event_park?: string;
+  event_location?: string;
+}
+
+export interface ResultCategory {
+  id: string;
+  resultado_id: string;
+  nome_categoria: string;
+  ordem: number;
+}
+
+export interface ResultLine {
+  id: string;
+  resultado_id: string;
+  categoria_id: string;
+  etapa?: string;
+  colocacao?: string;
+  nome_competidor?: string;
+  nome_equipe?: string;
+  vaqueiro_1?: string;
+  vaqueiro_2?: string;
+  cavalo?: string;
+  cidade?: string;
+  tempo?: string;
+  pontos?: string;
+  premiacao?: string;
+  observacao?: string;
+  usuario_vinculado_id?: string;
+  ordem: number;
 }
 
 export type UserType = 'common' | 'seller' | 'organizer' | 'admin';
@@ -170,17 +219,29 @@ export interface EventItem {
     month: string;
     day: string;
   };
-  imageUrl: string;
-  images?: string[]; // Novos banners/fotos anexadas
+  imageUrl: string; // Legacy
+  image_url?: string; // New
+  images?: string[]; // Legacy
+  galeria_urls?: string[]; // New
   site?: string;
   instagram?: string;
   phone?: string;
+  whatsapp?: string;
   prizes?: string;
   description?: string;
-  isHighlight?: boolean;
-  isPaused?: boolean;
-  lat?: number;
-  lng?: number;
+  isHighlight?: boolean; // Legacy
+  is_highlight?: boolean; // New
+  isPaused?: boolean; // Legacy
+  is_paused?: boolean; // New
+  latitude?: number;
+  longitude?: number;
+  endereco?: string;
+  status?: 'em_breve' | 'confirmado' | 'acontecendo' | 'encerrado';
+  valor_inscricao?: string;
+  valor_ingresso?: string;
+  horario_inicio?: string;
+  horario_fim?: string;
+  organizador_id?: string;
   circuitoId?: string | null;
 }
 

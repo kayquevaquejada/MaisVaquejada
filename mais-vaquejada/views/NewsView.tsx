@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import SponsorMarquee from '../components/SponsorMarquee';
 import AdsCarousel from '../components/AdsCarousel';
 
-const TABS = ['TUDO', 'EVENTOS', 'REGULAMENTO', 'NOTÍCIAS'];
+const TABS = ['TUDO', 'EVENTOS', 'RESULTADOS', 'NOTÍCIAS'];
 
 interface NewsViewProps {
     user?: User | null;
@@ -28,6 +28,7 @@ function extractYouTubeId(url: string): string | null {
 
 const NewsView: React.FC<NewsViewProps> = ({ user }) => {
   const [localNews, setLocalNews] = React.useState<any[]>([]);
+  const [results, setResults] = React.useState<any[]>([]);
   const [activeTab, setActiveTab] = React.useState('NOTÍCIAS');
   const [selectedNews, setSelectedNews] = React.useState<any | null>(null);
   const [transmissions, setTransmissions] = React.useState<any[]>([]);
@@ -64,7 +65,16 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
         .order('created_at', { ascending: false });
       if (data) setLocalNews(data);
     };
+    const fetchResults = async () => {
+      const { data } = await supabase
+        .from('resultados')
+        .select('*, events(title, park, location)')
+        .eq('status', 'publicado')
+        .order('publicado_em', { ascending: false });
+      if (data) setResults(data);
+    };
     fetchNews();
+    fetchResults();
   }, []);
 
   const filteredNews = React.useMemo(() => {
@@ -87,6 +97,8 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
           !n.title?.toUpperCase().includes('REGULAMENTO') &&
           n.tag?.toUpperCase() !== 'PROGRAMAÇÃO'
         );
+      case 'RESULTADOS':
+        return [];
       default:
         return news;
     }
@@ -323,10 +335,54 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
           <p className="text-white/40 text-sm">O seu canal oficial de informações</p>
         </div>
 
-        {filteredNews.length === 0 ? (
-          <div className="text-center text-white/40 py-10 border border-white/10 border-dashed rounded-2xl">
-            <span className="material-icons text-4xl mb-2 opacity-50">article</span>
-            <p className="text-sm font-bold uppercase tracking-widest">Nenhuma notícia encontrada.</p>
+        {activeTab === 'RESULTADOS' ? (
+          results.length === 0 ? (
+            <div className="text-center text-white/40 py-20 border border-white/10 border-dashed rounded-[32px]">
+              <span className="material-icons text-5xl mb-3 opacity-20">emoji_events</span>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em]">Nenhum resultado oficial disponível</p>
+            </div>
+          ) : (
+            results.map((res) => (
+              <div 
+                key={res.id} 
+                onClick={() => window.dispatchEvent(new CustomEvent('arena_navigate', { 
+                  detail: { view: View.RESULT_DETAIL, resultId: res.id } 
+                }))}
+                className="bg-[#1A1108] rounded-[32px] overflow-hidden shadow-2xl border border-[#D4AF37]/10 group active:scale-[0.98] transition-all p-8 relative"
+              >
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37]/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
+                
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="bg-[#D4AF37] text-black text-[9px] font-black px-2.5 py-1 rounded-lg uppercase tracking-tight shadow-lg shadow-[#D4AF37]/10">Oficial</div>
+                  <div className="h-1 w-1 rounded-full bg-white/20" />
+                  <span className="text-white/40 text-[10px] font-black uppercase tracking-widest">Publicado em {new Date(res.publicado_em || res.created_at).toLocaleDateString('pt-BR')}</span>
+                </div>
+
+                <h3 className="text-3xl font-black text-white mb-3 uppercase leading-[1.1] italic tracking-tighter group-hover:text-[#D4AF37] transition-colors">{res.titulo}</h3>
+                
+                <div className="flex items-center gap-2 mb-8">
+                   <span className="material-icons text-[#D4AF37] text-sm">place</span>
+                   <p className="text-white/60 text-[11px] font-bold uppercase tracking-wide">{res.events?.park} • {res.events?.location}</p>
+                </div>
+
+                <div className="flex items-center justify-between border-t border-white/5 pt-6">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
+                      <span className="material-icons text-white/40 text-sm">analytics</span>
+                    </div>
+                    <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.15em]">Ver Classificações</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-[#D4AF37]/10 flex items-center justify-center group-hover:bg-[#D4AF37] group-hover:text-black transition-all text-[#D4AF37]">
+                    <span className="material-icons text-xl">chevron_right</span>
+                  </div>
+                </div>
+              </div>
+            ))
+          )
+        ) : filteredNews.length === 0 ? (
+          <div className="text-center text-white/40 py-20 border border-white/10 border-dashed rounded-[32px]">
+            <span className="material-icons text-5xl mb-3 opacity-20">article</span>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em]">Nenhuma notícia encontrada</p>
           </div>
         ) : (
           filteredNews.map((item) => (

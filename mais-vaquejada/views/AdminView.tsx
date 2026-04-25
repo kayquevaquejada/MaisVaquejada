@@ -26,7 +26,7 @@ interface AdminViewProps {
     user: any;
 }
 
-type AdminTab = 'MAIN' | 'USERS' | 'MERCADO' | 'SOCIAL' | 'EVENTOS' | 'NOTICIAS' | 'ADS' | 'MASTER';
+type AdminTab = 'MAIN' | 'USERS' | 'MERCADO' | 'SOCIAL' | 'EVENTOS' | 'NOTICIAS' | 'RESULTADOS' | 'ADS' | 'MASTER';
 
 
 const AdminView: React.FC<AdminViewProps> = ({ user }) => {
@@ -50,6 +50,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
     const [subviewNews, setSubviewNews] = useState<'HOME'|'CREATE'|'LIST'|'TV'>(() => (localStorage.getItem('arena_admin_sub_news') as any) || 'HOME');
     const [subviewMercado, setSubviewMercado] = useState<'HOME'|'LIST'|'STORES'>(() => (localStorage.getItem('arena_admin_sub_mercado') as any) || 'HOME');
     const [subviewSocial, setSubviewSocial] = useState<'HOME'|'LIST'>(() => (localStorage.getItem('arena_admin_sub_social') as any) || 'HOME');
+    const [subviewResults, setSubviewResults] = useState<'HOME'|'CREATE'|'LIST'>(() => (localStorage.getItem('arena_admin_sub_results') as any) || 'HOME');
 
     useEffect(() => {
         localStorage.setItem('arena_admin_active_tab', activeTab);
@@ -57,7 +58,8 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         localStorage.setItem('arena_admin_sub_news', subviewNews);
         localStorage.setItem('arena_admin_sub_mercado', subviewMercado);
         localStorage.setItem('arena_admin_sub_social', subviewSocial);
-    }, [activeTab, subviewEvents, subviewNews, subviewMercado, subviewSocial]);
+        localStorage.setItem('arena_admin_sub_results', subviewResults);
+    }, [activeTab, subviewEvents, subviewNews, subviewMercado, subviewSocial, subviewResults]);
 
     const [eventsList, setEventsList] = useState<any[]>([]);
     const [newsList, setNewsList] = useState<any[]>([]);
@@ -66,11 +68,15 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
     const [storesList, setStoresList] = useState<any[]>([]);
     const [postsList, setPostsList] = useState<any[]>([]);
     const [bannersList, setBannersList] = useState<any[]>([]);
+    const [resultsList, setResultsList] = useState<any[]>([]);
+    const [resultCategories, setResultCategories] = useState<any[]>([]);
+    const [resultLines, setResultLines] = useState<any[]>([]);
 
     const [eventForm, setEventForm] = useState<any>({});
     const [newsForm, setNewsForm] = useState<any>({ type: 'info' });
     const [transmissionForm, setTransmissionForm] = useState<any>({});
     const [bannerForm, setBannerForm] = useState<any>({});
+    const [resultForm, setResultForm] = useState<any>({ status: 'rascunho' });
     
     // Auto-save form data to prevent loss on multitasking
     const [storeForm, setStoreForm] = useState<any>(() => {
@@ -209,7 +215,10 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
              fetchPosts();
              fetchBanners();
         }
-    }, [isMaster, hasEventos, subviewEvents, hasNoticias, subviewNews, hasMercado, subviewMercado, hasSocial, subviewSocial, user?.role]);
+        if (activeTab === 'RESULTADOS') {
+            fetchResults();
+        }
+    }, [isMaster, hasEventos, subviewEvents, hasNoticias, subviewNews, hasMercado, subviewMercado, hasSocial, subviewSocial, activeTab, subviewResults, user?.role]);
 
     const fetchTotalUsers = async () => {
         const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
@@ -292,6 +301,43 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         }
     };
 
+    const fetchResults = async () => {
+        setLoading(true);
+        try {
+            const { data } = await supabase
+                .from('resultados')
+                .select('*, events(title, park, location)')
+                .order('created_at', { ascending: false });
+            if (data) {
+                const mapped = data.map((r: any) => ({
+                    ...r,
+                    event_title: r.events?.title,
+                    event_park: r.events?.park,
+                    event_location: r.events?.location
+                }));
+                setResultsList(mapped);
+            }
+        } catch (err) {
+            console.error("Error fetching results:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchResultDetails = async (resultId: string) => {
+        setLoading(true);
+        try {
+            const { data: cats } = await supabase.from('resultado_categorias').select('*').eq('resultado_id', resultId).order('ordem', { ascending: true });
+            const { data: lines } = await supabase.from('resultado_linhas').select('*').eq('resultado_id', resultId).order('ordem', { ascending: true });
+            setResultCategories(cats || []);
+            setResultLines(lines || []);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, index: number | 'cover') => {
         const file = e.target.files?.[0];
@@ -329,10 +375,10 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                 setEventForm((prev: any) => ({ ...prev, image_url: publicUrl }));
             } else {
                 setEventForm((prev: any) => {
-                    const currentGallery = Array.isArray(prev.gallery) ? [...prev.gallery] : [];
+                    const currentGallery = Array.isArray(prev.galeria_urls) ? [...prev.galeria_urls] : [];
                     const newGallery = [...currentGallery];
                     newGallery[index as number] = publicUrl;
-                    return { ...prev, gallery: newGallery };
+                    return { ...prev, galeria_urls: newGallery };
                 });
             }
         } catch (error: any) {
@@ -349,8 +395,8 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         setLoading(true);
         try {
             // Clean empty strings from gallery before saving
-            const cleanGallery = (eventForm.gallery || []).filter((url: string) => url && url.trim() !== '');
-            const payload = { ...eventForm, gallery: cleanGallery, created_by: user.id };
+            const cleanGallery = (eventForm.galeria_urls || []).filter((url: string) => url && url.trim() !== '');
+            const payload = { ...eventForm, galeria_urls: cleanGallery, created_by: user.id };
             let error;
             if (eventForm.id) {
                  ({ error } = await supabase.from('events').update(payload).eq('id', eventForm.id));
@@ -361,6 +407,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
             alert(eventForm.id ? 'Evento atualizado!' : 'Vaquejada criada com sucesso!');
             setSubviewEvents('HOME');
             setEventForm({});
+            fetchEvents();
         } catch (err: any) { alert(err.message); }
         finally { setLoading(false); }
     };
@@ -370,6 +417,20 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         const { error } = await supabase.from('events').update({ is_paused: !current }).eq('id', e_id);
         if (!error) fetchEvents();
         else { alert('Erro: ' + error.message); setLoading(false); }
+    };
+
+    const deleteEvent = async (id: string) => {
+        if (!confirm('Excluir esta vaquejada permanentemente?')) return;
+        setLoading(true);
+        try {
+            const { error } = await supabase.from('events').delete().eq('id', id);
+            if (error) throw error;
+            fetchEvents();
+        } catch (err: any) {
+            alert('Erro ao excluir: ' + err.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleNewsFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'pdf') => {
@@ -596,6 +657,72 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
             alert('Propaganda salva!');
         } catch (err: any) { alert(err.message); }
         finally { setLoading(false); }
+    };
+
+    const handleSaveResult = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!resultForm.evento_id) {
+            alert('Selecione um evento!');
+            return;
+        }
+        setLoading(true);
+        try {
+            const { event_title, event_park, event_location, ...cleanForm } = resultForm;
+            const payload = {
+                ...cleanForm,
+                usuario_id: user.id,
+                publicado_em: resultForm.status === 'publicado' ? new Date().toISOString() : resultForm.publicado_em
+            };
+            
+            let resId = resultForm.id;
+            if (resId) {
+                const { error } = await supabase.from('resultados').update(payload).eq('id', resId);
+                if (error) throw error;
+            } else {
+                const { data, error } = await supabase.from('resultados').insert([payload]).select().single();
+                if (error) throw error;
+                resId = data.id;
+            }
+
+            // Sync categories and lines
+            await supabase.from('resultado_categorias').delete().eq('resultado_id', resId);
+            // Lines are deleted automatically via CASCADE in DB if possible, but let's be explicit
+            await supabase.from('resultado_linhas').delete().eq('resultado_id', resId);
+
+            if (resultCategories.length > 0) {
+                const catsToInsert = resultCategories.map((c, idx) => ({ 
+                    resultado_id: resId, 
+                    nome_categoria: c.nome_categoria,
+                    ordem: idx 
+                }));
+                const { data: newCats, error: catErr } = await supabase.from('resultado_categorias').insert(catsToInsert).select();
+                if (catErr) throw catErr;
+
+                if (resultLines.length > 0 && newCats) {
+                    const linesToInsert = resultLines.map((l, idx) => {
+                        const oldCat = resultCategories.find(c => c.id === l.categoria_id);
+                        const newCat = newCats.find(nc => nc.nome_categoria === oldCat?.nome_categoria);
+                        const { id, ...lineData } = l;
+                        return { 
+                            ...lineData, 
+                            resultado_id: resId, 
+                            categoria_id: newCat?.id || l.categoria_id,
+                            ordem: idx 
+                        };
+                    });
+                    const { error: lineErr } = await supabase.from('resultado_linhas').insert(linesToInsert);
+                    if (lineErr) throw lineErr;
+                }
+            }
+
+            alert('✅ Resultado salvo com sucesso!');
+            setSubviewResults('HOME');
+            fetchResults();
+        } catch (err: any) {
+            alert('Erro ao salvar resultado: ' + err.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const deleteBanner = async (id: string) => {
@@ -1324,79 +1451,170 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
 
     const renderEventosView = () => {
         if (subviewEvents === 'CREATE') {
+            const handleGetGPS = () => {
+                if (!navigator.geolocation) {
+                    alert("Geolocalização não é suportada por este navegador.");
+                    return;
+                }
+                setLoading(true);
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        setEventForm({
+                            ...eventForm,
+                            latitude: pos.coords.latitude,
+                            longitude: pos.coords.longitude
+                        });
+                        setLoading(false);
+                        alert("Coordenadas obtidas com sucesso!");
+                    },
+                    (err) => {
+                        setLoading(false);
+                        alert("Erro ao obter GPS: " + err.message);
+                    }
+                );
+            };
+
             return (
                 <div className="absolute inset-0 bg-[#F8F5F2] flex flex-col z-[120]">
                     <header className="px-6 py-6 border-b border-[#1A1108]/5 flex items-center gap-4 bg-[#F8F5F2] sticky top-0 z-10 w-full">
                         <button onClick={() => setSubviewEvents('HOME')} className="material-icons text-leather active:scale-90 transition-transform">arrow_back</button>
                         <h2 className="text-xl font-black uppercase italic tracking-tight text-leather">{eventForm.id ? "Editar Vaquejada" : "Nova Vaquejada"}</h2>
                     </header>
-                    <div className="flex-1 overflow-y-auto p-6">
-                        <form onSubmit={handleSaveEvent} className="space-y-4">
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black text-leather/40 uppercase tracking-widest ml-1">Informações Básicas</label>
-                                <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Nome da Vaquejada" required value={eventForm.title || ''} onChange={(e)=>setEventForm({...eventForm, title: e.target.value})} />
-                            </div>
+                    <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                        <form onSubmit={handleSaveEvent} className="space-y-6">
                             
-                            <div className="grid grid-cols-2 gap-3">
-                                <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Parque" value={eventForm.park || ''} onChange={(e)=>setEventForm({...eventForm, park: e.target.value})} />
-                                <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Cidade / UF" value={eventForm.location || ''} onChange={(e)=>setEventForm({...eventForm, location: e.target.value})} />
+                            {/* Sessão 1: Básico */}
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black text-leather/40 uppercase tracking-widest ml-1">Informações Básicas</label>
+                                <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather font-bold focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Nome da Vaquejada" required value={eventForm.title || ''} onChange={(e)=>setEventForm({...eventForm, title: e.target.value})} />
+                                
+                                <div className="grid grid-cols-2 gap-3">
+                                    <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather font-bold focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Parque" value={eventForm.park || ''} onChange={(e)=>setEventForm({...eventForm, park: e.target.value})} />
+                                    <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather font-bold focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Cidade / UF" value={eventForm.location || ''} onChange={(e)=>setEventForm({...eventForm, location: e.target.value})} />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather font-bold focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Mês (ex: Set)" value={eventForm.date_month || ''} onChange={(e)=>setEventForm({...eventForm, date_month: e.target.value})} />
+                                    <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather font-bold focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Dia (ex: 15..17)" value={eventForm.date_day || ''} onChange={(e)=>setEventForm({...eventForm, date_day: e.target.value})} />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                        <p className="text-[9px] font-black text-leather/30 uppercase ml-2">Status</p>
+                                        <select 
+                                            className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather font-bold focus:border-[#D4AF37] outline-none shadow-sm appearance-none"
+                                            value={eventForm.status || 'em_breve'}
+                                            onChange={(e) => setEventForm({...eventForm, status: e.target.value})}
+                                        >
+                                            <option value="em_breve">Em Breve</option>
+                                            <option value="confirmado">Confirmado</option>
+                                            <option value="acontecendo">Acontecendo</option>
+                                            <option value="encerrado">Encerrado</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-[9px] font-black text-leather/30 uppercase ml-2">Categoria</p>
+                                        <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather font-bold focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Ex: Profissional" value={eventForm.category || ''} onChange={(e)=>setEventForm({...eventForm, category: e.target.value})} />
+                                    </div>
+                                </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
-                                <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Mês (ex: Set)" value={eventForm.date_month || ''} onChange={(e)=>setEventForm({...eventForm, date_month: e.target.value})} />
-                                <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Dia (ex: 15..17)" value={eventForm.date_day || ''} onChange={(e)=>setEventForm({...eventForm, date_day: e.target.value})} />
+                            {/* Sessão 2: Localização Avançada */}
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black text-leather/40 uppercase tracking-widest ml-1">Geolocalização & Endereço</label>
+                                <textarea className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather font-bold focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Endereço Completo" rows={2} value={eventForm.endereco || ''} onChange={(e)=>setEventForm({...eventForm, endereco: e.target.value})} />
+                                
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="relative">
+                                        <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-[10px] text-leather font-bold outline-none" placeholder="Latitude" value={eventForm.latitude || ''} readOnly />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 material-icons text-[12px] text-leather/20">map</span>
+                                    </div>
+                                    <div className="relative">
+                                        <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-[10px] text-leather font-bold outline-none" placeholder="Longitude" value={eventForm.longitude || ''} readOnly />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 material-icons text-[12px] text-leather/20">map</span>
+                                    </div>
+                                </div>
+                                <button 
+                                    type="button" 
+                                    onClick={handleGetGPS}
+                                    className="w-full h-12 bg-leather/5 border border-leather/10 text-leather rounded-xl font-black uppercase text-[9px] tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all"
+                                >
+                                    <span className="material-icons text-sm">my_location</span>
+                                    Capturar GPS Atual (No Local)
+                                </button>
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-leather/40 uppercase tracking-widest ml-1">Imagem de Capa (Principal)</label>
-                                <div className="relative aspect-video bg-white border-2 border-dashed border-[#1A1108]/10 rounded-2xl overflow-hidden group">
+                            {/* Sessão 3: Valores e Horários */}
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black text-leather/40 uppercase tracking-widest ml-1">Financeiro & Horários</label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather font-bold focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Valor Inscrição" value={eventForm.valor_inscricao || ''} onChange={(e)=>setEventForm({...eventForm, valor_inscricao: e.target.value})} />
+                                    <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather font-bold focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Valor Ingresso" value={eventForm.valor_ingresso || ''} onChange={(e)=>setEventForm({...eventForm, valor_ingresso: e.target.value})} />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                        <p className="text-[8px] font-black text-leather/30 uppercase ml-2">Horário Início</p>
+                                        <input type="time" className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather font-bold focus:border-[#D4AF37] outline-none shadow-sm" value={eventForm.horario_inicio || ''} onChange={(e)=>setEventForm({...eventForm, horario_inicio: e.target.value})} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-[8px] font-black text-leather/30 uppercase ml-2">Horário Fim</p>
+                                        <input type="time" className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather font-bold focus:border-[#D4AF37] outline-none shadow-sm" value={eventForm.horario_fim || ''} onChange={(e)=>setEventForm({...eventForm, horario_fim: e.target.value})} />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Sessão 4: Contato */}
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black text-leather/40 uppercase tracking-widest ml-1">Contatos da Organização</label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="relative">
+                                        <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 pl-10 text-sm text-leather font-bold focus:border-[#D4AF37] outline-none shadow-sm" placeholder="WhatsApp" value={eventForm.whatsapp || ''} onChange={(e)=>setEventForm({...eventForm, whatsapp: e.target.value})} />
+                                        <span className="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-sm text-[#25D366]">chat</span>
+                                    </div>
+                                    <div className="relative">
+                                        <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 pl-10 text-sm text-leather font-bold focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Instagram (@)" value={eventForm.instagram || ''} onChange={(e)=>setEventForm({...eventForm, instagram: e.target.value})} />
+                                        <span className="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-sm text-[#E1306C]">photo_camera</span>
+                                    </div>
+                                </div>
+                                <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather font-bold focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Telefone de Contato" value={eventForm.phone || ''} onChange={(e)=>setEventForm({...eventForm, phone: e.target.value})} />
+                            </div>
+
+                            {/* Imagens */}
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black text-leather/40 uppercase tracking-widest ml-1">Imagens & Banners</label>
+                                <div className="relative aspect-video bg-white border-2 border-dashed border-[#1A1108]/10 rounded-3xl overflow-hidden group">
                                     {eventForm.image_url ? (
                                         <>
                                             <img src={eventForm.image_url} className="w-full h-full object-cover" />
                                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                                                <label className="bg-white text-leather p-2 rounded-full cursor-pointer active:scale-90 transition-transform shadow-lg">
-                                                    <span className="material-icons text-xl">cached</span>
-                                                    <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'cover')} />
-                                                </label>
-                                                <button type="button" onClick={() => setEventForm({...eventForm, image_url: ''})} className="bg-red-500 text-white p-2 rounded-full active:scale-90 transition-transform shadow-lg">
-                                                    <span className="material-icons text-xl">delete</span>
-                                                </button>
+                                                <label className="bg-white text-leather p-3 rounded-full cursor-pointer shadow-xl"><span className="material-icons">cached</span><input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'cover')} /></label>
+                                                <button type="button" onClick={() => setEventForm({...eventForm, image_url: ''})} className="bg-red-500 text-white p-3 rounded-full shadow-xl"><span className="material-icons">delete</span></button>
                                             </div>
                                         </>
                                     ) : (
                                         <label className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-neutral-50 transition-colors">
                                             <span className="material-icons text-4xl text-[#D4AF37] mb-2">add_photo_alternate</span>
-                                            <span className="text-[10px] font-black text-leather/40 uppercase tracking-widest">Toque para Upload</span>
+                                            <span className="text-[10px] font-black text-leather/40 uppercase tracking-widest">Banner Principal</span>
                                             <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'cover')} />
                                         </label>
                                     )}
                                 </div>
-                            </div>
 
-                            <div className="space-y-3">
-                                <label className="text-[10px] font-black text-leather/40 uppercase tracking-widest ml-1 flex justify-between items-center">
-                                    Galeria do Evento
-                                    <span className="text-[8px] opacity-60">Até 4 fotos extras</span>
-                                </label>
                                 <div className="grid grid-cols-4 gap-2">
                                     {[0, 1, 2, 3].map((idx) => {
-                                        const imgUrl = (eventForm.gallery || [])[idx];
+                                        const imgUrl = (eventForm.galeria_urls || [])[idx];
                                         return (
-                                            <div key={idx} className="aspect-square bg-white border border-[#1A1108]/10 rounded-xl overflow-hidden relative group">
+                                            <div key={idx} className="aspect-square bg-white border border-[#1A1108]/10 rounded-2xl overflow-hidden relative group">
                                                 {imgUrl ? (
                                                     <>
                                                         <img src={imgUrl} className="w-full h-full object-cover" />
-                                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                            <button 
-                                                                type="button" 
-                                                                onClick={() => {
-                                                                    const newGal = [...(eventForm.gallery || [])];
-                                                                    newGal[idx] = '';
-                                                                    setEventForm({...eventForm, gallery: newGal});
-                                                                }}
-                                                                className="text-white material-icons text-sm"
-                                                            >delete</button>
-                                                        </div>
+                                                        <button type="button" onClick={() => {
+                                                            const newGal = [...(eventForm.galeria_urls || [])];
+                                                            newGal[idx] = '';
+                                                            setEventForm({...eventForm, galeria_urls: newGal});
+                                                        }} className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                            <span className="material-icons text-white text-sm">delete</span>
+                                                        </button>
                                                     </>
                                                 ) : (
                                                     <label className="absolute inset-0 flex items-center justify-center cursor-pointer hover:bg-neutral-50">
@@ -1410,10 +1628,9 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                                 </div>
                             </div>
 
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black text-leather/40 uppercase tracking-widest ml-1">Detalhes</label>
-                                <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Premiação (ex: R$ 50.000)" value={eventForm.prizes || ''} onChange={(e)=>setEventForm({...eventForm, prizes: e.target.value})} />
-                                <textarea className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Descrição opcional..." rows={4} value={eventForm.description || ''} onChange={(e)=>setEventForm({...eventForm, description: e.target.value})} />
+                            <div className="pt-6 border-t border-[#1A1108]/5">
+                                <h3 className="text-[10px] font-black text-leather/40 uppercase tracking-widest ml-1 mb-4">Descrição Completa</h3>
+                                <textarea className="w-full bg-white border border-[#1A1108]/10 rounded-[32px] p-6 text-sm text-leather font-medium outline-none focus:border-[#D4AF37] shadow-sm" rows={6} placeholder="Conte detalhes sobre a premiação, regras e atrações..." value={eventForm.description || ''} onChange={(e)=>setEventForm({...eventForm, description: e.target.value})} />
                             </div>
 
                             <div className="flex items-center gap-3 bg-white p-4 rounded-xl border border-[#1A1108]/5 shadow-sm">
@@ -1421,13 +1638,10 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                                 <label htmlFor="hl_event" className="text-xs font-black text-leather block cursor-pointer select-none uppercase tracking-tight">Destacar no topo do App</label>
                             </div>
 
-                            <div className="pt-4 pb-10 space-y-3">
-                                <button type="submit" disabled={loading} className="w-full bg-[#D4AF37] text-white p-5 rounded-2xl font-black uppercase text-xs active:scale-95 transition-transform shadow-xl shadow-[#D4AF37]/20 disabled:opacity-50 flex items-center justify-center gap-2">
-                                    {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <span className="material-icons text-sm">save</span>}
-                                    {eventForm.id ? "Atualizar Vaquejada" : "Salvar Vaquejada"}
-                                </button>
-                                <button type="button" onClick={()=>setSubviewEvents('HOME')} className="w-full bg-transparent text-leather/40 p-3 rounded-xl font-black uppercase text-[10px] tracking-widest">Descartar Alterações</button>
-                            </div>
+                            <button type="submit" disabled={loading} className="w-full h-16 bg-[#1A1108] text-white rounded-[24px] font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl active:scale-95 transition-all mt-4">
+                                {loading ? 'Publicando...' : eventForm.id ? 'Salvar Alterações' : 'Publicar Vaquejada'}
+                            </button>
+                            <button type="button" onClick={()=>setSubviewEvents('HOME')} className="w-full bg-transparent text-leather/40 p-3 rounded-xl font-black uppercase text-[10px] tracking-widest">Descartar Alterações</button>
                         </form>
                     </div>
                 </div>
@@ -1437,22 +1651,244 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         if (subviewEvents === 'LIST') {
             return (
                 <div className="absolute inset-0 bg-[#F8F5F2] flex flex-col z-[120]">
-                    <header className="px-6 py-6 border-b border-[#1A1108]/5 flex items-center gap-4 bg-[#F8F5F2] sticky top-0 z-10 w-full">
-                        <button onClick={() => setSubviewEvents('HOME')} className="material-icons text-leather active:scale-90 transition-transform">arrow_back</button>
-                        <h2 className="text-xl font-black uppercase italic tracking-tight text-leather">Lista de Eventos</h2>
+                    <header className="px-6 py-6 border-b border-[#1A1108]/5 flex items-center gap-4 bg-[#F8F5F2] sticky top-0 z-10 w-full shadow-sm">
+                        <button onClick={() => setSubviewEvents('HOME')} className="material-icons text-leather active:scale-90">arrow_back</button>
+                        <h2 className="text-xl font-black uppercase italic tracking-tight text-leather">Lista de Vaquejadas</h2>
                     </header>
                     <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                        {eventsList.length === 0 ? <p className="text-center text-xs opacity-50 py-10 font-bold uppercase tracking-widest">Nenhum evento registrado.</p> : eventsList.map((ev) => (
-                            <div key={ev.id} className={`bg-white border rounded-xl p-4 flex justify-between items-center ${ev.is_paused ? 'border-red-300 opacity-50' : 'border-[#1A1108]/10'}`}>
-                                <div className="flex-1">
-                                    <h4 className="font-bold text-sm">{ev.title}</h4>
-                                    <p className="text-[10px] text-leather/60 font-medium">{ev.date_day} {ev.date_month} • {ev.park}</p>
-                                    {ev.is_paused && <span className="text-[9px] bg-red-100 text-red-600 px-1 py-0.5 rounded font-black inline-block mt-1">OCULTADO</span>}
+                        {eventsList.length === 0 ? <p className="text-center text-xs opacity-50 py-10 font-bold uppercase tracking-widest">Nenhuma vaquejada registrada.</p> : eventsList.map((ev) => (
+                            <div key={ev.id} className={`bg-white border rounded-[28px] p-5 flex justify-between items-center shadow-sm border-[#1A1108]/10`}>
+                                <div className="flex-1 min-w-0">
+                                    <h4 className="font-black text-sm text-leather leading-tight uppercase truncate">{ev.title}</h4>
+                                    <p className="text-[10px] text-[#D4AF37] font-bold uppercase tracking-widest mt-1 italic">{ev.date_day} {ev.date_month} - {ev.park}</p>
                                 </div>
                                 <div className="flex gap-2">
-                                    <button onClick={() => { setEventForm(ev); setSubviewEvents('CREATE'); }} className="material-icons text-leather/60 text-[20px] p-1">edit</button>
-                                    <button onClick={() => toggleHideEvent(ev.id, ev.is_paused)} className={`material-icons text-[20px] p-1 ${ev.is_paused ? 'text-green-600' : 'text-red-500'}`}>
-                                        {ev.is_paused ? 'visibility' : 'visibility_off'}
+                                    <button onClick={() => { setEventForm(ev); setSubviewEvents('CREATE'); }} className="w-10 h-10 rounded-2xl bg-neutral-50 text-leather/60 flex items-center justify-center active:scale-90 transition-transform">
+                                        <span className="material-icons text-lg">edit</span>
+                                    </button>
+                                    <button onClick={() => deleteEvent(ev.id)} className="w-10 h-10 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center active:scale-90 transition-transform">
+                                        <span className="material-icons text-lg">delete</span>
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        const MenuItem = ({ icon, label, onClick, badge }: any) => (
+            <button onClick={onClick} className="w-full bg-white border border-[#1A1108]/10 rounded-[28px] p-5 flex items-center gap-4 active:scale-[0.98] transition-all mb-3 group hover:border-[#D4AF37]/30 shadow-sm">
+                <div className="w-12 h-12 bg-[#F8F5F2] rounded-2xl flex items-center justify-center group-hover:bg-[#D4AF37]/10 transition-colors">
+                    <span className="material-icons text-[#D4AF37]">{icon}</span>
+                </div>
+                <div className="flex-1 text-left">
+                    <p className="font-black text-sm text-leather leading-tight uppercase tracking-tight">{label}</p>
+                    <p className="text-[9px] text-leather/40 font-bold uppercase tracking-widest mt-0.5 italic">Gestão Oficial</p>
+                </div>
+                {badge && <span className="bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-lg shadow-lg shadow-red-500/20">{badge}</span>}
+                <span className="material-icons text-leather/20 group-hover:text-[#D4AF37]/40 transition-colors">chevron_right</span>
+            </button>
+        );
+
+        return (
+            <div className="absolute inset-0 bg-[#F8F5F2] flex flex-col z-[120]">
+                <header className="px-6 py-6 border-b border-[#1A1108]/5 flex items-center gap-4 bg-[#F8F5F2] sticky top-0 z-10 w-full shadow-sm">
+                    <button onClick={() => setActiveTab('MAIN')} className="material-icons text-leather active:scale-90">arrow_back</button>
+                    <h2 className="text-xl font-black uppercase italic tracking-tight text-leather">Vaquejadas</h2>
+                </header>
+                <div className="flex-1 overflow-y-auto p-6">
+                    <MenuItem icon="add_location" label="Adicionar Vaquejada" onClick={() => { setEventForm({ is_highlight: false, category: 'Profissional' }); setSubviewEvents('CREATE'); }} />
+                    <MenuItem icon="event_note" label="Gerenciar Vaquejadas" onClick={() => setSubviewEvents('LIST')} badge={eventsList.length || undefined} />
+                </div>
+            </div>
+        );
+    };
+
+    const renderResultadosView = () => {
+        const MenuItem = ({ icon, label, onClick, badge }: any) => (
+            <button onClick={onClick} className="w-full bg-white border border-[#1A1108]/10 rounded-[28px] p-5 flex items-center gap-4 active:scale-[0.98] transition-all mb-3 group hover:border-[#D4AF37]/30 shadow-sm">
+                <div className="w-12 h-12 bg-[#F8F5F2] rounded-2xl flex items-center justify-center group-hover:bg-[#D4AF37]/10 transition-colors">
+                    <span className="material-icons text-[#D4AF37]">{icon}</span>
+                </div>
+                <div className="flex-1 text-left">
+                    <p className="font-black text-sm text-leather leading-tight uppercase tracking-tight">{label}</p>
+                    <p className="text-[9px] text-leather/40 font-bold uppercase tracking-widest mt-0.5 italic">Gestão Oficial</p>
+                </div>
+                {badge && <span className="bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-lg shadow-lg shadow-red-500/20">{badge}</span>}
+                <span className="material-icons text-leather/20 group-hover:text-[#D4AF37]/40 transition-colors">chevron_right</span>
+            </button>
+        );
+
+        if (subviewResults === 'CREATE') {
+            return (
+                <div className="absolute inset-0 bg-[#F8F5F2] flex flex-col z-[120]">
+                    <header className="px-6 py-6 border-b border-[#1A1108]/5 flex items-center gap-4 bg-[#F8F5F2] sticky top-0 z-10 w-full shadow-sm">
+                        <button onClick={() => setSubviewResults('HOME')} className="material-icons text-leather active:scale-90">arrow_back</button>
+                        <div>
+                            <h2 className="text-xl font-black uppercase italic tracking-tight text-leather">{resultForm.id ? "Editar Resultado" : "Novo Resultado"}</h2>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-[#D4AF37]">Vínculo com Evento Oficial</p>
+                        </div>
+                    </header>
+                    <div className="flex-1 overflow-y-auto p-6">
+                        <form onSubmit={handleSaveResult} className="space-y-8 pb-32">
+                            
+                            {/* Sessão 1: Básico */}
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black text-leather/40 uppercase tracking-widest ml-1">Informações Básicas</label>
+                                
+                                <div className="space-y-1">
+                                    <p className="text-[8px] font-black text-leather/30 uppercase ml-2">Evento Vinculado (Obrigatório)</p>
+                                    <select 
+                                        className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather font-bold focus:border-[#D4AF37] outline-none shadow-sm appearance-none"
+                                        value={resultForm.evento_id || ''}
+                                        onChange={(e) => setResultForm({...resultForm, evento_id: e.target.value})}
+                                        required
+                                    >
+                                        <option value="">Selecione o Evento...</option>
+                                        {eventsList.map(ev => (
+                                            <option key={ev.id} value={ev.id}>{ev.title} ({ev.date_day} {ev.date_month})</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <input className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather font-bold focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Título do Resultado (ex: Campeões da 15ª Vaquejada)" required value={resultForm.titulo || ''} onChange={(e)=>setResultForm({...resultForm, titulo: e.target.value})} />
+                                <textarea className="w-full bg-white border border-[#1A1108]/10 rounded-xl p-4 text-sm text-leather font-bold focus:border-[#D4AF37] outline-none shadow-sm resize-none" placeholder="Descrição curta / Observações gerais" rows={3} value={resultForm.descricao || ''} onChange={(e)=>setResultForm({...resultForm, descricao: e.target.value})} />
+                            </div>
+
+                            {/* Sessão 2: Categorias */}
+                            <div className="space-y-4 bg-white/50 p-6 rounded-[32px] border border-[#1A1108]/5">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-[10px] font-black text-leather/40 uppercase tracking-widest ml-1">Categorias do Ranking</label>
+                                    <button type="button" onClick={() => {
+                                        const newCat = { id: 'temp_' + Date.now(), nome_categoria: '' };
+                                        setResultCategories([...resultCategories, newCat]);
+                                    }} className="text-[10px] font-black text-[#D4AF37] uppercase flex items-center gap-1">
+                                        <span className="material-icons text-sm">add_circle</span> Adicionar Categoria
+                                    </button>
+                                </div>
+
+                                <div className="space-y-3">
+                                    {resultCategories.map((cat, cIdx) => (
+                                        <div key={cat.id} className="bg-white border border-[#1A1108]/10 rounded-2xl p-4">
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <input 
+                                                    className="flex-1 bg-neutral-50 border border-transparent border-b-[#D4AF37]/30 p-2 text-sm font-black text-leather focus:border-b-[#D4AF37] outline-none" 
+                                                    placeholder="Nome da Categoria (Ex: Profissional)"
+                                                    value={cat.nome_categoria}
+                                                    onChange={(e) => {
+                                                        const newCats = [...resultCategories];
+                                                        newCats[cIdx].nome_categoria = e.target.value;
+                                                        setResultCategories(newCats);
+                                                    }}
+                                                />
+                                                <button type="button" onClick={() => {
+                                                    setResultCategories(resultCategories.filter((_, i) => i !== cIdx));
+                                                    setResultLines(resultLines.filter(l => l.categoria_id !== cat.id));
+                                                }} className="material-icons text-red-400 text-sm">delete</button>
+                                            </div>
+
+                                            {/* Linhas dessa categoria */}
+                                            <div className="space-y-3 pl-2 border-l-2 border-[#D4AF37]/20">
+                                                {resultLines.filter(l => l.categoria_id === cat.id).map((line, lIdx) => (
+                                                    <div key={lIdx} className="bg-neutral-50 rounded-xl p-3 text-[10px] relative group">
+                                                        <div className="grid grid-cols-6 gap-2 mb-2">
+                                                            <input className="col-span-1 bg-white border border-[#1A1108]/5 rounded p-1 font-black" placeholder="Pos" value={line.colocacao || ''} onChange={(e) => {
+                                                                const newLines = [...resultLines];
+                                                                const idx = resultLines.indexOf(line);
+                                                                newLines[idx].colocacao = e.target.value;
+                                                                setResultLines(newLines);
+                                                            }} />
+                                                            <input className="col-span-5 bg-white border border-[#1A1108]/5 rounded p-1 font-bold" placeholder="Competidor/Dupla" value={line.nome_competidor || ''} onChange={(e) => {
+                                                                const newLines = [...resultLines];
+                                                                const idx = resultLines.indexOf(line);
+                                                                newLines[idx].nome_competidor = e.target.value;
+                                                                setResultLines(newLines);
+                                                            }} />
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <input className="bg-white border border-[#1A1108]/5 rounded p-1" placeholder="Equipe" value={line.nome_equipe || ''} onChange={(e) => {
+                                                                const newLines = [...resultLines];
+                                                                const idx = resultLines.indexOf(line);
+                                                                newLines[idx].nome_equipe = e.target.value;
+                                                                setResultLines(newLines);
+                                                            }} />
+                                                            <input className="bg-white border border-[#1A1108]/5 rounded p-1" placeholder="Cavalo" value={line.cavalo || ''} onChange={(e) => {
+                                                                const newLines = [...resultLines];
+                                                                const idx = resultLines.indexOf(line);
+                                                                newLines[idx].cavalo = e.target.value;
+                                                                setResultLines(newLines);
+                                                            }} />
+                                                        </div>
+                                                        <button type="button" onClick={() => setResultLines(resultLines.filter(l => l !== line))} className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><span className="material-icons text-[10px]">close</span></button>
+                                                    </div>
+                                                ))}
+                                                <button type="button" onClick={() => {
+                                                    const newLine = { categoria_id: cat.id, colocacao: (resultLines.filter(l => l.categoria_id === cat.id).length + 1) + 'º' };
+                                                    setResultLines([...resultLines, newLine]);
+                                                }} className="w-full py-2 rounded-xl border border-dashed border-[#D4AF37]/30 text-[9px] font-black uppercase text-[#D4AF37] hover:bg-[#D4AF37]/5 transition-colors">
+                                                    + Adicionar Colocação
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Sessão 3: Status */}
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black text-leather/40 uppercase tracking-widest ml-1">Publicação</label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {['rascunho', 'publicado', 'arquivado'].map(st => (
+                                        <button key={st} type="button" onClick={() => setResultForm({...resultForm, status: st})} className={`py-3 rounded-xl font-black uppercase text-[9px] tracking-widest border transition-all ${resultForm.status === st ? 'bg-[#1A1108] border-[#1A1108] text-[#D4AF37]' : 'bg-white border-[#1A1108]/10 text-leather/40'}`}>
+                                            {st}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <button type="submit" disabled={loading} className="w-full bg-[#D4AF37] text-white py-5 rounded-[28px] font-black uppercase tracking-widest shadow-xl shadow-[#D4AF37]/20 active:scale-95 transition-transform flex items-center justify-center gap-3">
+                                {loading ? <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <><span className="material-icons">check_circle</span> Salvar e Publicar</>}
+                            </button>
+
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        if (subviewResults === 'LIST') {
+            return (
+                <div className="absolute inset-0 bg-[#F8F5F2] flex flex-col z-[120]">
+                    <header className="px-6 py-6 border-b border-[#1A1108]/5 flex items-center gap-4 bg-[#F8F5F2] sticky top-0 z-10 w-full shadow-sm">
+                        <button onClick={() => setSubviewResults('HOME')} className="material-icons text-leather active:scale-90">arrow_back</button>
+                        <h2 className="text-xl font-black uppercase italic tracking-tight text-leather">Lista de Resultados</h2>
+                    </header>
+                    <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                        {resultsList.length === 0 ? <p className="text-center text-xs opacity-50 py-10 font-bold uppercase tracking-widest">Nenhum resultado registrado.</p> : resultsList.map((res) => (
+                            <div key={res.id} className={`bg-white border rounded-[28px] p-5 flex justify-between items-center shadow-sm ${res.status === 'rascunho' ? 'border-orange-200 opacity-80' : 'border-[#1A1108]/10'}`}>
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${res.status === 'publicado' ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'}`}>{res.status}</span>
+                                    </div>
+                                    <h4 className="font-black text-sm text-leather leading-tight uppercase">{res.titulo}</h4>
+                                    <p className="text-[10px] text-[#D4AF37] font-bold uppercase tracking-tighter mt-1 italic">Evento: {res.event_title}</p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={() => { 
+                                        setResultForm(res); 
+                                        fetchResultDetails(res.id);
+                                        setSubviewResults('CREATE'); 
+                                    }} className="w-10 h-10 rounded-2xl bg-neutral-50 text-leather/60 flex items-center justify-center active:scale-90 transition-transform">
+                                        <span className="material-icons text-lg">edit</span>
+                                    </button>
+                                    <button onClick={async () => {
+                                        if (confirm('Excluir este resultado permanentemente?')) {
+                                            const { error } = await supabase.from('resultados').delete().eq('id', res.id);
+                                            if (!error) fetchResults();
+                                        }
+                                    }} className="w-10 h-10 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center active:scale-90 transition-transform">
+                                        <span className="material-icons text-lg">delete</span>
                                     </button>
                                 </div>
                             </div>
@@ -1464,53 +1900,18 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
 
         return (
             <div className="absolute inset-0 bg-[#F8F5F2] flex flex-col z-[120]">
-                <SubHeader title="Vaquejadas" />
-                <div className="flex-1 overflow-y-auto pb-10">
-                    {hasEventos && (
-                        <>
-                            <SectionTitle title="Gestão Operacional" />
-                            <div className="px-6 grid grid-cols-2 gap-3 mb-6">
-                                <button onClick={()=>{ setEventForm({}); setSubviewEvents('CREATE'); }} className="bg-[#D4AF37] text-white p-4 rounded-xl font-black uppercase tracking-widest text-[10px] flex flex-col items-center gap-2 active:scale-95 shadow-sm">
-                                    <span className="material-icons">add_box</span>
-                                    Nova Vaquejada
-                                </button>
-                            </div>
-                        </>
-                    )}
-
-                    <SectionTitle title="Eventos Atuais" />
-                    <div className="px-6 space-y-4">
-                        {eventsList.length === 0 ? (
-                            <div className="bg-white/50 border border-leather/5 p-10 rounded-2xl flex flex-col items-center gap-2 opacity-40">
-                                <span className="material-icons text-4xl">event_busy</span>
-                                <p className="text-[10px] font-black uppercase tracking-widest">Nenhum evento registrado</p>
-                            </div>
-                        ) : (
-                            eventsList.map((ev) => (
-                                <div key={ev.id} className={`bg-white border rounded-2xl p-4 flex justify-between items-center shadow-sm transition-all ${ev.is_paused ? 'border-red-300 opacity-60 bg-red-50/20' : 'border-[#1A1108]/5'}`}>
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 bg-neutral-100 rounded-xl overflow-hidden border border-[#1A1108]/5">
-                                            <img src={ev.image_url} className="w-full h-full object-cover" />
-                                        </div>
-                                        <div>
-                                            <h4 className="font-black text-sm text-leather leading-tight uppercase tracking-tight">{ev.title}</h4>
-                                            <p className="text-[9px] text-leather/40 font-bold uppercase">{ev.date_day} {ev.date_month} • {ev.park}</p>
-                                            {ev.is_paused && <span className="text-[7px] bg-red-500 text-white px-1.5 py-0.5 rounded-full font-black inline-block mt-1 uppercase tracking-tighter">Oculto</span>}
-                                            {ev.is_highlight && <span className="text-[7px] bg-[#D4AF37] text-white px-1.5 py-0.5 rounded-full font-black inline-block mt-1 ml-1 uppercase tracking-tighter">Destaque</span>}
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => { setEventForm(ev); setSubviewEvents('CREATE'); }} className="w-8 h-8 rounded-lg bg-[#D4AF37]/10 text-[#D4AF37] flex items-center justify-center active:scale-90 transition-transform">
-                                            <span className="material-icons text-sm">edit</span>
-                                        </button>
-                                        <button onClick={() => toggleHideEvent(ev.id, ev.is_paused)} className={`w-8 h-8 rounded-lg flex items-center justify-center active:scale-90 transition-transform ${ev.is_paused ? 'bg-green-100 text-green-600' : 'bg-red-50 text-red-500'}`}>
-                                            <span className="material-icons text-sm">{ev.is_paused ? 'visibility' : 'visibility_off'}</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
+                <header className="px-6 py-6 border-b border-[#1A1108]/5 flex items-center gap-4 bg-[#F8F5F2] sticky top-0 z-10 w-full shadow-sm">
+                    <button onClick={() => setActiveTab('MAIN')} className="material-icons text-leather active:scale-90">arrow_back</button>
+                    <h2 className="text-xl font-black uppercase italic tracking-tight text-leather">Resultados Oficiais</h2>
+                </header>
+                <div className="flex-1 overflow-y-auto p-6">
+                    <MenuItem icon="add_chart" label="Adicionar Novo Resultado" onClick={() => { 
+                        setResultForm({ status: 'rascunho' }); 
+                        setResultCategories([]); 
+                        setResultLines([]);
+                        setSubviewResults('CREATE'); 
+                    }} />
+                    <MenuItem icon="list_alt" label="Gerenciar Resultados" onClick={() => setSubviewResults('LIST')} badge={resultsList.length || undefined} />
                 </div>
             </div>
         );
@@ -1873,6 +2274,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
     if (activeTab === 'SOCIAL') return renderSocialView();
     if (activeTab === 'EVENTOS') return renderEventosView();
     if (activeTab === 'NOTICIAS') return renderNoticiasView();
+    if (activeTab === 'RESULTADOS') return renderResultadosView();
     if (activeTab === 'MASTER') return <AdminMasterView user={user} onBack={() => setActiveTab('MAIN')} />;
     if (activeTab === 'ADS') return <AdminAdsManager user={user} onBack={() => setActiveTab('MAIN')} />;
 
@@ -1992,6 +2394,8 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                 {hasEventos && <MenuItem icon="emoji_events" label="Vaquejadas" onClick={() => setActiveTab('EVENTOS')} />}
                 
                 {hasNoticias && <MenuItem icon="campaign" label="Arena Notícias" onClick={() => setActiveTab('NOTICIAS')} />}
+                
+                {hasEventos && <MenuItem icon="emoji_events" label="Resultados Oficiais" onClick={() => setActiveTab('RESULTADOS')} />}
                 
                 <div className="py-20 opacity-20 flex flex-col items-center">
                     <span className="material-icons text-4xl mb-2">admin_panel_settings</span>

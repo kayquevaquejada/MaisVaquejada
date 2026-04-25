@@ -1,85 +1,141 @@
-import React, { useState, useMemo } from 'react';
-import { EventItem } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { EventItem, User } from '../types';
+import { supabase } from '../lib/supabase';
 
 interface EventDetailViewProps {
   event: EventItem | null;
+  user: User | null;
   onBack: () => void;
 }
 
-const EventDetailView: React.FC<EventDetailViewProps> = ({ event, onBack }) => {
+const EventDetailView: React.FC<EventDetailViewProps> = ({ event, user, onBack }) => {
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const [currentIdx, setCurrentIdx] = useState(0);
-  const [zoomScale, setZoomScale] = useState(1);
-  const [touchStartDist, setTouchStartDist] = useState(0);
+  const [presenceCount, setPresenceCount] = useState(0);
+  const [isGoing, setIsGoing] = useState(false);
+  const [loadingPresence, setLoadingPresence] = useState(false);
+  const [organizer, setOrganizer] = useState<any>(null);
+  const [hasResultId, setHasResultId] = useState<string | null>(null);
 
-  // DEBUG LOGS
-  console.log("EVENTO RECEBIDO NA TELA DE DETALHES:", event);
+  // Status map
+  const statusConfig = {
+    em_breve: { label: 'Em Breve', color: 'bg-blue-500', icon: 'schedule' },
+    confirmado: { label: 'Confirmado', color: 'bg-green-500', icon: 'verified' },
+    acontecendo: { label: 'Acontecendo', color: 'bg-red-500', icon: 'sensors' },
+    encerrado: { label: 'Encerrado', color: 'bg-gray-500', icon: 'done_all' }
+  };
 
-  if (!event || typeof event !== 'object') {
-    return (
-      <div className="min-h-screen bg-[#0F0A05] flex flex-col items-center justify-center p-8 text-center">
-        <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-6">
-          <span className="material-icons text-white/20 text-4xl">error_outline</span>
-        </div>
-        <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-2">Erro ao carregar evento</h2>
-        <p className="text-white/40 text-sm max-w-xs mb-8">Os dados deste evento não estão disponíveis no momento.</p>
-        <button 
-          onClick={onBack}
-          className="px-8 py-4 bg-[#ECA413] text-black font-black uppercase text-xs tracking-widest rounded-2xl active:scale-95 transition-all shadow-lg shadow-[#ECA413]/20"
-        >
-          Voltar para Início
-        </button>
-      </div>
-    );
-  }
+  const currentStatus = event?.status || 'confirmado';
+  const status = statusConfig[currentStatus as keyof typeof statusConfig] || statusConfig.confirmado;
 
-  const title = event?.title || "Evento sem Título";
-  const park = event?.park || "Parque não informado";
-  const location = event?.location || "Local não informado";
-  const prizes = event?.prizes || "Premiação a definir";
-  const price = event?.price || "Consultar valor";
-  const description = event?.description || "Nenhuma descrição detalhada disponível.";
-  
-  // Imagens suportando tanto 'images' quanto 'gallery' do admin
+  useEffect(() => {
+    if (event?.id) {
+      fetchPresence();
+      checkResult();
+      if (event.organizador_id) fetchOrganizer();
+    }
+  }, [event?.id]);
+
+  const checkResult = async () => {
+    if (!event?.id) return;
+    const { data } = await supabase
+      .from('resultados')
+      .select('id')
+      .eq('evento_id', event.id)
+      .eq('status', 'publicado')
+      .maybeSingle();
+    if (data) setHasResultId(data.id);
+  };
+
+  const fetchPresence = async () => {
+    if (!event?.id) return;
+    
+    // Total count
+    const { count } = await supabase
+      .from('event_presences')
+      .select('*', { count: 'exact', head: true })
+      .eq('event_id', event.id);
+    
+    setPresenceCount(count || 0);
+
+    // My status
+    if (user?.id) {
+      const { data } = await supabase
+        .from('event_presences')
+        .select('*')
+        .eq('event_id', event.id)
+        .eq('user_id', user.id)
+        .single();
+      setIsGoing(!!data);
+    }
+  };
+
+  const fetchOrganizer = async () => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', event?.organizador_id)
+      .single();
+    if (data) setOrganizer(data);
+  };
+
+  const togglePresence = async () => {
+    if (!user || !event?.id) {
+      alert('Faça login para confirmar sua presença!');
+      return;
+    }
+
+    setLoadingPresence(true);
+    try {
+      if (isGoing) {
+        await supabase
+          .from('event_presences')
+          .delete()
+          .eq('event_id', event.id)
+          .eq('user_id', user.id);
+        setIsGoing(false);
+        setPresenceCount(prev => prev - 1);
+      } else {
+        await supabase
+          .from('event_presences')
+          .insert({ event_id: event.id, user_id: user.id });
+        setIsGoing(true);
+        setPresenceCount(prev => prev + 1);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingPresence(false);
+    }
+  };
+
+  const openNavigation = () => {
+    if (event?.latitude && event?.longitude) {
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${event.latitude},${event.longitude}`;
+      window.open(url, '_blank');
+    } else if (event?.endereco) {
+      const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.endereco)}`;
+      window.open(url, '_blank');
+    } else {
+      const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${event?.park} ${event?.location}`)}`;
+      window.open(url, '_blank');
+    }
+  };
+
+  if (!event) return null;
+
   const allImages = useMemo(() => {
     const list: string[] = [];
     if (event.imageUrl) list.push(event.imageUrl);
-    if (Array.isArray(event.images)) list.push(...event.images);
-    if (Array.isArray((event as any).gallery)) list.push(...(event as any).gallery);
+    if (Array.isArray(event.galeria_urls)) list.push(...event.galeria_urls);
     return Array.from(new Set(list)).filter(Boolean);
   }, [event]);
 
-  const month = event?.date?.month || "---";
-  const day = event?.date?.day || "--";
-  const category = event?.category || "Vaquejada";
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      const dist = Math.hypot(
-        e.touches[0].pageX - e.touches[1].pageX,
-        e.touches[0].pageY - e.touches[1].pageY
-      );
-      setTouchStartDist(dist);
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 2 && touchStartDist > 0) {
-      const dist = Math.hypot(
-        e.touches[0].pageX - e.touches[1].pageX,
-        e.touches[0].pageY - e.touches[1].pageY
-      );
-      const ratio = dist / touchStartDist;
-      setZoomScale(prev => Math.min(Math.max(1, prev * ratio), 4));
-      setTouchStartDist(dist);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-background-dark pb-32 animate-in fade-in duration-300">
+    <div className="min-h-screen bg-[#0F0A05] pb-40 animate-in fade-in duration-300 overflow-x-hidden">
       
-      {/* Imagem/Carrossel Principal */}
-      <div className="relative w-full aspect-[4/5] bg-neutral-900 overflow-hidden">
+      {/* Header Imagem / Carrossel */}
+      <div className="relative w-full aspect-[4/5] sm:aspect-video bg-neutral-900">
         <div 
           className="flex w-full h-full overflow-x-auto snap-x snap-mandatory hide-scrollbar"
           onScroll={(e: any) => {
@@ -88,148 +144,256 @@ const EventDetailView: React.FC<EventDetailViewProps> = ({ event, onBack }) => {
           }}
         >
           {allImages.map((img, idx) => (
-            <div 
-              key={idx} 
-              className="w-full h-full shrink-0 snap-center relative"
-              onClick={() => {
-                setFullscreenImage(img);
-                setZoomScale(1);
-              }}
-            >
-              <img src={img} className="w-full h-full object-cover" alt={`${title} - ${idx + 1}`}/>
-              <div className="absolute inset-0 bg-gradient-to-t from-background-dark via-transparent to-black/40"></div>
+            <div key={idx} className="w-full h-full shrink-0 snap-center relative" onClick={() => setFullscreenImage(img)}>
+              <img src={img} className="w-full h-full object-cover" alt="Banner" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0F0A05] via-transparent to-black/60" />
             </div>
           ))}
         </div>
 
-        {/* Indicadores de Página */}
+        {/* Back Button */}
+        <button onClick={onBack} className="absolute top-6 left-6 w-12 h-12 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 flex items-center justify-center text-white z-30 active:scale-90 transition-all">
+          <span className="material-icons">arrow_back</span>
+        </button>
+
+        {/* Indicadores */}
         {allImages.length > 1 && (
-          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-1.5 z-20 bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-md">
+          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-1.5 z-20 bg-black/30 px-3 py-1.5 rounded-full backdrop-blur-md">
             {allImages.map((_, idx) => (
-              <div 
-                key={idx} 
-                className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${idx === currentIdx ? 'bg-[#ECA413] w-4' : 'bg-white/40'}`}
-              />
+              <div key={idx} className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${idx === currentIdx ? 'bg-[#ECA413] w-4' : 'bg-white/40'}`} />
             ))}
           </div>
         )}
+
+        {/* Status Badge */}
+        <div className="absolute top-6 right-6 z-30">
+          <div className={`${status.color} px-4 py-2 rounded-full flex items-center gap-2 shadow-lg shadow-black/40`}>
+            <span className="material-icons text-sm text-white">{status.icon}</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-white">{status.label}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Conteúdo Principal */}
+      <div className="px-6 -mt-32 relative z-10">
         
-        {/* Top Actions */}
-        <div className="absolute top-6 left-6 right-6 flex justify-between items-center z-30">
-          <button 
-            onClick={onBack} 
-            className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 flex items-center justify-center text-white active:scale-90 transition-all shadow-2xl"
-          >
-            <span className="material-icons">arrow_back</span>
-          </button>
+        {/* Card de Título e Organização */}
+        <div className="bg-[#1A1108]/95 backdrop-blur-2xl border border-white/10 rounded-[40px] p-8 shadow-2xl mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="material-icons text-[#ECA413] text-sm">stars</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#ECA413]">{event.category}</span>
+          </div>
           
-          <div className="flex gap-2">
-            <button className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 flex items-center justify-center text-white active:scale-90 transition-all shadow-2xl">
-              <span className="material-icons">share_content</span>
+          <h1 className="text-4xl font-black text-white italic leading-[1.1] mb-6 tracking-tighter uppercase">{event.title}</h1>
+          
+          {/* Botão de Resultado se disponível */}
+          {hasResultId && (
+            <button 
+              onClick={() => window.dispatchEvent(new CustomEvent('arena_navigate', { 
+                detail: { view: View.RESULT_DETAIL, resultId: hasResultId } 
+              }))}
+              className="w-full mb-8 bg-[#1A1108] border-2 border-[#D4AF37] rounded-[24px] p-5 flex items-center justify-between group active:scale-95 transition-all shadow-xl shadow-[#D4AF37]/10"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-[#D4AF37] rounded-xl flex items-center justify-center shadow-lg">
+                  <span className="material-icons text-white">emoji_events</span>
+                </div>
+                <div className="text-left">
+                  <p className="text-[10px] font-black uppercase text-[#D4AF37] tracking-[0.2em] leading-none mb-1">Status Final</p>
+                  <p className="text-lg font-black text-white uppercase italic leading-none">Ver Resultado Oficial</p>
+                </div>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-[#D4AF37]/20 transition-colors">
+                <span className="material-icons text-[#D4AF37]">chevron_right</span>
+              </div>
+            </button>
+          )}
+
+          {/* Info Básica */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white/5 border border-white/10 rounded-3xl p-4 flex flex-col justify-center">
+              <p className="text-[8px] font-black uppercase text-[#ECA413] tracking-widest mb-1">📅 Data do Evento</p>
+              <p className="text-lg font-black text-white">{event.date.day} de {event.date.month}</p>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-3xl p-4 flex flex-col justify-center">
+              <p className="text-[8px] font-black uppercase text-[#ECA413] tracking-widest mb-1">🏆 Premiação</p>
+              <p className="text-lg font-black text-white">{event.prizes || 'A definir'}</p>
+            </div>
+          </div>
+
+          {/* Organizador */}
+          <div className="mt-8 flex items-center justify-between p-4 bg-white/5 rounded-3xl border border-white/10 active:scale-[0.98] transition-transform">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-neutral-800 border border-white/10 overflow-hidden">
+                <img src={organizer?.avatar_url || 'https://ui-avatars.com/api/?name=' + event.park} className="w-full h-full object-cover" />
+              </div>
+              <div>
+                <p className="text-[8px] font-black uppercase text-white/40 tracking-widest">Organização</p>
+                <p className="text-sm font-black text-white">{event.park}</p>
+              </div>
+            </div>
+            <span className="material-icons text-white/20">chevron_right</span>
+          </div>
+        </div>
+
+        {/* Geolocalização e Mapa */}
+        <div className="space-y-4 mb-8">
+          <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/30 ml-4">Localização</h3>
+          <div className="bg-white/5 border border-white/10 rounded-[40px] overflow-hidden">
+            {/* Mini Mapa (Simulado) */}
+            <div 
+              onClick={openNavigation}
+              className="h-40 w-full bg-neutral-800 relative cursor-pointer group"
+            >
+              <img 
+                src={`https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?auto=format&fit=crop&q=80`} 
+                className="w-full h-full object-cover opacity-40 group-hover:scale-105 transition-transform duration-700" 
+              />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-12 h-12 bg-[#ECA413] rounded-full flex items-center justify-center shadow-2xl animate-bounce">
+                  <span className="material-icons text-black">place</span>
+                </div>
+              </div>
+              <div className="absolute bottom-4 left-4 right-4 bg-black/60 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 flex items-center justify-between">
+                <span className="text-[10px] font-black text-white uppercase tracking-widest">Toque para ver no mapa</span>
+                <span className="material-icons text-white text-sm">open_in_new</span>
+              </div>
+            </div>
+            
+            <div className="p-8">
+              <div className="flex items-start gap-4 mb-6">
+                <div className="w-10 h-10 bg-[#ECA413]/10 rounded-xl flex items-center justify-center border border-[#ECA413]/20">
+                  <span className="material-icons text-[#ECA413]">location_on</span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-white font-bold text-sm leading-tight mb-1">{event.endereco || event.park}</p>
+                  <p className="text-white/40 text-[10px] font-black uppercase tracking-widest">{event.location}</p>
+                </div>
+              </div>
+              
+              <button 
+                onClick={openNavigation}
+                className="w-full h-14 bg-white text-black rounded-2xl font-black uppercase text-[11px] tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all shadow-xl"
+              >
+                <span className="material-icons text-lg">directions</span>
+                Como Chegar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Presença e Social */}
+        <div className="bg-gradient-to-br from-[#ECA413] to-[#B87D0B] rounded-[40px] p-8 shadow-2xl mb-8 relative overflow-hidden group">
+          {/* Grafismo de fundo */}
+          <span className="material-icons absolute -bottom-4 -right-4 text-9xl text-black/10 rotate-12 group-hover:scale-110 transition-transform duration-700">groups</span>
+          
+          <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div className="text-center sm:text-left">
+              <h4 className="text-black font-black text-2xl uppercase italic tracking-tighter leading-none mb-1">PRESENÇA CONFIRMADA</h4>
+              <p className="text-black/60 text-xs font-bold uppercase tracking-widest">
+                {presenceCount} {presenceCount === 1 ? 'pessoa confirmada' : 'pessoas confirmadas'}
+              </p>
+            </div>
+            
+            <button 
+              onClick={togglePresence}
+              disabled={loadingPresence}
+              className={`px-8 h-16 rounded-2xl font-black uppercase text-[11px] tracking-widest flex items-center gap-2 shadow-2xl active:scale-95 transition-all ${isGoing ? 'bg-black text-white' : 'bg-white text-black'}`}
+            >
+              <span className="material-icons text-lg">{isGoing ? 'check_circle' : 'person_add'}</span>
+              {isGoing ? 'Vou estar lá!' : 'Eu vou!'}
             </button>
           </div>
         </div>
 
-        {/* Legend */}
-        <div className="absolute bottom-28 right-8 z-20 pointer-events-none opacity-60">
-           <div className="bg-black/40 backdrop-blur-md rounded-full px-3 py-1.5 flex items-center gap-2">
-              <span className="material-icons text-white text-xs">zoom_in</span>
-              <span className="text-[8px] font-black text-white uppercase tracking-widest">Toque para ampliar</span>
-           </div>
-        </div>
-      </div>
-
-      <div className="px-8 -mt-24 relative z-10">
-        <div className="bg-[#1A1108]/90 backdrop-blur-xl border border-white/10 rounded-[40px] p-8 shadow-2xl">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#ECA413] rounded-full mb-4 shadow-lg shadow-[#ECA413]/20">
-            <span className="material-icons text-[12px] text-black">stars</span>
-            <span className="text-[9px] font-black uppercase tracking-tighter text-black">{category}</span>
-          </div>
-
-          <h1 className="text-4xl font-black text-white leading-none mb-3 italic tracking-tighter uppercase">{title}</h1>
-          
-          <div className="flex flex-wrap items-center gap-4 opacity-70 mb-6">
-            <div className="flex items-center gap-1.5">
-              <span className="material-icons text-sm text-[#ECA413]">place</span>
-              <span className="text-xs font-bold uppercase tracking-widest">{location}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="material-icons text-sm text-[#ECA413]">business</span>
-              <span className="text-xs font-bold uppercase tracking-widest">{park}</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#ECA413] mb-1">Premiação</p>
-              <p className="text-sm font-black text-white leading-tight">{prizes}</p>
-            </div>
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#ECA413] mb-1">Data</p>
-              <p className="text-sm font-black text-white leading-tight">{day} de {month}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-8 space-y-8">
+        {/* Programação e Horários */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
           <div>
-            <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/30 mb-4 ml-2">Informações Adicionais</h3>
-            <div className="bg-white/5 border border-white/10 rounded-[32px] p-8 text-white">
-              <div className="flex items-center justify-between py-4 border-b border-white/5">
-                <span className="text-white/40 text-xs font-bold uppercase tracking-widest">Inscrição</span>
-                <span className="text-white font-black text-sm">{price}</span>
+            <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/30 ml-4 mb-4">Ingressos e Valores</h3>
+            <div className="bg-white/5 border border-white/10 rounded-[32px] p-6 space-y-4">
+              <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                <span className="text-white/40 text-[10px] font-black uppercase tracking-widest">Inscrição</span>
+                <span className="text-white font-black">{event.valor_inscricao || event.price}</span>
               </div>
-              <div className="flex items-center justify-between py-4">
-                <span className="text-white/40 text-xs font-bold uppercase tracking-widest">Status</span>
-                <span className="text-[#ECA413] font-black text-xs uppercase tracking-widest flex items-center gap-1">
-                  <span className="material-icons text-sm">verified</span> Confirmado
-                </span>
+              <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                <span className="text-white/40 text-[10px] font-black uppercase tracking-widest">Entrada/Ingresso</span>
+                <span className="text-[#ECA413] font-black">{event.valor_ingresso || 'Grátis'}</span>
               </div>
+              <button className="w-full h-14 bg-white/10 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] flex items-center justify-center gap-2 border border-white/10 active:scale-95 transition-all">
+                <span className="material-icons text-sm">confirmation_number</span>
+                Comprar antecipado
+              </button>
             </div>
           </div>
 
           <div>
-            <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/30 mb-4 ml-2">Descrição Completa</h3>
-            <div className="bg-white/5 border border-white/10 rounded-[32px] p-8 text-white/70 text-sm leading-relaxed font-medium whitespace-pre-wrap">
-              {description}
+            <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/30 ml-4 mb-4">Programação</h3>
+            <div className="bg-white/5 border border-white/10 rounded-[32px] p-6 space-y-4">
+              <div className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/5">
+                <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center">
+                  <span className="material-icons text-white/40">schedule</span>
+                </div>
+                <div>
+                  <p className="text-[8px] font-black uppercase text-white/40 tracking-widest mb-0.5">Início Previsto</p>
+                  <p className="text-sm font-black text-white">{event.horario_inicio || '08:00'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/5">
+                <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center">
+                  <span className="material-icons text-white/40">last_page</span>
+                </div>
+                <div>
+                  <p className="text-[8px] font-black uppercase text-white/40 tracking-widest mb-0.5">Encerramento</p>
+                  <p className="text-sm font-black text-white">{event.horario_fim || '22:00'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Descrição e Contato */}
+        <div className="space-y-8">
+          <div>
+            <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/30 ml-4 mb-4">Detalhes do Evento</h3>
+            <div className="bg-white/5 border border-white/10 rounded-[40px] p-8">
+              <p className="text-white/70 text-sm leading-relaxed font-medium whitespace-pre-wrap mb-8">
+                {event.description}
+              </p>
+              
+              <div className="pt-8 border-t border-white/5">
+                <p className="text-[10px] font-black uppercase tracking-widest text-[#ECA413] mb-6">Falar com a Organização</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <a 
+                    href={`https://wa.me/${event.whatsapp?.replace(/\D/g, '') || event.phone?.replace(/\D/g, '')}`} 
+                    target="_blank"
+                    className="h-14 bg-[#25D366]/10 text-[#25D366] rounded-2xl border border-[#25D366]/20 flex items-center justify-center gap-2 font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all"
+                  >
+                    <span className="material-icons text-sm">chat</span> WhatsApp
+                  </a>
+                  <a 
+                    href={`https://instagram.com/${event.instagram?.replace('@', '')}`} 
+                    target="_blank"
+                    className="h-14 bg-[#E1306C]/10 text-[#E1306C] rounded-2xl border border-[#E1306C]/20 flex items-center justify-center gap-2 font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all"
+                  >
+                    <span className="material-icons text-sm">photo_camera</span> Instagram
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Fullscreen Zoom Modal */}
+      {/* Fullscreen Image Overlay */}
       {fullscreenImage && (
         <div 
-          className="fixed inset-0 z-[1000] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center animate-in fade-in duration-300 overflow-hidden"
-          onClick={() => {
-            setFullscreenImage(null);
-            setZoomScale(1);
-          }}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
+          className="fixed inset-0 z-[1000] bg-black/95 backdrop-blur-xl flex items-center justify-center animate-in fade-in duration-300"
+          onClick={() => setFullscreenImage(null)}
         >
-          <button className="absolute top-10 right-10 text-white w-12 h-12 bg-white/10 rounded-full flex items-center justify-center active:scale-90 transition-transform z-50">
+          <button className="absolute top-10 right-10 text-white w-12 h-12 bg-white/10 rounded-full flex items-center justify-center z-50">
             <span className="material-icons text-3xl">close</span>
           </button>
-          
-          <div 
-            className="w-full h-full flex items-center justify-center p-4 transition-transform duration-200 ease-out"
-            style={{ 
-              transform: `scale(${zoomScale})`,
-              touchAction: zoomScale > 1 ? 'none' : 'auto'
-            }}
-          >
-            <img 
-              src={fullscreenImage} 
-              className="max-w-full max-h-full object-contain shadow-2xl animate-in zoom-in-95 duration-300" 
-              alt="Zoomed"
-              onClick={(e) => e.stopPropagation()} 
-            />
-          </div>
-          
-          <div className="absolute bottom-10 text-center pointer-events-none z-50">
-             <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.4em]">Pince para dar zoom ({zoomScale.toFixed(1)}x) • Toque fora para fechar</p>
-          </div>
+          <img src={fullscreenImage} className="max-w-full max-h-[80vh] object-contain shadow-2xl animate-in zoom-in-95 duration-300" />
         </div>
       )}
     </div>

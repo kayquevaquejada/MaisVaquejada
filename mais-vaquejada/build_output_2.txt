@@ -1,0 +1,24 @@
+
+> arena-+vaquejada@0.0.0 build
+> npx vite build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 1706 modules transformed.
+rendering chunks...
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /Users/apple/Desktop/Apps/arena-+vaquejada1.0 - cópia/MaisVaquejada/mais-vaquejada/node_modules/@capacitor/preferences/dist/esm/index.js is dynamically imported by /Users/apple/Desktop/Apps/arena-+vaquejada1.0 - cópia/MaisVaquejada/mais-vaquejada/components/PushOnboardingModal.tsx, /Users/apple/Desktop/Apps/arena-+vaquejada1.0 - cópia/MaisVaquejada/mais-vaquejada/components/PushOnboardingModal.tsx but also statically imported by /Users/apple/Desktop/Apps/arena-+vaquejada1.0 - cópia/MaisVaquejada/mais-vaquejada/App.tsx, /Users/apple/Desktop/Apps/arena-+vaquejada1.0 - cópia/MaisVaquejada/mais-vaquejada/lib/push/PushPermissionManager.ts, /Users/apple/Desktop/Apps/arena-+vaquejada1.0 - cópia/MaisVaquejada/mais-vaquejada/lib/supabase.ts, dynamic import will not move module into another chunk.
+
+computing gzip size...
+dist/index.html                   3.17 kB │ gzip:   1.48 kB
+dist/assets/index-VS69-09M.css    0.27 kB │ gzip:   0.16 kB
+dist/assets/web-Bad740Bw.js       0.67 kB │ gzip:   0.33 kB
+dist/assets/web-Cq3enVkZ.js       1.25 kB │ gzip:   0.58 kB
+dist/assets/web-CymnLNp8.js       2.35 kB │ gzip:   1.03 kB
+dist/assets/index-BtYwC_ca.js   910.65 kB │ gzip: 225.45 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 10.62s
