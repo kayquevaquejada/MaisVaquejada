@@ -141,6 +141,19 @@ const App: React.FC = () => {
     }
   };
 
+  const getCachedNavData = async () => {
+    try {
+      const { value: store } = await Preferences.get({ key: 'arena_last_store' });
+      const { value: event } = await Preferences.get({ key: 'arena_last_event' });
+      return {
+        store: store ? JSON.parse(store) : null,
+        event: event ? JSON.parse(event) : null
+      };
+    } catch (e) {
+      return { store: null, event: null };
+    }
+  };
+
   useEffect(() => {
     currentViewRef.current = currentView;
   }, [currentView]);
@@ -237,9 +250,16 @@ const App: React.FC = () => {
         } else {
           if (onboardingViews.includes(activeView)) {
             const { value: savedView } = await Preferences.get({ key: 'arena_last_view' });
-            setCurrentView((savedView as View) || View.EVENTS);
+            const navData = await getCachedNavData();
+            
+            if (savedView) {
+              setCurrentView(savedView as View);
+              if (navData.store) setSelectedStore(navData.store);
+              if (navData.event) setSelectedEvent(navData.event);
+            } else {
+              setCurrentView(View.EVENTS);
+            }
           }
-
         }
       }
     } catch (err) {
@@ -376,6 +396,8 @@ const App: React.FC = () => {
       // Persistir última view para restauração no próximo boot
       if (user && ![View.LOGIN, View.SIGNUP, View.COMPLETE_PROFILE, View.LEGAL_CONSENT].includes(view)) {
         Preferences.set({ key: 'arena_last_view', value: view });
+        if (e.detail?.store) Preferences.set({ key: 'arena_last_store', value: JSON.stringify(e.detail.store) });
+        if (eventData) Preferences.set({ key: 'arena_last_event', value: JSON.stringify(eventData) });
       }
 
       

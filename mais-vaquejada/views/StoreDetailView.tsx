@@ -21,6 +21,34 @@ const EditStoreModal: React.FC<{ store: any, onClose: () => void, onSuccess: () 
         instagram: store.instagram || '',
         ativo: store.ativo ?? true
     });
+    const [uploading, setUploading] = useState<'logo' | 'banner' | null>(null);
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'banner') => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        
+        setUploading(type);
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `stores/${store.id}/${type}_${Date.now()}.${fileExt}`;
+            
+            const { error: uploadError } = await supabase.storage
+                .from('vaquejadas')
+                .upload(fileName, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('vaquejadas')
+                .getPublicUrl(fileName);
+
+            setFormData(prev => ({ ...prev, [type === 'logo' ? 'logo_url' : 'banner_url']: publicUrl }));
+        } catch (err: any) {
+            alert('Erro no upload: ' + err.message);
+        } finally {
+            setUploading(null);
+        }
+    };
 
     const handleSave = async () => {
         setLoading(true);
@@ -64,35 +92,46 @@ const EditStoreModal: React.FC<{ store: any, onClose: () => void, onSuccess: () 
                 <div className="space-y-4">
                     <div>
                         <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Nome da Loja</label>
-                        <input value={formData.nome} onChange={e => setFormData({...formData, nome: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold" />
+                        <input value={formData.nome} onChange={e => setFormData({...formData, nome: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold text-[#1A1108] bg-white shadow-inner" />
                     </div>
                     
                     <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Logo (URL)</label>
-                            <input value={formData.logo_url} onChange={e => setFormData({...formData, logo_url: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold" placeholder="Circular" />
+                        <div className="relative group">
+                            <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Foto do Logo</label>
+                            <div className="relative">
+                                <input value={formData.logo_url} onChange={e => setFormData({...formData, logo_url: e.target.value})} className="w-full p-4 pr-12 rounded-2xl border border-[#1A1108]/10 font-bold text-[#1A1108] bg-white text-[10px]" placeholder="Link ou Anexo" />
+                                <label className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-[#D4AF37] text-white rounded-xl cursor-pointer active:scale-95 shadow-lg">
+                                    <span className="material-icons text-lg">{uploading === 'logo' ? 'sync' : 'cloud_upload'}</span>
+                                    <input type="file" accept="image/*" className="hidden" onChange={e => handleFileUpload(e, 'logo')} disabled={!!uploading} />
+                                </label>
+                            </div>
                         </div>
-                        <div>
-                            <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Capa/Banner (URL)</label>
-                            <input value={formData.banner_url} onChange={e => setFormData({...formData, banner_url: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold" placeholder="Recomendado: 1200x400px" />
-                            <p className="text-[8px] text-[#D4AF37] font-bold mt-1 uppercase">Ideal: 1200x400px para melhor encaixe</p>
+                        <div className="relative group">
+                            <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Foto da Capa</label>
+                            <div className="relative">
+                                <input value={formData.banner_url} onChange={e => setFormData({...formData, banner_url: e.target.value})} className="w-full p-4 pr-12 rounded-2xl border border-[#1A1108]/10 font-bold text-[#1A1108] bg-white text-[10px]" placeholder="Link ou Anexo" />
+                                <label className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-[#D4AF37] text-white rounded-xl cursor-pointer active:scale-95 shadow-lg">
+                                    <span className="material-icons text-lg">{uploading === 'banner' ? 'sync' : 'cloud_upload'}</span>
+                                    <input type="file" accept="image/*" className="hidden" onChange={e => handleFileUpload(e, 'banner')} disabled={!!uploading} />
+                                </label>
+                            </div>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">WhatsApp</label>
-                            <input value={formData.whatsapp} onChange={e => setFormData({...formData, whatsapp: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold" />
+                            <input value={formData.whatsapp} onChange={e => setFormData({...formData, whatsapp: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold text-[#1A1108] bg-white" />
                         </div>
                         <div>
                             <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Cidade/UF</label>
-                            <input value={formData.cidade} onChange={e => setFormData({...formData, cidade: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold" />
+                            <input value={formData.cidade} onChange={e => setFormData({...formData, cidade: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold text-[#1A1108] bg-white" />
                         </div>
                     </div>
 
                     <div>
                         <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Descrição</label>
-                        <textarea value={formData.descricao} onChange={e => setFormData({...formData, descricao: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-medium" rows={3} />
+                        <textarea value={formData.descricao} onChange={e => setFormData({...formData, descricao: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-medium text-[#1A1108] bg-white" rows={3} />
                     </div>
 
                     <div className="flex items-center justify-between bg-neutral-50 p-4 rounded-2xl">
@@ -104,10 +143,10 @@ const EditStoreModal: React.FC<{ store: any, onClose: () => void, onSuccess: () 
                 </div>
 
                 <div className="flex flex-col gap-3 pt-4">
-                    <button onClick={handleSave} disabled={loading} className="w-full h-16 bg-[#1A1108] text-white rounded-2xl font-black uppercase tracking-widest shadow-xl active:scale-95 disabled:opacity-50">
+                    <button onClick={handleSave} disabled={loading || !!uploading} className="w-full h-16 bg-[#1A1108] text-white rounded-2xl font-black uppercase tracking-widest shadow-xl active:scale-95 disabled:opacity-50">
                         {loading ? 'Salvando...' : 'Salvar Alterações'}
                     </button>
-                    <button onClick={handleDelete} disabled={loading} className="w-full py-4 text-red-500 font-black uppercase text-[10px] tracking-widest active:scale-95">
+                    <button onClick={handleDelete} disabled={loading || !!uploading} className="w-full py-4 text-red-500 font-black uppercase text-[10px] tracking-widest active:scale-95">
                         Excluir Loja Permanentemente
                     </button>
                 </div>
@@ -127,6 +166,34 @@ const AddProductModal: React.FC<{ storeId: string, onClose: () => void, onSucces
         descricao: '',
         destaque: false
     });
+    const [uploading, setUploading] = useState(false);
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        
+        setUploading(true);
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `products/${storeId}/${Date.now()}.${fileExt}`;
+            
+            const { error: uploadError } = await supabase.storage
+                .from('vaquejadas')
+                .upload(fileName, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('vaquejadas')
+                .getPublicUrl(fileName);
+
+            setFormData(prev => ({ ...prev, imagem_url: publicUrl }));
+        } catch (err: any) {
+            alert('Erro no upload: ' + err.message);
+        } finally {
+            setUploading(false);
+        }
+    };
 
     const handleSave = async () => {
         if (!formData.nome || !formData.categoria) return alert('Nome e Categoria são obrigatórios');
@@ -164,7 +231,7 @@ const AddProductModal: React.FC<{ storeId: string, onClose: () => void, onSucces
                         <input 
                             value={formData.nome}
                             onChange={e => setFormData({...formData, nome: e.target.value})}
-                            className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold"
+                            className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold text-[#1A1108] bg-white shadow-inner"
                             placeholder="Ex: Sela Australiana"
                         />
                     </div>
@@ -174,7 +241,7 @@ const AddProductModal: React.FC<{ storeId: string, onClose: () => void, onSucces
                             <input 
                                 value={formData.preco}
                                 onChange={e => setFormData({...formData, preco: e.target.value})}
-                                className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold"
+                                className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold text-[#1A1108] bg-white shadow-inner"
                                 placeholder="Ex: R$ 450,00"
                             />
                         </div>
@@ -183,26 +250,32 @@ const AddProductModal: React.FC<{ storeId: string, onClose: () => void, onSucces
                             <input 
                                 value={formData.categoria}
                                 onChange={e => setFormData({...formData, categoria: e.target.value})}
-                                className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold"
+                                className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold text-[#1A1108] bg-white shadow-inner"
                                 placeholder="Ex: Acessórios"
                             />
                         </div>
                     </div>
                     <div>
-                        <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">URL da Imagem</label>
-                        <input 
-                            value={formData.imagem_url}
-                            onChange={e => setFormData({...formData, imagem_url: e.target.value})}
-                            className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold"
-                            placeholder="Link da foto do produto"
-                        />
+                        <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Foto do Produto</label>
+                        <div className="relative">
+                            <input 
+                                value={formData.imagem_url}
+                                onChange={e => setFormData({...formData, imagem_url: e.target.value})}
+                                className="w-full p-4 pr-12 rounded-2xl border border-[#1A1108]/10 font-bold text-[#1A1108] bg-white text-[10px]"
+                                placeholder="Link da foto ou anexo"
+                            />
+                            <label className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-[#D4AF37] text-white rounded-xl cursor-pointer active:scale-95 shadow-lg">
+                                <span className="material-icons text-lg">{uploading ? 'sync' : 'cloud_upload'}</span>
+                                <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} disabled={uploading} />
+                            </label>
+                        </div>
                     </div>
                     <div>
                         <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Descrição Curta</label>
                         <textarea 
                             value={formData.descricao}
                             onChange={e => setFormData({...formData, descricao: e.target.value})}
-                            className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-medium"
+                            className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-medium text-[#1A1108] bg-white"
                             rows={3}
                         />
                     </div>
@@ -219,7 +292,7 @@ const AddProductModal: React.FC<{ storeId: string, onClose: () => void, onSucces
 
                 <button 
                     onClick={handleSave}
-                    disabled={loading}
+                    disabled={loading || uploading}
                     className="w-full h-16 bg-[#1A1108] text-white rounded-2xl font-black uppercase tracking-widest shadow-xl active:scale-95 disabled:opacity-50"
                 >
                     {loading ? 'Salvando...' : 'Cadastrar Produto'}
@@ -332,23 +405,32 @@ const StoreDetailView: React.FC<StoreDetailViewProps> = ({ store, user, onBack }
             {/* 1. HEADER DA LOJA */}
             <div className="relative">
                 {/* Banner Capa */}
-                <div className="h-[200px] w-full relative bg-neutral-800">
+                <div className="relative h-64 md:h-80 w-full bg-neutral-900 group">
                     <img 
-                        src={store.banner_url || store.cover_url || 'https://images.unsplash.com/photo-1598970434795-0c54fe7c0648?auto=format&fit=crop&w=1200&q=80'} 
-                        className="w-full h-full object-cover" 
-                        alt="Banner Loja"
+                        src={store.banner_url || 'https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?auto=format&fit=crop&q=80'} 
+                        className="w-full h-full object-cover opacity-60"
+                        alt="Banner"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#F5F1E9] to-transparent" />
                     
                     {/* Botão Voltar */}
                     <button 
                         onClick={onBack}
-                        className="absolute top-12 left-6 w-10 h-10 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center text-white z-20 active:scale-90"
+                        className="absolute top-6 left-6 w-10 h-10 rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center text-white z-10 active:scale-90"
                     >
                         <span className="material-icons">arrow_back</span>
                     </button>
 
-                    {/* Botão Configurações da Loja (Removido daqui para colocar junto ao nome) */}
+                    {/* Botão Editar Capa (Apenas para o Dono) */}
+                    {user?.id === store.user_id && (
+                        <button 
+                            onClick={() => setShowEditStore(true)}
+                            className="absolute top-6 right-6 flex items-center gap-2 bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-full border border-white/30 active:scale-95 transition-all"
+                        >
+                            <span className="material-icons text-sm">photo_camera</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest">Editar Capa</span>
+                        </button>
+                    )}
                 </div>
 
                 {/* Identidade da Loja (Overlay) */}
@@ -388,8 +470,6 @@ const StoreDetailView: React.FC<StoreDetailViewProps> = ({ store, user, onBack }
 
             {/* Espaçador para o logo que transborda */}
             <div className="h-20" />
-
-            {/* 2. AÇÕES RÁPIDAS (Removido conforme solicitado) */}
 
             {/* 3. MENU DE NAVEGAÇÃO (TABS) */}
             <div className="sticky top-0 z-30 bg-[#F5F1E9]/80 backdrop-blur-xl border-b border-[#1A1108]/5">
@@ -487,9 +567,20 @@ const StoreDetailView: React.FC<StoreDetailViewProps> = ({ store, user, onBack }
                                         ))}
                                 </div>
                             ) : (
-                                <div className="py-20 flex flex-col items-center justify-center text-center opacity-20">
-                                    <span className="material-icons text-6xl mb-4">inventory_2</span>
-                                    <p className="text-sm font-black uppercase tracking-widest">Nenhum produto cadastrado</p>
+                                <div className="py-20 flex flex-col items-center justify-center text-center">
+                                    <div className="opacity-20 flex flex-col items-center">
+                                        <span className="material-icons text-6xl mb-4 text-[#1A1108]">inventory_2</span>
+                                        <p className="font-black uppercase tracking-widest text-xs text-[#1A1108]">Nenhum produto cadastrado</p>
+                                    </div>
+                                    {user?.id === store.user_id && (
+                                        <button 
+                                            onClick={() => setShowAddProduct(true)}
+                                            className="mt-6 bg-[#D4AF37] text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all flex items-center gap-2"
+                                        >
+                                            <span className="material-icons">add_box</span>
+                                            Adicionar Meu Primeiro Produto
+                                        </button>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -566,9 +657,10 @@ const StoreDetailView: React.FC<StoreDetailViewProps> = ({ store, user, onBack }
             {user?.id === store.user_id && (
                 <button 
                     onClick={() => setShowAddProduct(true)}
-                    className="fixed bottom-24 right-6 w-16 h-16 bg-[#1A1108] text-white rounded-full flex items-center justify-center shadow-2xl z-50 active:scale-90 transition-transform"
+                    className="fixed bottom-24 right-6 h-16 bg-[#1A1108] text-white rounded-full flex items-center justify-center gap-3 px-6 shadow-2xl z-50 active:scale-90 transition-transform group"
                 >
                     <span className="material-icons text-3xl">add</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest hidden group-hover:block">Adicionar Produto</span>
                 </button>
             )}
             {/* Modal de Cadastro de Produto */}
