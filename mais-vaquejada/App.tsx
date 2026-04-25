@@ -98,7 +98,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
     case View.RECOVERY_ASSISTED:
       return <RecoveryAssistedView onBack={() => onSetCurrentView(View.LOGIN)} />;
     case View.EVENT_DETAILS:
-      return <EventDetailView event={selectedEvent} onBack={() => onSetCurrentView(View.EVENTS)} />;
+      return <EventDetailView event={selectedEvent} user={user} onBack={() => onSetCurrentView(View.EVENTS)} />;
     case View.LEGAL_CONSENT:
       return <LegalConsentView user={user} onAccept={() => onFetchProfile(user?.id || '')} />;
     case View.STORE_DETAILS:

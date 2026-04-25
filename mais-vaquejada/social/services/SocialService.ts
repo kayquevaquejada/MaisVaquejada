@@ -4,10 +4,12 @@ import { SocialPost, Story, StoryMedia, SocialComment, ArenaNotification, ChatMe
 export const SocialService = {
   // Feed & Posts — now with real like/comment counts
   async fetchFeed(userId: string, followingIds: string[] = []): Promise<SocialPost[]> {
+    const now = new Date().toISOString();
     const query = supabase
       .from('posts')
       .select(`*, profiles (id, username, avatar_url, role)`)
       .in('user_id', [userId, ...followingIds])
+      .or(`expires_at.is.null,expires_at.gt.${now}`)
       .order('created_at', { ascending: false })
       .limit(50);
 
