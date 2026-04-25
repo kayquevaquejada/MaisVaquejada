@@ -127,15 +127,7 @@ const StoreDetailView: React.FC<StoreDetailViewProps> = ({ store, user, onBack }
                         <span className="material-icons">arrow_back</span>
                     </button>
 
-                    {/* Botão Configurações da Loja (Apenas Dono) */}
-                    {user?.id === store.user_id && (
-                        <button 
-                            onClick={() => setShowEditStore(true)}
-                            className="absolute top-12 right-6 w-10 h-10 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center text-white z-20 active:scale-90"
-                        >
-                            <span className="material-icons">settings</span>
-                        </button>
-                    )}
+                    {/* Botão Configurações da Loja (Removido daqui para colocar junto ao nome) */}
                 </div>
 
                 {/* Identidade da Loja (Overlay) */}
@@ -148,13 +140,24 @@ const StoreDetailView: React.FC<StoreDetailViewProps> = ({ store, user, onBack }
                         />
                     </div>
                     <div className="pb-2 flex-1">
-                        <div className="flex items-center gap-1">
-                            <h1 className="text-xl font-black text-white drop-shadow-md uppercase italic leading-none">{store.nome || store.name}</h1>
-                            {(store.verificado || store.is_official) && (
-                                <span className="material-icons text-blue-400 text-lg">verified</span>
+                        <div className="flex items-center gap-3">
+                            <h1 className="text-xl font-black text-[#1A1108] uppercase italic leading-none drop-shadow-sm">
+                                {store.nome || store.name}
+                                {(store.verificado || store.is_official) && (
+                                    <span className="material-icons text-blue-500 text-lg ml-1">verified</span>
+                                )}
+                            </h1>
+                            {user?.id === store.user_id && (
+                                <button 
+                                    onClick={() => setShowEditStore(true)}
+                                    className="w-10 h-10 rounded-full bg-[#1A1108] text-white flex items-center justify-center shadow-lg active:scale-90 transition-transform"
+                                    title="Editar Loja e Foto"
+                                >
+                                    <span className="material-icons text-xl">edit</span>
+                                </button>
                             )}
                         </div>
-                        <p className="text-[10px] font-bold text-white/80 uppercase tracking-widest mt-1">
+                        <p className="text-[10px] font-bold text-[#1A1108]/60 uppercase tracking-widest mt-1">
                             <span className="material-icons text-[10px] mr-1">place</span>
                             {store.cidade || store.city || 'Brasil'}
                         </p>
