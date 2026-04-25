@@ -8,6 +8,227 @@ interface StoreDetailViewProps {
     onBack: () => void;
 }
 
+// Componente Interno para Editar Loja
+const EditStoreModal: React.FC<{ store: any, onClose: () => void, onSuccess: () => void }> = ({ store, onClose, onSuccess }) => {
+    const [loading, setLoading] = useState(false);
+    const [formData, setFormData] = useState({
+        nome: store.nome || '',
+        cidade: store.cidade || '',
+        logo_url: store.logo_url || '',
+        banner_url: store.banner_url || '',
+        descricao: store.descricao || '',
+        whatsapp: store.whatsapp || '',
+        instagram: store.instagram || '',
+        ativo: store.ativo ?? true
+    });
+
+    const handleSave = async () => {
+        setLoading(true);
+        try {
+            const { error } = await supabase
+                .from('lojas')
+                .update(formData)
+                .eq('id', store.id);
+            if (error) throw error;
+            onSuccess();
+        } catch (err: any) {
+            alert('Erro ao salvar: ' + err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!confirm('ATENÇÃO: Isso excluirá sua loja e todos os produtos permanentemente. Tem certeza?')) return;
+        setLoading(true);
+        try {
+            const { error } = await supabase.from('lojas').delete().eq('id', store.id);
+            if (error) throw error;
+            window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'MERCADO' } }));
+        } catch (err: any) {
+            alert('Erro ao excluir: ' + err.message);
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-md flex items-end md:items-center justify-center p-0 md:p-6 animate-in fade-in duration-300">
+            <div className="bg-white w-full max-w-lg rounded-t-[40px] md:rounded-[40px] p-8 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-center">
+                    <h2 className="text-xl font-black uppercase italic text-[#1A1108]">Configurações da Loja</h2>
+                    <button onClick={onClose} className="w-10 h-10 rounded-full bg-[#1A1108]/5 flex items-center justify-center">
+                        <span className="material-icons">close</span>
+                    </button>
+                </div>
+
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Nome da Loja</label>
+                        <input value={formData.nome} onChange={e => setFormData({...formData, nome: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold" />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Logo (URL)</label>
+                            <input value={formData.logo_url} onChange={e => setFormData({...formData, logo_url: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold" placeholder="Circular" />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Capa/Banner (URL)</label>
+                            <input value={formData.banner_url} onChange={e => setFormData({...formData, banner_url: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold" placeholder="Recomendado: 1200x400px" />
+                            <p className="text-[8px] text-[#D4AF37] font-bold mt-1 uppercase">Ideal: 1200x400px para melhor encaixe</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">WhatsApp</label>
+                            <input value={formData.whatsapp} onChange={e => setFormData({...formData, whatsapp: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold" />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Cidade/UF</label>
+                            <input value={formData.cidade} onChange={e => setFormData({...formData, cidade: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold" />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Descrição</label>
+                        <textarea value={formData.descricao} onChange={e => setFormData({...formData, descricao: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-medium" rows={3} />
+                    </div>
+
+                    <div className="flex items-center justify-between bg-neutral-50 p-4 rounded-2xl">
+                        <div className="flex items-center gap-3">
+                            <input type="checkbox" checked={formData.ativo} onChange={e => setFormData({...formData, ativo: e.target.checked})} className="w-5 h-5 accent-[#D4AF37]" />
+                            <span className="text-xs font-bold uppercase text-[#1A1108]">Loja Ativa (Visível)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex flex-col gap-3 pt-4">
+                    <button onClick={handleSave} disabled={loading} className="w-full h-16 bg-[#1A1108] text-white rounded-2xl font-black uppercase tracking-widest shadow-xl active:scale-95 disabled:opacity-50">
+                        {loading ? 'Salvando...' : 'Salvar Alterações'}
+                    </button>
+                    <button onClick={handleDelete} disabled={loading} className="w-full py-4 text-red-500 font-black uppercase text-[10px] tracking-widest active:scale-95">
+                        Excluir Loja Permanentemente
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// Componente Interno para Cadastro de Produto
+const AddProductModal: React.FC<{ storeId: string, onClose: () => void, onSuccess: () => void }> = ({ storeId, onClose, onSuccess }) => {
+    const [loading, setLoading] = useState(false);
+    const [formData, setFormData] = useState({
+        nome: '',
+        preco: '',
+        categoria: '',
+        imagem_url: '',
+        descricao: '',
+        destaque: false
+    });
+
+    const handleSave = async () => {
+        if (!formData.nome || !formData.categoria) return alert('Nome e Categoria são obrigatórios');
+        setLoading(true);
+        try {
+            const { error } = await supabase
+                .from('produtos_loja')
+                .insert([{
+                    ...formData,
+                    loja_id: storeId,
+                    ativo: true
+                }]);
+            if (error) throw error;
+            onSuccess();
+        } catch (err: any) {
+            alert('Erro ao salvar: ' + err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-md flex items-end md:items-center justify-center p-0 md:p-6 animate-in fade-in duration-300">
+            <div className="bg-white w-full max-w-lg rounded-t-[40px] md:rounded-[40px] p-8 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-center">
+                    <h2 className="text-xl font-black uppercase italic text-[#1A1108]">Novo Produto</h2>
+                    <button onClick={onClose} className="w-10 h-10 rounded-full bg-[#1A1108]/5 flex items-center justify-center">
+                        <span className="material-icons">close</span>
+                    </button>
+                </div>
+
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Nome do Produto</label>
+                        <input 
+                            value={formData.nome}
+                            onChange={e => setFormData({...formData, nome: e.target.value})}
+                            className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold"
+                            placeholder="Ex: Sela Australiana"
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Preço</label>
+                            <input 
+                                value={formData.preco}
+                                onChange={e => setFormData({...formData, preco: e.target.value})}
+                                className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold"
+                                placeholder="Ex: R$ 450,00"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Categoria</label>
+                            <input 
+                                value={formData.categoria}
+                                onChange={e => setFormData({...formData, categoria: e.target.value})}
+                                className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold"
+                                placeholder="Ex: Acessórios"
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">URL da Imagem</label>
+                        <input 
+                            value={formData.imagem_url}
+                            onChange={e => setFormData({...formData, imagem_url: e.target.value})}
+                            className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold"
+                            placeholder="Link da foto do produto"
+                        />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Descrição Curta</label>
+                        <textarea 
+                            value={formData.descricao}
+                            onChange={e => setFormData({...formData, descricao: e.target.value})}
+                            className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-medium"
+                            rows={3}
+                        />
+                    </div>
+                    <div className="flex items-center gap-3 bg-neutral-50 p-4 rounded-2xl">
+                        <input 
+                            type="checkbox"
+                            checked={formData.destaque}
+                            onChange={e => setFormData({...formData, destaque: e.target.checked})}
+                            className="w-5 h-5 accent-[#D4AF37]"
+                        />
+                        <span className="text-xs font-bold uppercase text-[#1A1108]">Destacar este produto</span>
+                    </div>
+                </div>
+
+                <button 
+                    onClick={handleSave}
+                    disabled={loading}
+                    className="w-full h-16 bg-[#1A1108] text-white rounded-2xl font-black uppercase tracking-widest shadow-xl active:scale-95 disabled:opacity-50"
+                >
+                    {loading ? 'Salvando...' : 'Cadastrar Produto'}
+                </button>
+            </div>
+        </div>
+    );
+};
+
 const StoreDetailView: React.FC<StoreDetailViewProps> = ({ store, user, onBack }) => {
     const [activeTab, setActiveTab] = useState<'products' | 'about' | 'reviews'>('products');
     const [products, setProducts] = useState<any[]>([]);
@@ -378,225 +599,5 @@ const StoreDetailView: React.FC<StoreDetailViewProps> = ({ store, user, onBack }
     );
 };
 
-// Componente Interno para Editar Loja
-const EditStoreModal: React.FC<{ store: any, onClose: () => void, onSuccess: () => void }> = ({ store, onClose, onSuccess }) => {
-    const [loading, setLoading] = useState(false);
-    const [formData, setFormData] = useState({
-        nome: store.nome || '',
-        cidade: store.cidade || '',
-        logo_url: store.logo_url || '',
-        banner_url: store.banner_url || '',
-        descricao: store.descricao || '',
-        whatsapp: store.whatsapp || '',
-        instagram: store.instagram || '',
-        ativo: store.ativo ?? true
-    });
-
-    const handleSave = async () => {
-        setLoading(true);
-        try {
-            const { error } = await supabase
-                .from('lojas')
-                .update(formData)
-                .eq('id', store.id);
-            if (error) throw error;
-            onSuccess();
-        } catch (err: any) {
-            alert('Erro ao salvar: ' + err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleDelete = async () => {
-        if (!confirm('ATENÇÃO: Isso excluirá sua loja e todos os produtos permanentemente. Tem certeza?')) return;
-        setLoading(true);
-        try {
-            const { error } = await supabase.from('lojas').delete().eq('id', store.id);
-            if (error) throw error;
-            window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'MERCADO' } }));
-        } catch (err: any) {
-            alert('Erro ao excluir: ' + err.message);
-            setLoading(false);
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-md flex items-end md:items-center justify-center p-0 md:p-6 animate-in fade-in duration-300">
-            <div className="bg-white w-full max-w-lg rounded-t-[40px] md:rounded-[40px] p-8 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-                <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-black uppercase italic text-[#1A1108]">Configurações da Loja</h2>
-                    <button onClick={onClose} className="w-10 h-10 rounded-full bg-[#1A1108]/5 flex items-center justify-center">
-                        <span className="material-icons">close</span>
-                    </button>
-                </div>
-
-                <div className="space-y-4">
-                    <div>
-                        <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Nome da Loja</label>
-                        <input value={formData.nome} onChange={e => setFormData({...formData, nome: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold" />
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Logo (URL)</label>
-                            <input value={formData.logo_url} onChange={e => setFormData({...formData, logo_url: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold" placeholder="Circular" />
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Capa/Banner (URL)</label>
-                            <input value={formData.banner_url} onChange={e => setFormData({...formData, banner_url: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold" placeholder="Recomendado: 1200x400px" />
-                            <p className="text-[8px] text-[#D4AF37] font-bold mt-1 uppercase">Ideal: 1200x400px para melhor encaixe</p>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">WhatsApp</label>
-                            <input value={formData.whatsapp} onChange={e => setFormData({...formData, whatsapp: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold" />
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Cidade/UF</label>
-                            <input value={formData.cidade} onChange={e => setFormData({...formData, cidade: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold" />
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Descrição</label>
-                        <textarea value={formData.descricao} onChange={e => setFormData({...formData, descricao: e.target.value})} className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-medium" rows={3} />
-                    </div>
-
-                    <div className="flex items-center justify-between bg-neutral-50 p-4 rounded-2xl">
-                        <div className="flex items-center gap-3">
-                            <input type="checkbox" checked={formData.ativo} onChange={e => setFormData({...formData, ativo: e.target.checked})} className="w-5 h-5 accent-[#D4AF37]" />
-                            <span className="text-xs font-bold uppercase text-[#1A1108]">Loja Ativa (Visível)</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="flex flex-col gap-3 pt-4">
-                    <button onClick={handleSave} disabled={loading} className="w-full h-16 bg-[#1A1108] text-white rounded-2xl font-black uppercase tracking-widest shadow-xl active:scale-95 disabled:opacity-50">
-                        {loading ? 'Salvando...' : 'Salvar Alterações'}
-                    </button>
-                    <button onClick={handleDelete} disabled={loading} className="w-full py-4 text-red-500 font-black uppercase text-[10px] tracking-widest active:scale-95">
-                        Excluir Loja Permanentemente
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// Componente Interno para Cadastro de Produto
-const AddProductModal: React.FC<{ storeId: string, onClose: () => void, onSuccess: () => void }> = ({ storeId, onClose, onSuccess }) => {
-    const [loading, setLoading] = useState(false);
-    const [formData, setFormData] = useState({
-        nome: '',
-        preco: '',
-        categoria: '',
-        imagem_url: '',
-        descricao: '',
-        destaque: false
-    });
-
-    const handleSave = async () => {
-        if (!formData.nome || !formData.categoria) return alert('Nome e Categoria são obrigatórios');
-        setLoading(true);
-        try {
-            const { error } = await supabase
-                .from('produtos_loja')
-                .insert([{
-                    ...formData,
-                    loja_id: storeId,
-                    ativo: true
-                }]);
-            if (error) throw error;
-            onSuccess();
-        } catch (err: any) {
-            alert('Erro ao salvar: ' + err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-md flex items-end md:items-center justify-center p-0 md:p-6 animate-in fade-in duration-300">
-            <div className="bg-white w-full max-w-lg rounded-t-[40px] md:rounded-[40px] p-8 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-                <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-black uppercase italic text-[#1A1108]">Novo Produto</h2>
-                    <button onClick={onClose} className="w-10 h-10 rounded-full bg-[#1A1108]/5 flex items-center justify-center">
-                        <span className="material-icons">close</span>
-                    </button>
-                </div>
-
-                <div className="space-y-4">
-                    <div>
-                        <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Nome do Produto</label>
-                        <input 
-                            value={formData.nome}
-                            onChange={e => setFormData({...formData, nome: e.target.value})}
-                            className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold"
-                            placeholder="Ex: Sela Australiana"
-                        />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Preço</label>
-                            <input 
-                                value={formData.preco}
-                                onChange={e => setFormData({...formData, preco: e.target.value})}
-                                className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold"
-                                placeholder="Ex: R$ 450,00"
-                            />
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Categoria</label>
-                            <input 
-                                value={formData.categoria}
-                                onChange={e => setFormData({...formData, categoria: e.target.value})}
-                                className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold"
-                                placeholder="Ex: Acessórios"
-                            />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">URL da Imagem</label>
-                        <input 
-                            value={formData.imagem_url}
-                            onChange={e => setFormData({...formData, imagem_url: e.target.value})}
-                            className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold"
-                            placeholder="Link da foto do produto"
-                        />
-                    </div>
-                    <div>
-                        <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Descrição Curta</label>
-                        <textarea 
-                            value={formData.descricao}
-                            onChange={e => setFormData({...formData, descricao: e.target.value})}
-                            className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-medium"
-                            rows={3}
-                        />
-                    </div>
-                    <div className="flex items-center gap-3 bg-neutral-50 p-4 rounded-2xl">
-                        <input 
-                            type="checkbox"
-                            checked={formData.destaque}
-                            onChange={e => setFormData({...formData, destaque: e.target.checked})}
-                            className="w-5 h-5 accent-[#D4AF37]"
-                        />
-                        <span className="text-xs font-bold uppercase text-[#1A1108]">Destacar este produto</span>
-                    </div>
-                </div>
-
-                <button 
-                    onClick={handleSave}
-                    disabled={loading}
-                    className="w-full h-16 bg-[#1A1108] text-white rounded-2xl font-black uppercase tracking-widest shadow-xl active:scale-95 disabled:opacity-50"
-                >
-                    {loading ? 'Salvando...' : 'Cadastrar Produto'}
-                </button>
-            </div>
-        </div>
-    );
-};
 
 export default StoreDetailView;
