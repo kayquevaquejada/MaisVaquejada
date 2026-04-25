@@ -50,6 +50,7 @@ interface ViewRendererProps {
 const ViewRenderer: React.FC<ViewRendererProps> = ({
   currentView,
   selectedEvent,
+  selectedStore,
   user,
   profileUsername,
   onFetchProfile,

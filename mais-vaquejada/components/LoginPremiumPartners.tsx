@@ -23,8 +23,8 @@ const LoginPremiumPartners: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const pauseTimeout = useRef<NodeJS.Timeout | null>(null);
-  const animationFrameId = useRef<number | null>(null);
+  const pauseTimeout = useRef<any>(null);
+  const animationFrameId = useRef<any>(null);
   const lastTime = useRef<number>(0);
   const scrollPos = useRef<number>(0);
 
