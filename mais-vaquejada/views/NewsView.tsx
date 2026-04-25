@@ -2,6 +2,7 @@ import React from 'react';
 import { NewsItem, User } from '../types';
 import { supabase } from '../lib/supabase';
 import SponsorMarquee from '../components/SponsorMarquee';
+import AdsCarousel from '../components/AdsCarousel';
 
 const TABS = ['TUDO', 'EVENTOS', 'REGULAMENTO', 'NOTÍCIAS'];
 
@@ -296,7 +297,7 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
           </div>
         </button>
 
-        {/* Filtros de categorias */}
+      {/* Filtros de categorias */}
         <div className="flex gap-2 overflow-x-auto hide-scrollbar">
           {TABS.map((tab) => (
             <button
@@ -308,6 +309,11 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Painel de Propaganda (Banner Principal) */}
+      <div className="-mx-0">
+        <AdsCarousel key="news_top_ads" targetPosition="news_top_carousel" />
       </div>
 
       {/* Conteúdo das notícias */}
