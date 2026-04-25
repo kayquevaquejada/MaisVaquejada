@@ -484,8 +484,7 @@ const StoreDetailView: React.FC<StoreDetailViewProps> = ({ store, user, onBack }
                                                     )}
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        ))}
                                 </div>
                             ) : (
                                 <div className="py-20 flex flex-col items-center justify-center text-center opacity-20">
