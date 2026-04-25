@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { Capacitor } from '@capacitor/core';
-// import LoginPremiumPartners from '../components/LoginPremiumPartners';
+import LoginPremiumPartners from '../components/LoginPremiumPartners';
 
 interface LoginViewProps {
   onLogin: (userData: any) => void;
@@ -194,7 +194,8 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
           </div>
         </div>
 
-        {/* Módulo Premium de Parceiros removido temporariamente para testes */}
+        {/* Módulo Premium de Parceiros */}
+        <LoginPremiumPartners />
       </div>
     </div>
   );

@@ -14,6 +14,7 @@ const StoreDetailView: React.FC<StoreDetailViewProps> = ({ store, user, onBack }
     const [loading, setLoading] = useState(true);
     const [activeCategory, setActiveCategory] = useState('all');
     const [isFollowed, setIsFollowed] = useState(false);
+    const [showAddProduct, setShowAddProduct] = useState(false);
 
     useEffect(() => {
         if (store?.id) {
@@ -126,33 +127,7 @@ const StoreDetailView: React.FC<StoreDetailViewProps> = ({ store, user, onBack }
             {/* Espaçador para o logo que transborda */}
             <div className="h-20" />
 
-            {/* 2. AÇÕES RÁPIDAS */}
-            <div className="px-6 flex gap-3 mb-6">
-                <button 
-                    onClick={handleWhatsApp}
-                    className="flex-1 bg-green-500 text-white h-12 rounded-2xl flex items-center justify-center gap-2 font-black uppercase text-[10px] tracking-widest shadow-lg shadow-green-500/20 active:scale-95 transition-transform"
-                >
-                    <span className="material-icons text-lg">whatsapp</span>
-                    WhatsApp
-                </button>
-                <button 
-                    onClick={() => setIsFollowed(!isFollowed)}
-                    className={`flex-1 h-12 rounded-2xl flex items-center justify-center gap-2 font-black uppercase text-[10px] tracking-widest transition-all active:scale-95 ${
-                        isFollowed 
-                        ? 'bg-white border border-[#1A1108]/10 text-[#1A1108]/40' 
-                        : 'bg-[#1A1108] text-white shadow-lg'
-                    }`}
-                >
-                    <span className="material-icons text-lg">{isFollowed ? 'check' : 'person_add'}</span>
-                    {isFollowed ? 'Seguindo' : 'Seguir'}
-                </button>
-                <button 
-                    onClick={handleShare}
-                    className="w-12 h-12 bg-white border border-[#1A1108]/10 rounded-2xl flex items-center justify-center text-[#1A1108]/60 active:scale-95 transition-transform"
-                >
-                    <span className="material-icons text-lg">share</span>
-                </button>
-            </div>
+            {/* 2. AÇÕES RÁPIDAS (Removido conforme solicitado) */}
 
             {/* 3. MENU DE NAVEGAÇÃO (TABS) */}
             <div className="sticky top-0 z-30 bg-[#F5F1E9]/80 backdrop-blur-xl border-b border-[#1A1108]/5">
@@ -309,13 +284,141 @@ const StoreDetailView: React.FC<StoreDetailViewProps> = ({ store, user, onBack }
                 )}
             </div>
 
-            {/* Botão WhatsApp Flutuante */}
-            <button 
-                onClick={handleWhatsApp}
-                className="fixed bottom-24 right-6 w-16 h-16 bg-green-500 text-white rounded-full flex items-center justify-center shadow-2xl shadow-green-500/40 z-50 animate-bounce active:scale-90 transition-transform"
-            >
-                <span className="material-icons text-3xl">whatsapp</span>
-            </button>
+            {/* Botão WhatsApp Flutuante Removido */}
+            
+            {/* Botão Adicionar Produto (Apenas para o Dono da Loja) */}
+            {user?.id === store.user_id && (
+                <button 
+                    onClick={() => setShowAddProduct(true)}
+                    className="fixed bottom-24 right-6 w-16 h-16 bg-[#1A1108] text-white rounded-full flex items-center justify-center shadow-2xl z-50 active:scale-90 transition-transform"
+                >
+                    <span className="material-icons text-3xl">add</span>
+                </button>
+            )}
+            {/* Modal de Cadastro de Produto */}
+            {showAddProduct && (
+                <AddProductModal 
+                    storeId={store.id} 
+                    onClose={() => setShowAddProduct(false)} 
+                    onSuccess={() => {
+                        setShowAddProduct(false);
+                        fetchProducts();
+                    }}
+                />
+            )}
+        </div>
+    );
+};
+
+// Componente Interno para Cadastro de Produto
+const AddProductModal: React.FC<{ storeId: string, onClose: () => void, onSuccess: () => void }> = ({ storeId, onClose, onSuccess }) => {
+    const [loading, setLoading] = useState(false);
+    const [formData, setFormData] = useState({
+        nome: '',
+        preco: '',
+        categoria: '',
+        imagem_url: '',
+        descricao: '',
+        destaque: false
+    });
+
+    const handleSave = async () => {
+        if (!formData.nome || !formData.categoria) return alert('Nome e Categoria são obrigatórios');
+        setLoading(true);
+        try {
+            const { error } = await supabase
+                .from('produtos_loja')
+                .insert([{
+                    ...formData,
+                    loja_id: storeId,
+                    ativo: true
+                }]);
+            if (error) throw error;
+            onSuccess();
+        } catch (err: any) {
+            alert('Erro ao salvar: ' + err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-md flex items-end md:items-center justify-center p-0 md:p-6 animate-in fade-in duration-300">
+            <div className="bg-white w-full max-w-lg rounded-t-[40px] md:rounded-[40px] p-8 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-center">
+                    <h2 className="text-xl font-black uppercase italic text-[#1A1108]">Novo Produto</h2>
+                    <button onClick={onClose} className="w-10 h-10 rounded-full bg-[#1A1108]/5 flex items-center justify-center">
+                        <span className="material-icons">close</span>
+                    </button>
+                </div>
+
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Nome do Produto</label>
+                        <input 
+                            value={formData.nome}
+                            onChange={e => setFormData({...formData, nome: e.target.value})}
+                            className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold"
+                            placeholder="Ex: Sela Australiana"
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Preço</label>
+                            <input 
+                                value={formData.preco}
+                                onChange={e => setFormData({...formData, preco: e.target.value})}
+                                className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold"
+                                placeholder="Ex: R$ 450,00"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Categoria</label>
+                            <input 
+                                value={formData.categoria}
+                                onChange={e => setFormData({...formData, categoria: e.target.value})}
+                                className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold"
+                                placeholder="Ex: Acessórios"
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">URL da Imagem</label>
+                        <input 
+                            value={formData.imagem_url}
+                            onChange={e => setFormData({...formData, imagem_url: e.target.value})}
+                            className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-bold"
+                            placeholder="Link da foto do produto"
+                        />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-black uppercase text-[#1A1108]/40 mb-2 block">Descrição Curta</label>
+                        <textarea 
+                            value={formData.descricao}
+                            onChange={e => setFormData({...formData, descricao: e.target.value})}
+                            className="w-full p-4 rounded-2xl border border-[#1A1108]/10 font-medium"
+                            rows={3}
+                        />
+                    </div>
+                    <div className="flex items-center gap-3 bg-neutral-50 p-4 rounded-2xl">
+                        <input 
+                            type="checkbox"
+                            checked={formData.destaque}
+                            onChange={e => setFormData({...formData, destaque: e.target.checked})}
+                            className="w-5 h-5 accent-[#D4AF37]"
+                        />
+                        <span className="text-xs font-bold uppercase text-[#1A1108]">Destacar este produto</span>
+                    </div>
+                </div>
+
+                <button 
+                    onClick={handleSave}
+                    disabled={loading}
+                    className="w-full h-16 bg-[#1A1108] text-white rounded-2xl font-black uppercase tracking-widest shadow-xl active:scale-95 disabled:opacity-50"
+                >
+                    {loading ? 'Salvando...' : 'Cadastrar Produto'}
+                </button>
+            </div>
         </div>
     );
 };
