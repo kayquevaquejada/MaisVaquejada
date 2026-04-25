@@ -25,9 +25,10 @@ interface MarketViewProps {
     forceShowWizard?: boolean;
     onWizardClose?: () => void;
     onViewChange?: (view: View) => void;
+    selectedStore?: any;
 }
 
-const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, onWizardClose, onViewChange }) => {
+const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, onWizardClose, onViewChange, selectedStore }) => {
     const [showCreateWizard, setShowCreateWizard] = useState(forceShowWizard);
     
     useEffect(() => setShowCreateWizard(forceShowWizard), [forceShowWizard]);
@@ -797,8 +798,8 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                                     </div>
                                 </div>
                                 <span className={`text-[10px] font-black uppercase tracking-tight text-center max-w-[80px] truncate ${selectedStore?.id === store.id ? 'text-[#D4AF37]' : 'text-[#1A1108]/60'}`}>
-                                    {store.name}
-                                    {store.is_official && <span className="material-icons text-[10px] ml-0.5 align-middle text-[#D4AF37]">verified</span>}
+                                    {store.nome}
+                                    {store.verificado && <span className="material-icons text-[10px] ml-0.5 align-middle text-[#D4AF37]">verified</span>}
                                 </span>
                             </div>
                         ))}

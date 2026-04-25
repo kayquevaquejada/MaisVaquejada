@@ -71,7 +71,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
     case View.NEWS:
       return <NewsView />;
     case View.MERCADO:
-      return <MarketplaceView user={user} onViewChange={onSetCurrentView} />;
+      return <MarketplaceView user={user} onViewChange={onSetCurrentView} selectedStore={selectedStore} />;
     case View.PROFILE:
       return <ProfileView user={user} targetUsername={profileUsername} onLogout={onLogout} onAdminView={() => onSetCurrentView(View.ADMIN)} onSettingsView={() => onSetCurrentView(View.SETTINGS)} onProfileUpdate={() => user && onFetchProfile(user.id)} />;
     case View.MEDIA_CREATION:
@@ -85,7 +85,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
     case View.INTERNAL_ADS:
       return <InternalAdManager user={user} onBack={() => onSetCurrentView(View.ADMIN)} />;
     case View.AD_CREATION:
-      return <MarketplaceView user={user} forceShowWizard={true} onWizardClose={() => onSetCurrentView(View.MERCADO)} onViewChange={onSetCurrentView} />;
+      return <MarketplaceView user={user} forceShowWizard={true} onWizardClose={() => onSetCurrentView(View.MERCADO)} onViewChange={onSetCurrentView} selectedStore={selectedStore} />;
     case View.TERMS:
       return <EULAView onBack={() => onSetCurrentView(View.LOGIN)} />;
     case View.FORGOT_PASSWORD:
