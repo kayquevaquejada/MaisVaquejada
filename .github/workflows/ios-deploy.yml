@@ -6,7 +6,7 @@ on:
 jobs:
   deploy:
     name: Build and Deploy iOS
-    runs-on: macos-15
+    runs-on: macos-14
     
     steps:
       - name: Checkout repository
@@ -20,9 +20,15 @@ jobs:
       - name: Install dependencies
         working-directory: mais-vaquejada
         run: |
+          echo "Limpando tudo..."
+          rm -rf node_modules package-lock.json
+          npm cache clean --force
+          
+          echo "Instalando plugins (isso pode levar uns 2 minutos)..."
           npm install --force
-          echo "Verificando se a pasta node_modules existe..."
-          ls -d node_modules/@capacitor-community/apple-sign-in || echo "PLUGIN NÃO ENCONTRADO!"
+          
+          echo "PROVA DE EXISTÊNCIA:"
+          find node_modules/@capacitor-community/apple-sign-in -name "Package.swift" || echo "ARQUIVO NÃO EXISTE!"
 
       - name: Build Web Assets
         working-directory: mais-vaquejada
@@ -31,14 +37,13 @@ jobs:
       - name: Capacitor de Sincronização
         working-directory: mais-vaquejada
         run: |
-          echo "Limpando arquivos de cache do Xcode..."
+          echo "Limpando caches do Xcode..."
           rm -rf ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm
-          rm -rf ios/App/App.xcworkspace/xcshareddata/swiftpm
           
-          echo "Rodando npx cap sync ios..."
+          echo "Sincronizando..."
           npx cap sync ios --deployment
           
-          echo "Verificando arquivo gerado pelo Capacitor..."
+          echo "Mapa de plugins gerado:"
           cat ios/App/CapApp-SPM/Package.swift
 
       - name: Instale o certificado Apple e o perfil de provisionamento.
@@ -74,21 +79,21 @@ jobs:
           echo "Resolvendo dependências SPM..."
           xcodebuild -resolvePackageDependencies
           
-          echo "Iniciando o Archive..."
+          echo "Iniciando Archive..."
           xcodebuild -scheme App \
                      -sdk iphoneos \
                      -configuration Release \
                      -archivePath $RUNNER_TEMP/App.xcarchive \
                      archive
 
-          echo "Exportando IPA..."
+          echo "Gerando IPA..."
           xcodebuild -exportArchive \
                      -archivePath $RUNNER_TEMP/App.xcarchive \
                      -exportOptionsPlist App/ExportOptions.plist \
                      -exportPath $RUNNER_TEMP/export \
                      -allowProvisioningUpdates
 
-          echo "Subindo para App Store..."
+          echo "Fazendo Upload..."
           xcrun altool --upload-app \
                        --type ios \
                        --file $RUNNER_TEMP/export/App.ipa \
