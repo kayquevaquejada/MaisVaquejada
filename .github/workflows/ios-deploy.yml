@@ -66,6 +66,9 @@ jobs:
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           APP_STORE_CONNECT_KEY: ${{ secrets.APP_STORE_CONNECT_KEY }}
         run: |
+          # Resolve dependencies
+          xcodebuild -project ios/App/App.xcodeproj -resolvePackageDependencies
+
           # Build archive
           xcodebuild -project ios/App/App.xcodeproj \
                      -scheme App \
