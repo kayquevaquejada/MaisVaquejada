@@ -22,65 +22,68 @@ export const compressImage = async (
   } = options;
 
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target?.result as string;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
 
-        // Manter proporção
-        if (width > maxWidth) {
-          height = Math.round((height * maxWidth) / width);
-          width = maxWidth;
-        }
-        if (height > maxHeight) {
-          width = Math.round((width * maxHeight) / height);
-          height = maxHeight;
-        }
+      // Manter proporção
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      }
+      if (height > maxHeight) {
+        width = Math.round((width * maxHeight) / height);
+        height = maxHeight;
+      }
 
-        canvas.width = width;
-        canvas.height = height;
+      canvas.width = width;
+      canvas.height = height;
 
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Não foi possível obter o contexto do canvas'));
-          return;
-        }
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Não foi possível obter o contexto do canvas'));
+        return;
+      }
 
-        ctx.drawImage(img, 0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
 
-        // Compressão iterativa se necessário para atingir o target de tamanho
-        let currentQuality = quality;
-        
-        const attemptCompression = (q: number) => {
-          canvas.toBlob(
-            (blob) => {
-              if (!blob) {
-                reject(new Error('Falha na geração do Blob'));
-                return;
-              }
+      // Compressão iterativa se necessário para atingir o target de tamanho
+      let currentQuality = quality;
+      
+      const attemptCompression = (q: number) => {
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error('Falha na geração do Blob'));
+              return;
+            }
 
-              // Se o arquivo for maior que o limite e ainda pudermos reduzir a qualidade
-              if (blob.size > maxFileSizeMB * 1024 * 1024 && q > 0.3) {
-                attemptCompression(q - 0.1);
-              } else {
-                resolve(blob);
-              }
-            },
-            'image/jpeg',
-            q
-          );
-        };
-
-        attemptCompression(currentQuality);
+            // Se o arquivo for maior que o limite e ainda pudermos reduzir a qualidade
+            if (blob.size > maxFileSizeMB * 1024 * 1024 && q > 0.3) {
+              attemptCompression(q - 0.1);
+            } else {
+              resolve(blob);
+            }
+          },
+          'image/jpeg',
+          q
+        );
       };
-      img.onerror = (err) => reject(err);
+
+      attemptCompression(currentQuality);
     };
-    reader.onerror = (err) => reject(err);
+
+    img.onerror = (err) => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Não foi possível processar a imagem da galeria. Formato não suportado.'));
+    };
+
+    img.src = url;
   });
 };
 

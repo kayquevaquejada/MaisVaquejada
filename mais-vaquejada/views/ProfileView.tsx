@@ -252,20 +252,27 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                         following: followingRes.count || 0
                     });
 
-                    // Fetch actual posts
+                    // Fetch actual posts with counts and expiration filter
+                    const now = new Date().toISOString();
                     const { data: postsData } = await supabase
                         .from('posts')
-                        .select('*')
+                        .select(`
+                            *,
+                            likes:post_likes(count),
+                            comments:post_comments(count)
+                        `)
                         .eq('user_id', profileId)
+                        .or(`expires_at.is.null,expires_at.gt.${now}`)
                         .order('created_at', { ascending: false });
                     
                     if (postsData) {
                         setProfilePosts(postsData.map(p => ({
                             id: p.id,
                             img: p.media_url,
-                            likes: 0, 
-                            comments: 0,
-                            caption: p.caption
+                            likes: p.likes?.[0]?.count || 0,
+                            comments: p.comments?.[0]?.count || 0,
+                            caption: p.caption,
+                            expires_at: p.expires_at
                         })));
                     }
 
@@ -566,6 +573,10 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                                             <div className="flex items-center gap-1">
                                                 <span className="material-icons text-white text-sm">favorite</span>
                                                 <span className="text-white font-black text-xs">{post.likes}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <span className="material-icons text-white text-sm">chat_bubble</span>
+                                                <span className="text-white font-black text-xs">{post.comments}</span>
                                             </div>
                                         </div>
                                     </div>

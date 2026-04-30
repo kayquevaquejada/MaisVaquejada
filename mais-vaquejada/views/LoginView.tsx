@@ -35,17 +35,38 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
     setLoading(true);
     setError(null);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'apple',
-        options: { 
-          redirectTo: Capacitor.isNativePlatform() 
-            ? 'com.arena.vaquejada://login-callback' 
-            : window.location.origin 
+      if (Capacitor.isNativePlatform()) {
+        // Use native Apple Sign In SDK on iOS
+        const { SignInWithApple } = await import('@capacitor-community/apple-sign-in');
+        const result = await SignInWithApple.authorize({
+          clientId: 'com.maisvaquejada.app',
+          redirectURI: 'https://oisrjnhsrhnhwhcmyutq.supabase.co/auth/v1/callback',
+          scopes: 'email name',
+          state: '',
+          nonce: '',
+        });
+        if (result?.response?.identityToken) {
+          const { error: authError } = await supabase.auth.signInWithIdToken({
+            provider: 'apple',
+            token: result.response.identityToken,
+          });
+          if (authError) throw authError;
+        } else {
+          throw new Error('Token da Apple não recebido.');
         }
-      });
-      if (error) throw error;
+      } else {
+        // Web fallback
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'apple',
+          options: { redirectTo: window.location.origin }
+        });
+        if (error) throw error;
+      }
     } catch (err: any) {
+      if (err?.message?.includes('cancelled') || err?.message?.includes('cancel')) return;
+      console.error('[AppleLogin] Error:', err);
       setError(err.message || 'Erro ao entrar com Apple');
+    } finally {
       setLoading(false);
     }
   };
@@ -54,62 +75,46 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
     setGoogleLoading(true);
     setError(null);
     try {
-      const isCapacitor = Capacitor.isNativePlatform();
-
-      if (isCapacitor) {
-        console.log('[GoogleLogin] Starting native login flow');
-        const WEB_CLIENT_ID = '833804814174-iqpspdjar3kj5qsadmug4if3mu90m6sm.apps.googleusercontent.com';
-        const IOS_CLIENT_ID = '833804814174-32b10mqpqrm14h4n77ndcrnnr5p72308.apps.googleusercontent.com';
-        const isIos = Capacitor.getPlatform() === 'ios';
+      if (Capacitor.isNativePlatform()) {
+        // Fluxo Nativo (iOS e Android)
+        const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
         
-        console.log('[GoogleLogin] Initializing GoogleAuth');
+        // Use o ID de iOS correto para evitar crash
         await GoogleAuth.initialize({
-          clientId: isIos ? IOS_CLIENT_ID : WEB_CLIENT_ID,
+          clientId: '833804814174-32b10mqpqrm14h4n77ndcrnnr5p72308.apps.googleusercontent.com',
           scopes: ['profile', 'email'],
           grantOfflineAccess: true,
-        });
+        }).catch(e => console.warn('GoogleAuth already init or fail:', e));
 
-        console.log('[GoogleLogin] Calling GoogleAuth.signIn()');
-        const googleUser = await GoogleAuth.signIn().catch(err => {
-          console.error('[GoogleLogin] Native error:', err);
-          if (err.message?.includes('cancel')) throw new Error('USUARIO_CANCELOU');
-          throw new Error('ERRO_PLUGIN_NATIVO');
-        });
+        const googleUser = await GoogleAuth.signIn();
 
         const idToken = googleUser.authentication.idToken;
-        if (!idToken) {
-          console.error('[GoogleLogin] Token is empty');
-          throw new Error('ERRO_TOKEN_VAZIO');
-        }
+        if (!idToken) throw new Error('Não foi possível obter o Token do Google.');
 
-        console.log('[GoogleLogin] Token received, signing in with Supabase');
         const { error: authError } = await supabase.auth.signInWithIdToken({
           provider: 'google',
           token: idToken,
         });
 
-        if (authError) {
-          console.error('[GoogleLogin] Supabase error:', authError);
-          throw new Error('ERRO_SUPABASE_TOKEN');
-        }
-        console.log('[GoogleLogin] Login success');
+        if (authError) throw authError;
       } else {
-        const redirectTo = window.location.origin;
+        // Apenas Web puro
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
-            redirectTo,
-            queryParams: { access_type: 'offline' }
+            redirectTo: window.location.origin,
+            queryParams: { access_type: 'offline' },
           }
         });
         if (error) throw error;
       }
     } catch (err: any) {
-      console.error('[GoogleLogin] General error:', err);
+      console.error('[GoogleLogin] Error:', err);
       if (err.message === 'USUARIO_CANCELOU') {
-        setError('Login cancelado pelo usuário.');
+        // Silencioso
       } else {
-        setError(`Erro no login: ${err.message || 'Tente novamente.'}`);
+        // Mensagem detalhada para sabermos o que corrigir (ex: falta de SHA-1)
+        setError(`Erro no Login: ${err.message || 'Verifique a configuração nativa'}`);
       }
     } finally {
       setGoogleLoading(false);
@@ -193,10 +198,10 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
             </p>
           </div>
         </div>
-
-        {/* Módulo Premium de Parceiros */}
-        <LoginPremiumPartners />
       </div>
+
+      {/* Módulo Premium de Parceiros - Fora do scroll para evitar bugs no iOS */}
+      <LoginPremiumPartners />
     </div>
   );
 };

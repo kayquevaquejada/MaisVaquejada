@@ -1,5 +1,5 @@
 import React from 'react';
-import { NewsItem, User } from '../types';
+import { NewsItem, User, View } from '../types';
 import { supabase } from '../lib/supabase';
 import SponsorMarquee from '../components/SponsorMarquee';
 import AdsCarousel from '../components/AdsCarousel';
@@ -69,7 +69,7 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
       const { data } = await supabase
         .from('resultados')
         .select('*, events(title, park, location)')
-        .eq('status', 'publicado')
+        .in('status', ['publicado', 'rascunho'])
         .order('publicado_em', { ascending: false });
       if (data) setResults(data);
     };
@@ -348,32 +348,48 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
                 onClick={() => window.dispatchEvent(new CustomEvent('arena_navigate', { 
                   detail: { view: View.RESULT_DETAIL, resultId: res.id } 
                 }))}
-                className="bg-[#1A1108] rounded-[32px] overflow-hidden shadow-2xl border border-[#D4AF37]/10 group active:scale-[0.98] transition-all p-8 relative"
+                className="bg-[#1A1108] rounded-[32px] overflow-hidden shadow-2xl border border-[#D4AF37]/10 group active:scale-[0.98] transition-all relative min-h-[220px] flex flex-col justify-end"
               >
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37]/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
-                
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="bg-[#D4AF37] text-black text-[9px] font-black px-2.5 py-1 rounded-lg uppercase tracking-tight shadow-lg shadow-[#D4AF37]/10">Oficial</div>
-                  <div className="h-1 w-1 rounded-full bg-white/20" />
-                  <span className="text-white/40 text-[10px] font-black uppercase tracking-widest">Publicado em {new Date(res.publicado_em || res.created_at).toLocaleDateString('pt-BR')}</span>
-                </div>
-
-                <h3 className="text-3xl font-black text-white mb-3 uppercase leading-[1.1] italic tracking-tighter group-hover:text-[#D4AF37] transition-colors">{res.titulo}</h3>
-                
-                <div className="flex items-center gap-2 mb-8">
-                   <span className="material-icons text-[#D4AF37] text-sm">place</span>
-                   <p className="text-white/60 text-[11px] font-bold uppercase tracking-wide">{res.events?.park} • {res.events?.location}</p>
-                </div>
-
-                <div className="flex items-center justify-between border-t border-white/5 pt-6">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
-                      <span className="material-icons text-white/40 text-sm">analytics</span>
-                    </div>
-                    <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.15em]">Ver Classificações</span>
+                {/* Imagem de Capa (se houver) */}
+                {res.capa_url && (
+                  <div className="absolute inset-0 z-0">
+                    <img src={res.capa_url} className="w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform duration-700" alt="" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#1A1108] via-[#1A1108]/60 to-transparent" />
                   </div>
-                  <div className="w-10 h-10 rounded-full bg-[#D4AF37]/10 flex items-center justify-center group-hover:bg-[#D4AF37] group-hover:text-black transition-all text-[#D4AF37]">
-                    <span className="material-icons text-xl">chevron_right</span>
+                )}
+                
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37]/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl z-0" />
+                
+                <div className="relative z-10 p-8">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className={`text-black text-[9px] font-black px-2.5 py-1 rounded-lg uppercase tracking-tight shadow-lg ${res.status === 'publicado' ? 'bg-[#D4AF37] shadow-[#D4AF37]/10' : 'bg-gray-400 shadow-black/10'}`}>
+                      {res.status === 'publicado' ? 'Oficial' : 'Rascunho'}
+                    </div>
+                    <div className="h-1 w-1 rounded-full bg-white/20" />
+                    <span className="text-white/40 text-[10px] font-black uppercase tracking-widest">
+                      {res.publicado_em ? `Publicado em ${new Date(res.publicado_em).toLocaleDateString('pt-BR')}` : 'Aguardando publicação'}
+                    </span>
+                  </div>
+
+                  <h3 className="text-3xl font-black text-white mb-3 uppercase leading-[1.1] italic tracking-tighter group-hover:text-[#D4AF37] transition-colors">{res.titulo}</h3>
+                  
+                  <div className="flex items-center gap-2 mb-6">
+                    <span className="material-icons text-[#D4AF37] text-sm">place</span>
+                    <p className="text-white/60 text-[11px] font-bold uppercase tracking-wide">
+                      {res.events?.park || 'Parque não informado'} • {res.events?.location || 'Localização'}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between border-t border-white/5 pt-6">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
+                        <span className="material-icons text-white/40 text-sm">analytics</span>
+                      </div>
+                      <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.15em]">Ver Classificações</span>
+                    </div>
+                    <div className="w-10 h-10 rounded-full bg-[#D4AF37]/10 flex items-center justify-center group-hover:bg-[#D4AF37] group-hover:text-black transition-all text-[#D4AF37]">
+                      <span className="material-icons text-xl">chevron_right</span>
+                    </div>
                   </div>
                 </div>
               </div>

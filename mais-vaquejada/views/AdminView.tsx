@@ -69,15 +69,42 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
     const [postsList, setPostsList] = useState<any[]>([]);
     const [bannersList, setBannersList] = useState<any[]>([]);
     const [resultsList, setResultsList] = useState<any[]>([]);
-    const [resultCategories, setResultCategories] = useState<any[]>([]);
-    const [resultLines, setResultLines] = useState<any[]>([]);
+    const [resultCategories, setResultCategories] = useState<any[]>(() => {
+        try { const saved = localStorage.getItem('arena_admin_result_cats'); return saved ? JSON.parse(saved) : []; } catch { return []; }
+    });
+    const [resultLines, setResultLines] = useState<any[]>(() => {
+        try { const saved = localStorage.getItem('arena_admin_result_lines'); return saved ? JSON.parse(saved) : []; } catch { return []; }
+    });
 
-    const [eventForm, setEventForm] = useState<any>({});
-    const [newsForm, setNewsForm] = useState<any>({ type: 'info' });
-    const [transmissionForm, setTransmissionForm] = useState<any>({});
-    const [bannerForm, setBannerForm] = useState<any>({});
-    const [resultForm, setResultForm] = useState<any>({ status: 'rascunho' });
-    
+    const [eventForm, setEventForm] = useState<any>(() => {
+        try { const saved = localStorage.getItem('arena_admin_event_form'); return saved ? JSON.parse(saved) : {}; } catch { return {}; }
+    });
+    const [newsForm, setNewsForm] = useState<any>(() => {
+        try { const saved = localStorage.getItem('arena_admin_news_form'); return saved ? JSON.parse(saved) : { type: 'info' }; } catch { return { type: 'info' }; }
+    });
+    const [transmissionForm, setTransmissionForm] = useState<any>(() => {
+        try { const saved = localStorage.getItem('arena_admin_transm_form'); return saved ? JSON.parse(saved) : {}; } catch { return {}; }
+    });
+    const [bannerForm, setBannerForm] = useState<any>(() => {
+        try { const saved = localStorage.getItem('arena_admin_banner_form'); return saved ? JSON.parse(saved) : {}; } catch { return {}; }
+    });
+    const [resultForm, setResultForm] = useState<any>(() => {
+        try { const saved = localStorage.getItem('arena_admin_result_form'); return saved ? JSON.parse(saved) : { status: 'rascunho' }; } catch { return { status: 'rascunho' }; }
+    });
+
+    const [resultUserSuggestions, setResultUserSuggestions] = useState<any[]>([]);
+    const [activeResultLineIdx, setActiveResultLineIdx] = useState<number | null>(null);
+
+    useEffect(() => {
+        localStorage.setItem('arena_admin_result_cats', JSON.stringify(resultCategories));
+        localStorage.setItem('arena_admin_result_lines', JSON.stringify(resultLines));
+        localStorage.setItem('arena_admin_event_form', JSON.stringify(eventForm));
+        localStorage.setItem('arena_admin_news_form', JSON.stringify(newsForm));
+        localStorage.setItem('arena_admin_transm_form', JSON.stringify(transmissionForm));
+        localStorage.setItem('arena_admin_banner_form', JSON.stringify(bannerForm));
+        localStorage.setItem('arena_admin_result_form', JSON.stringify(resultForm));
+    }, [resultCategories, resultLines, eventForm, newsForm, transmissionForm, bannerForm, resultForm]);
+
     // Auto-save form data to prevent loss on multitasking
     const [storeForm, setStoreForm] = useState<any>(() => {
         try {
@@ -407,6 +434,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
             alert(eventForm.id ? 'Evento atualizado!' : 'Vaquejada criada com sucesso!');
             setSubviewEvents('HOME');
             setEventForm({});
+            localStorage.removeItem('arena_admin_event_form');
             fetchEvents();
         } catch (err: any) { alert(err.message); }
         finally { setLoading(false); }
@@ -490,6 +518,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
             alert('Notícia publicada com sucesso!');
             setSubviewNews('HOME');
             setNewsForm({ type: 'info' });
+            localStorage.removeItem('arena_admin_news_form');
         } catch (err: any) { alert(err.message); }
         finally { setLoading(false); }
     };
@@ -534,6 +563,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
             if (error) throw error;
             alert(transmissionForm.id ? 'Transmissão atualizada!' : '✅ Transmissão publicada na TV +Vaquejada!');
             setTransmissionForm({});
+            localStorage.removeItem('arena_admin_transm_form');
             fetchTransmissions();
         } catch (err: any) { alert(err.message); }
         finally { setLoading(false); }
@@ -653,6 +683,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
             }
             if (error) throw error;
             setBannerForm({});
+            localStorage.removeItem('arena_admin_banner_form');
             fetchBanners();
             alert('Propaganda salva!');
         } catch (err: any) { alert(err.message); }
@@ -717,6 +748,12 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
 
             alert('✅ Resultado salvo com sucesso!');
             setSubviewResults('HOME');
+            setResultForm({ status: 'rascunho' });
+            setResultCategories([]);
+            setResultLines([]);
+            localStorage.removeItem('arena_admin_result_form');
+            localStorage.removeItem('arena_admin_result_cats');
+            localStorage.removeItem('arena_admin_result_lines');
             fetchResults();
         } catch (err: any) {
             alert('Erro ao salvar resultado: ' + err.message);
@@ -1790,39 +1827,93 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
 
                                             {/* Linhas dessa categoria */}
                                             <div className="space-y-3 pl-2 border-l-2 border-[#D4AF37]/20">
-                                                {resultLines.filter(l => l.categoria_id === cat.id).map((line, lIdx) => (
-                                                    <div key={lIdx} className="bg-neutral-50 rounded-xl p-3 text-[10px] relative group">
-                                                        <div className="grid grid-cols-6 gap-2 mb-2">
-                                                            <input className="col-span-1 bg-white border border-[#1A1108]/5 rounded p-1 font-black" placeholder="Pos" value={line.colocacao || ''} onChange={(e) => {
-                                                                const newLines = [...resultLines];
-                                                                const idx = resultLines.indexOf(line);
-                                                                newLines[idx].colocacao = e.target.value;
-                                                                setResultLines(newLines);
-                                                            }} />
-                                                            <input className="col-span-5 bg-white border border-[#1A1108]/5 rounded p-1 font-bold" placeholder="Competidor/Dupla" value={line.nome_competidor || ''} onChange={(e) => {
-                                                                const newLines = [...resultLines];
-                                                                const idx = resultLines.indexOf(line);
-                                                                newLines[idx].nome_competidor = e.target.value;
-                                                                setResultLines(newLines);
-                                                            }} />
+                                                {resultLines.filter(l => l.categoria_id === cat.id).map((line, lIdx) => {
+                                                    const globalIdx = resultLines.indexOf(line);
+                                                    return (
+                                                        <div key={globalIdx} className="bg-neutral-50 rounded-xl p-3 text-[10px] relative group">
+                                                            <div className="grid grid-cols-6 gap-2 mb-2">
+                                                                <input className="col-span-1 bg-white border border-[#1A1108]/5 rounded p-1 font-black" placeholder="Pos" value={line.colocacao || ''} onChange={(e) => {
+                                                                    const newLines = [...resultLines];
+                                                                    newLines[globalIdx].colocacao = e.target.value;
+                                                                    setResultLines(newLines);
+                                                                }} />
+                                                                <div className="col-span-5 relative">
+                                                                    <div className="flex items-center gap-1 bg-white border border-[#1A1108]/5 rounded p-1">
+                                                                        <input 
+                                                                            className="flex-1 font-bold outline-none" 
+                                                                            placeholder="Competidor/Dupla" 
+                                                                            value={line.nome_competidor || ''} 
+                                                                            onChange={async (e) => {
+                                                                                const val = e.target.value;
+                                                                                const newLines = [...resultLines];
+                                                                                newLines[globalIdx].nome_competidor = val;
+                                                                                
+                                                                                // Se apagou o nome, limpa o vínculo
+                                                                                if (!val) newLines[globalIdx].usuario_vinculado_id = null;
+                                                                                
+                                                                                setResultLines(newLines);
+                                                                                setActiveResultLineIdx(globalIdx);
+
+                                                                                if (val.length >= 3) {
+                                                                                    const { data } = await supabase
+                                                                                        .from('profiles')
+                                                                                        .select('id, username, name, avatar_url')
+                                                                                        .or(`username.ilike.%${val}%,name.ilike.%${val}%`)
+                                                                                        .limit(5);
+                                                                                    setResultUserSuggestions(data || []);
+                                                                                } else {
+                                                                                    setResultUserSuggestions([]);
+                                                                                }
+                                                                            }} 
+                                                                        />
+                                                                        {line.usuario_vinculado_id && (
+                                                                            <span className="material-icons text-[12px] text-[#D4AF37]">verified</span>
+                                                                        )}
+                                                                    </div>
+
+                                                                    {/* Sugestões de Usuários */}
+                                                                    {activeResultLineIdx === globalIdx && resultUserSuggestions.length > 0 && (
+                                                                        <div className="absolute top-full left-0 right-0 bg-white border border-[#1A1108]/10 rounded-lg shadow-xl z-50 mt-1 max-h-40 overflow-y-auto">
+                                                                            {resultUserSuggestions.map(u => (
+                                                                                <div 
+                                                                                    key={u.id}
+                                                                                    onClick={() => {
+                                                                                        const newLines = [...resultLines];
+                                                                                        newLines[globalIdx].nome_competidor = u.name || u.username;
+                                                                                        newLines[globalIdx].usuario_vinculado_id = u.id;
+                                                                                        setResultLines(newLines);
+                                                                                        setResultUserSuggestions([]);
+                                                                                        setActiveResultLineIdx(null);
+                                                                                    }}
+                                                                                    className="p-2 flex items-center gap-2 hover:bg-[#D4AF37]/5 cursor-pointer border-b border-[#1A1108]/5 last:border-0"
+                                                                                >
+                                                                                    <img src={u.avatar_url || `https://ui-avatars.com/api/?name=${u.username}`} className="w-5 h-5 rounded-full object-cover" />
+                                                                                    <div className="flex-1 min-w-0">
+                                                                                        <p className="font-black text-[9px] truncate">{u.name || u.username}</p>
+                                                                                        <p className="text-[7px] text-leather/40 truncate">@{u.username}</p>
+                                                                                    </div>
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid grid-cols-2 gap-2">
+                                                                <input className="bg-white border border-[#1A1108]/5 rounded p-1" placeholder="Equipe" value={line.nome_equipe || ''} onChange={(e) => {
+                                                                    const newLines = [...resultLines];
+                                                                    newLines[globalIdx].nome_equipe = e.target.value;
+                                                                    setResultLines(newLines);
+                                                                }} />
+                                                                <input className="bg-white border border-[#1A1108]/5 rounded p-1" placeholder="Cavalo" value={line.cavalo || ''} onChange={(e) => {
+                                                                    const newLines = [...resultLines];
+                                                                    newLines[globalIdx].cavalo = e.target.value;
+                                                                    setResultLines(newLines);
+                                                                }} />
+                                                            </div>
+                                                            <button type="button" onClick={() => setResultLines(resultLines.filter(l => l !== line))} className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><span className="material-icons text-[10px]">close</span></button>
                                                         </div>
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            <input className="bg-white border border-[#1A1108]/5 rounded p-1" placeholder="Equipe" value={line.nome_equipe || ''} onChange={(e) => {
-                                                                const newLines = [...resultLines];
-                                                                const idx = resultLines.indexOf(line);
-                                                                newLines[idx].nome_equipe = e.target.value;
-                                                                setResultLines(newLines);
-                                                            }} />
-                                                            <input className="bg-white border border-[#1A1108]/5 rounded p-1" placeholder="Cavalo" value={line.cavalo || ''} onChange={(e) => {
-                                                                const newLines = [...resultLines];
-                                                                const idx = resultLines.indexOf(line);
-                                                                newLines[idx].cavalo = e.target.value;
-                                                                setResultLines(newLines);
-                                                            }} />
-                                                        </div>
-                                                        <button type="button" onClick={() => setResultLines(resultLines.filter(l => l !== line))} className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><span className="material-icons text-[10px]">close</span></button>
-                                                    </div>
-                                                ))}
+                                                    );
+                                                })}
                                                 <button type="button" onClick={() => {
                                                     const newLine = { categoria_id: cat.id, colocacao: (resultLines.filter(l => l.categoria_id === cat.id).length + 1) + 'º' };
                                                     setResultLines([...resultLines, newLine]);

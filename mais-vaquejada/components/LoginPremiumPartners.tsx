@@ -148,7 +148,8 @@ const LoginPremiumPartners: React.FC = () => {
 
   return (
     <div 
-      className="fixed bottom-6 left-6 right-6 z-[100] animate-in slide-in-from-bottom-10 duration-700"
+      className="fixed left-6 right-6 z-[100] animate-in slide-in-from-bottom-10 duration-700"
+      style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onTouchStart={handleInteraction}

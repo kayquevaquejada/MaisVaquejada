@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { Capacitor } from '@capacitor/core';
 
 interface SignUpViewProps {
@@ -194,42 +193,37 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
                 setLoading(true);
                 setError(null);
                 try {
-                  const isCapacitor = Capacitor.isNativePlatform();
+                  const isIos = Capacitor.getPlatform() === 'ios';
 
-                  if (isCapacitor) {
-                    // FLUXO NATIVO (Estilo TikTok / Credential Manager)
-                    // Inicialização obrigatória para evitar crash no Android (NullPointerException)
+                  if (isIos) {
+                    // iOS: plugin nativo
+                    const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
                     await GoogleAuth.initialize({
-                      clientId: '833804814174-iqpspdjar3kj5qsadmug4if3mu90m6sm.apps.googleusercontent.com',
+                      clientId: '833804814174-32b10mqpqrm14h4n77ndcrnnr5p72308.apps.googleusercontent.com',
                       scopes: ['profile', 'email'],
                       grantOfflineAccess: true,
                     });
-
                     const googleUser = await GoogleAuth.signIn();
                     const idToken = googleUser.authentication.idToken;
-
                     if (!idToken) throw new Error('Não foi possível obter o ID Token do Google.');
-
                     const { data: authData, error: authError } = await supabase.auth.signInWithIdToken({
                       provider: 'google',
                       token: idToken,
                     });
-
                     if (authError) throw authError;
                   } else {
-                    // FALLBACK WEB (Navegador)
-                    const redirectTo = window.location.origin;
-
+                    // Android e Web: OAuth via browser (não precisa de SHA-1)
+                    const redirectTo = Capacitor.isNativePlatform()
+                      ? 'com.maisvaquejada.app://login-callback'
+                      : window.location.origin;
                     const { error } = await supabase.auth.signInWithOAuth({
                       provider: 'google',
-                      options: { 
+                      options: {
                         redirectTo,
-                        queryParams: {
-                          access_type: 'offline',
-                        }
+                        queryParams: { access_type: 'offline' },
+                        skipBrowserRedirect: false,
                       }
                     });
-                    
                     if (error) throw error;
                   }
                 } catch (err: any) {

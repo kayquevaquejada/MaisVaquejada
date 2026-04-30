@@ -25,12 +25,17 @@ export function useMediaUpload() {
       const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${finalExt}`;
       const filePath = `${folder}/${fileName}`; // Usa o parametro como pasta
       const BUCKET_NAME = 'vaquejadas'; // Bucket centralizado criado no Supabase
+      
+      const contentType = fileToUpload.type || (finalExt === 'mp4' ? 'video/mp4' : 'image/jpeg');
 
+      // Em dispositivos móveis com Capacitor, o upload de Blob sem contentType pode falhar silenciosamente ou travar.
+      // O ArrayBuffer costuma ser mais seguro se ainda houver problemas, mas o contentType ajuda na inferência.
       const { data, error } = await supabase.storage
         .from(BUCKET_NAME)
         .upload(filePath, fileToUpload, {
           cacheControl: '3600',
-          upsert: false
+          upsert: false,
+          contentType: contentType
         });
 
       if (error) {

@@ -72,7 +72,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
     case View.EVENTS:
       return <EventsView onLoginPrompt={() => onSetCurrentView(View.LOGIN)} />;
     case View.NEWS:
-      return <NewsView />;
+      return <NewsView user={user} />;
     case View.MERCADO:
       return <MarketplaceView user={user} onViewChange={onSetCurrentView} selectedStore={selectedStore} />;
     case View.PROFILE:
