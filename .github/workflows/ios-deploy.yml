@@ -21,7 +21,15 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: npm install --force
+        run: |
+          rm -rf node_modules
+          npm cache clean --force
+          npm install --force
+
+      - name: Verificar arquivos na nuvem
+        run: |
+          echo "Verificando se o plugin existe..."
+          ls -l node_modules/@capacitor-community/apple-sign-in/Package.swift || echo "ERRO: Plugin não encontrado!"
 
       - name: Build Web Assets
         run: npm run build
