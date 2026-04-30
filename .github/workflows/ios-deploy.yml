@@ -1,15 +1,12 @@
 name: iOS Build & Deploy
 
 on:
-  workflow_dispatch: # Permite rodar manualmente pelo site do GitHub
+  workflow_dispatch:
 
 jobs:
   deploy:
     name: Build and Deploy iOS
     runs-on: macos-15
-    defaults:
-      run:
-        working-directory: mais-vaquejada
     
     steps:
       - name: Checkout repository
@@ -21,25 +18,29 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
+        working-directory: mais-vaquejada
         run: |
-          rm -rf node_modules
-          npm cache clean --force
           npm install --force
-
-      - name: Verificar arquivos na nuvem
-        run: |
-          echo "Verificando se o plugin existe..."
-          ls -l node_modules/@capacitor-community/apple-sign-in/Package.swift || echo "ERRO: Plugin não encontrado!"
+          echo "Verificando se a pasta node_modules existe..."
+          ls -d node_modules/@capacitor-community/apple-sign-in || echo "PLUGIN NÃO ENCONTRADO!"
 
       - name: Build Web Assets
+        working-directory: mais-vaquejada
         run: npm run build
 
       - name: Capacitor de Sincronização
         working-directory: mais-vaquejada
         run: |
-          echo "Sincronizando plugins..."
+          echo "Limpando arquivos de cache do Xcode..."
+          rm -rf ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm
+          rm -rf ios/App/App.xcworkspace/xcshareddata/swiftpm
+          
+          echo "Rodando npx cap sync ios..."
           npx cap sync ios --deployment
           
+          echo "Verificando arquivo gerado pelo Capacitor..."
+          cat ios/App/CapApp-SPM/Package.swift
+
       - name: Instale o certificado Apple e o perfil de provisionamento.
         env:
           BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
@@ -59,8 +60,7 @@ jobs:
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
 
           security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-          security list-keychain -d user -s $KEYCHAIN_PATH
-
+          
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
 
@@ -71,24 +71,24 @@ jobs:
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           APP_STORE_CONNECT_KEY: ${{ secrets.APP_STORE_CONNECT_KEY }}
         run: |
-          # Resolve dependencies inside the iOS folder
+          echo "Resolvendo dependências SPM..."
           xcodebuild -resolvePackageDependencies
           
-          # Build archive
+          echo "Iniciando o Archive..."
           xcodebuild -scheme App \
                      -sdk iphoneos \
                      -configuration Release \
                      -archivePath $RUNNER_TEMP/App.xcarchive \
                      archive
 
-          # Export IPA
+          echo "Exportando IPA..."
           xcodebuild -exportArchive \
                      -archivePath $RUNNER_TEMP/App.xcarchive \
                      -exportOptionsPlist App/ExportOptions.plist \
                      -exportPath $RUNNER_TEMP/export \
                      -allowProvisioningUpdates
 
-          # Upload
+          echo "Subindo para App Store..."
           xcrun altool --upload-app \
                        --type ios \
                        --file $RUNNER_TEMP/export/App.ipa \
