@@ -13,18 +13,25 @@ workflows:
       - name: Build Web Assets
         script: |
           cd mais-vaquejada && npm run build
-      - name: Capacitor Sync e Limpeza de Plugins
+      - name: Capacitor Sync e Realocação Bruta
         script: |
           cd mais-vaquejada
-          echo "Limpando manifestos antigos para forçar regeneração..."
-          # Remove apenas os arquivos de configuração, mantendo a estrutura da pasta
+          echo "Limpando manifestos antigos..."
           rm -f ios/App/CapApp-SPM/Package.swift
           rm -rf ios/App/CapApp-SPM/.swiftpm
           
           npx cap sync ios --deployment
           
-          echo "Injetando caminhos absolutos no Package.swift..."
-          sed -i '' "s|\.\.\/\.\.\/\.\.\/node_modules|$FCI_BUILD_DIR/mais-vaquejada/node_modules|g" ios/App/CapApp-SPM/Package.swift
+          echo "Movendo node_modules para dentro de ios/App para acesso direto..."
+          # Move fisicamente para que o Xcode não precise 'sair' da pasta do app
+          mv node_modules ios/App/
+          
+          echo "Ajustando Package.swift para o novo local (../node_modules)..."
+          # Altera de ../../../node_modules para ../node_modules
+          sed -i '' "s|\.\.\/\.\.\/\.\.\/node_modules|\.\.\/node_modules|g" ios/App/CapApp-SPM/Package.swift
+          
+          echo "Verificando novos caminhos:"
+          cat ios/App/CapApp-SPM/Package.swift | grep "path:"
       - name: Check broken plugins
         script: |
           cd mais-vaquejada
