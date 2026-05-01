@@ -6,7 +6,7 @@ on:
 jobs:
   deploy:
     name: Build and Deploy iOS
-    runs-on: macos-15
+    runs-on: macos-14
     
     steps:
       - name: Checkout repository
@@ -17,6 +17,11 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Downgrade Project Format for Xcode 15
+        run: |
+          echo "Convertendo projeto do formato 77 (Xcode 16) para 56 (Xcode 15)..."
+          sed -i '' 's/objectVersion = 77/objectVersion = 56/g' mais-vaquejada/ios/App/App.xcodeproj/project.pbxproj
+
       - name: Install dependencies
         working-directory: mais-vaquejada
         run: npm install --force
@@ -25,21 +30,9 @@ jobs:
         working-directory: mais-vaquejada
         run: npm run build
 
-      - name: Capacitor Sync e Realocação Física
+      - name: Capacitor Sync
         working-directory: mais-vaquejada
-        run: |
-          npx cap sync ios --deployment
-          
-          echo "Movendo node_modules para dentro de CapApp-SPM para acesso direto..."
-          # Move a pasta fisicamente para onde o SPM espera
-          mv node_modules ios/App/CapApp-SPM/
-          
-          echo "Ajustando Package.swift para o novo local físico..."
-          # Altera de ../../../node_modules para ./node_modules (agora local)
-          sed -i '' "s|\.\.\/\.\.\/\.\.\/node_modules|\.\/node_modules|g" ios/App/CapApp-SPM/Package.swift
-          
-          echo "Verificando caminhos no Package.swift:"
-          cat ios/App/CapApp-SPM/Package.swift | grep "path:"
+        run: npx cap sync ios --deployment
 
       - name: Instale o certificado Apple e o perfil de provisionamento.
         env:
@@ -71,7 +64,7 @@ jobs:
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           APP_STORE_CONNECT_KEY: ${{ secrets.APP_STORE_CONNECT_KEY }}
         run: |
-          echo "Resolvendo SPM..."
+          echo "Resolvendo SPM com Xcode 15..."
           xcodebuild -resolvePackageDependencies
           
           echo "Archive..."
