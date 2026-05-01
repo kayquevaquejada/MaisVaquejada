@@ -13,11 +13,14 @@ workflows:
       - name: Build Web Assets
         script: |
           cd mais-vaquejada && npm run build
-      - name: Capacitor Sync e Destruição de Cache
+      - name: Capacitor Sync e Limpeza de Plugins
         script: |
           cd mais-vaquejada
-          echo "Destruindo pasta CapApp-SPM para forçar regeneração limpa..."
-          rm -rf ios/App/CapApp-SPM
+          echo "Limpando manifestos antigos para forçar regeneração..."
+          # Remove apenas os arquivos de configuração, mantendo a estrutura da pasta
+          rm -f ios/App/CapApp-SPM/Package.swift
+          rm -rf ios/App/CapApp-SPM/.swiftpm
+          
           npx cap sync ios --deployment
           
           echo "Injetando caminhos absolutos no Package.swift..."
