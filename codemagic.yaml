@@ -13,25 +13,15 @@ workflows:
       - name: Build Web Assets
         script: |
           cd mais-vaquejada && npm run build
-      - name: Capacitor Sync e Realocação Bruta
+      - name: Capacitor Sync e CocoaPods
         script: |
           cd mais-vaquejada
-          echo "Limpando manifestos antigos..."
-          rm -f ios/App/CapApp-SPM/Package.swift
-          rm -rf ios/App/CapApp-SPM/.swiftpm
+          # Sincroniza sem forçar SPM
+          npx cap sync ios
           
-          npx cap sync ios --deployment
-          
-          echo "Movendo node_modules para dentro de ios/App para acesso direto..."
-          # Move fisicamente para que o Xcode não precise 'sair' da pasta do app
-          mv node_modules ios/App/
-          
-          echo "Ajustando Package.swift para o novo local (../node_modules)..."
-          # Altera de ../../../node_modules para ../node_modules
-          sed -i '' "s|\.\.\/\.\.\/\.\.\/node_modules|\.\.\/node_modules|g" ios/App/CapApp-SPM/Package.swift
-          
-          echo "Verificando novos caminhos:"
-          cat ios/App/CapApp-SPM/Package.swift | grep "path:"
+          echo "Rodando Pod Install (Estabilidade Total)..."
+          cd ios/App
+          pod install
       - name: Check broken plugins
         script: |
           cd mais-vaquejada
@@ -39,15 +29,15 @@ workflows:
           ! grep -R "@capgo/capacitor-native-biometric" .
           ! grep -R "@capacitor-community/apple-sign-in" .
           echo "✅ Nenhum plugin problemático encontrado!"
-      - name: Build iOS Archive
+      - name: Build iOS Archive (Workspace Mode)
         script: |
           cd mais-vaquejada/ios/App
-          xcodebuild -scheme App \
+          xcodebuild -workspace App.xcworkspace \
+                     -scheme App \
                      -sdk iphoneos \
                      -configuration Release \
                      -archivePath $FCI_BUILD_DIR/App.xcarchive \
-                     archive \
-                     -resolvePackageDependencies
+                     archive
     artifacts:
       - $FCI_BUILD_DIR/*.xcarchive
       - $FCI_BUILD_DIR/ios/App/App.ipa
