@@ -13,14 +13,17 @@ workflows:
       - name: Build Web Assets
         script: |
           cd mais-vaquejada && npm run build
-      - name: Capacitor Sync e Fix de Caminhos
+      - name: Capacitor Sync e Fix de Caminho Absoluto
         script: |
           cd mais-vaquejada
           npx cap sync ios --deployment
-          # Cria o atalho na raiz para o Xcode não se perder
-          cd ..
-          ln -s mais-vaquejada/node_modules node_modules
-          echo "Atalho de node_modules criado na raiz para compatibilidade SPM."
+          
+          echo "Injetando caminhos absolutos no Package.swift..."
+          # Substitui ../../../node_modules pelo caminho real do servidor
+          sed -i '' "s|\.\.\/\.\.\/\.\.\/node_modules|$FCI_BUILD_DIR/mais-vaquejada/node_modules|g" ios/App/CapApp-SPM/Package.swift
+          
+          echo "Verificando se os caminhos foram injetados:"
+          cat ios/App/CapApp-SPM/Package.swift | grep "path:"
       - name: Build iOS Archive
         script: |
           cd mais-vaquejada/ios/App
