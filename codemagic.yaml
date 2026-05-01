@@ -16,8 +16,11 @@ workflows:
       - name: Capacitor Sync e CocoaPods
         script: |
           cd mais-vaquejada
-          # Sincroniza sem forçar SPM
+          # Sincroniza e garante que o CocoaPods seja o mestre
           npx cap sync ios
+          
+          echo "Limpando qualquer rastro de SPM para evitar conflitos..."
+          rm -rf ios/App/CapApp-SPM
           
           echo "Rodando Pod Install (Estabilidade Total)..."
           cd ios/App
@@ -25,9 +28,16 @@ workflows:
       - name: Check broken plugins
         script: |
           cd mais-vaquejada
-          echo "Verificando se existem plugins problemáticos..."
-          ! grep -R "@capgo/capacitor-native-biometric" .
-          ! grep -R "@capacitor-community/apple-sign-in" .
+          echo "Verificando plugins quebrados..."
+          if grep -R "@capgo/capacitor-native-biometric" . --exclude-dir=node_modules; then
+            echo "ERRO: plugin biometric ainda existe no projeto"
+            exit 1
+          fi
+
+          if grep -R "@capacitor-community/apple-sign-in" . --exclude-dir=node_modules; then
+            echo "ERRO: apple-sign-in ainda existe no projeto"
+            exit 1
+          fi
           echo "✅ Nenhum plugin problemático encontrado!"
       - name: Build iOS Archive (Workspace Mode)
         script: |
