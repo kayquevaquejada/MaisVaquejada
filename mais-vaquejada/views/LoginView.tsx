@@ -36,24 +36,9 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
     setError(null);
     try {
       if (Capacitor.isNativePlatform()) {
-        // Use native Apple Sign In SDK on iOS
-        const { SignInWithApple } = await import('@capacitor-community/apple-sign-in');
-        const result = await SignInWithApple.authorize({
-          clientId: 'com.maisvaquejada.app',
-          redirectURI: 'https://oisrjnhsrhnhwhcmyutq.supabase.co/auth/v1/callback',
-          scopes: 'email name',
-          state: '',
-          nonce: '',
-        });
-        if (result?.response?.identityToken) {
-          const { error: authError } = await supabase.auth.signInWithIdToken({
-            provider: 'apple',
-            token: result.response.identityToken,
-          });
-          if (authError) throw authError;
-        } else {
-          throw new Error('Token da Apple não recebido.');
-        }
+        // Sign in with Apple nativo removido para estabilizar build
+        alert('O login com Apple nativo está em manutenção. Por favor, utilize o login com Google.');
+        return;
       } else {
         // Web fallback
         const { error } = await supabase.auth.signInWithOAuth({
