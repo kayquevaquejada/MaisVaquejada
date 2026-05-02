@@ -1,4 +1,4 @@
-# Build Version: 1.0.23
+# Build Version: 1.0.24
 workflows:
   ios-workflow:
     name: iOS Build & Deploy
