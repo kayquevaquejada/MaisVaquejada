@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 
 interface SignUpViewProps {
   onBack: () => void;
@@ -193,10 +194,15 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
                 setLoading(true);
                 setError(null);
                 try {
+                  const isNative = Capacitor.isNativePlatform();
+                  const redirectTo = isNative 
+                    ? 'com.maisvaquejada.app://' 
+                    : window.location.origin;
+
                   const { error } = await supabase.auth.signInWithOAuth({
                     provider: 'google',
                     options: {
-                      redirectTo: window.location.origin
+                      redirectTo: redirectTo
                     }
                   });
                   if (error) throw error;

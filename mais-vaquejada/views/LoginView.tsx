@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 import LoginPremiumPartners from '../components/LoginPremiumPartners';
 
 interface LoginViewProps {
@@ -34,10 +35,15 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
     setLoading(true);
     setError(null);
     try {
+      const isNative = Capacitor.isNativePlatform();
+      const redirectTo = isNative 
+        ? 'com.maisvaquejada.app://' 
+        : window.location.origin;
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
-          redirectTo: window.location.origin
+          redirectTo: redirectTo
         }
       });
       if (error) throw error;
@@ -54,10 +60,15 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
     setGoogleLoading(true);
     setError(null);
     try {
+      const isNative = Capacitor.isNativePlatform();
+      const redirectTo = isNative 
+        ? 'com.maisvaquejada.app://' 
+        : window.location.origin;
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin
+          redirectTo: redirectTo
         }
       });
       if (error) throw error;
