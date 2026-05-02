@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './lib/supabase';
 import { App as CapApp } from '@capacitor/app';
-import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
 import { View, User } from './types';
@@ -169,14 +168,6 @@ const App: React.FC = () => {
       // Logout do Supabase (limpa o storage nativo)
       await supabase.auth.signOut();
       
-      // Logout do Google (limpa o seletor de contas se necessário)
-      if (Capacitor.isNativePlatform()) {
-        try {
-          await GoogleAuth.signOut();
-        } catch (e) {
-          console.warn('Google signout skip or fail:', e);
-        }
-      }
 
       setUser(null);
       setCurrentView(View.LOGIN);
@@ -286,14 +277,6 @@ const App: React.FC = () => {
       if (isInitializedRef.current) return;
       
       try {
-        // Inicializar Google Auth globalmente no mobile
-        if (Capacitor.isNativePlatform()) {
-          GoogleAuth.initialize({
-            clientId: '833804814174-iqpspdjar3kj5qsadmug4if3mu90m6sm.apps.googleusercontent.com',
-            scopes: ['profile', 'email'],
-            grantOfflineAccess: true,
-          }).catch(e => console.warn('GoogleAuth init warning:', e));
-        }
 
         // RESILIÊNCIA WEB: Se estivermos vindo de um login Google na Web (?code=)
         // aguarda um breve momento para o sistema processar o token.

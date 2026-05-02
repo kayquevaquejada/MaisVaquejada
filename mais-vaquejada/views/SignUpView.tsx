@@ -189,65 +189,13 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
 
             <button
               type="button"
-              onClick={async () => {
-                setLoading(true);
-                setError(null);
-                try {
-                  const isIos = Capacitor.getPlatform() === 'ios';
-
-                  if (isIos) {
-                    // iOS: plugin nativo
-                    const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
-                    await GoogleAuth.initialize({
-                      clientId: '833804814174-32b10mqpqrm14h4n77ndcrnnr5p72308.apps.googleusercontent.com',
-                      scopes: ['profile', 'email'],
-                      grantOfflineAccess: true,
-                    });
-                    const googleUser = await GoogleAuth.signIn();
-                    const idToken = googleUser.authentication.idToken;
-                    if (!idToken) throw new Error('Não foi possível obter o ID Token do Google.');
-                    const { data: authData, error: authError } = await supabase.auth.signInWithIdToken({
-                      provider: 'google',
-                      token: idToken,
-                    });
-                    if (authError) throw authError;
-                  } else {
-                    // Android e Web: OAuth via browser (não precisa de SHA-1)
-                    const redirectTo = Capacitor.isNativePlatform()
-                      ? 'com.maisvaquejada.app://login-callback'
-                      : window.location.origin;
-                    const { error } = await supabase.auth.signInWithOAuth({
-                      provider: 'google',
-                      options: {
-                        redirectTo,
-                        queryParams: { access_type: 'offline' },
-                        skipBrowserRedirect: false,
-                      }
-                    });
-                    if (error) throw error;
-                  }
-                } catch (err: any) {
-                  if (err.message?.includes('User cancelled') || err.message?.includes('cancel')) {
-                    console.log('Login cancelado pelo usuário');
-                  } else {
-                    console.error('Erro no Google Login:', err);
-                    setError(err.message || 'Erro ao entrar com Google');
-                  }
-                } finally {
-                  setLoading(false);
-                }
+              onClick={() => {
+                alert('A criação de conta com Google está em manutenção. Por favor, utilize o formulário abaixo.');
               }}
-              disabled={loading}
               className="w-full bg-white text-black py-4 rounded-3xl font-black text-xs uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 mb-6"
             >
-              {loading ? (
-                 <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-              ) : (
-                <>
-                  <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
-                  CRIAR COM GOOGLE
-                </>
-              )}
+              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
+              CRIAR COM GOOGLE
             </button>
 
             <div className="flex items-center gap-4 mb-6">

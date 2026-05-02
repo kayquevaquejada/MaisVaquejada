@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { Capacitor } from '@capacitor/core';
 import LoginPremiumPartners from '../components/LoginPremiumPartners';
 
@@ -57,53 +56,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
   };
 
   const handleGoogleLogin = async () => {
-    setGoogleLoading(true);
-    setError(null);
-    try {
-      if (Capacitor.isNativePlatform()) {
-        // Fluxo Nativo (iOS e Android)
-        const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
-        
-        // Use o ID de iOS correto para evitar crash
-        await GoogleAuth.initialize({
-          clientId: '833804814174-32b10mqpqrm14h4n77ndcrnnr5p72308.apps.googleusercontent.com',
-          scopes: ['profile', 'email'],
-          grantOfflineAccess: true,
-        }).catch(e => console.warn('GoogleAuth already init or fail:', e));
-
-        const googleUser = await GoogleAuth.signIn();
-
-        const idToken = googleUser.authentication.idToken;
-        if (!idToken) throw new Error('Não foi possível obter o Token do Google.');
-
-        const { error: authError } = await supabase.auth.signInWithIdToken({
-          provider: 'google',
-          token: idToken,
-        });
-
-        if (authError) throw authError;
-      } else {
-        // Apenas Web puro
-        const { error } = await supabase.auth.signInWithOAuth({
-          provider: 'google',
-          options: {
-            redirectTo: window.location.origin,
-            queryParams: { access_type: 'offline' },
-          }
-        });
-        if (error) throw error;
-      }
-    } catch (err: any) {
-      console.error('[GoogleLogin] Error:', err);
-      if (err.message === 'USUARIO_CANCELOU') {
-        // Silencioso
-      } else {
-        // Mensagem detalhada para sabermos o que corrigir (ex: falta de SHA-1)
-        setError(`Erro no Login: ${err.message || 'Verifique a configuração nativa'}`);
-      }
-    } finally {
-      setGoogleLoading(false);
-    }
+    alert('O login com Google nativo está em manutenção. Por favor, utilize outra forma de acesso.');
   };
 
   return (
