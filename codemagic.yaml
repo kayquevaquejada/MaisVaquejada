@@ -38,6 +38,11 @@ workflows:
             echo "ERRO: apple-sign-in ainda existe no projeto"
             exit 1
           fi
+
+          if grep -R "@codetrix-studio/capacitor-google-auth" . --exclude-dir=node_modules; then
+            echo "ERRO: capacitor-google-auth ainda existe no projeto"
+            exit 1
+          fi
           echo "✅ Nenhum plugin problemático encontrado!"
       - name: Build iOS Archive (Simples)
         script: |
