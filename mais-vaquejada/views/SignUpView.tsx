@@ -189,8 +189,22 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
 
             <button
               type="button"
-              onClick={() => {
-                alert('A criação de conta com Google está em manutenção. Por favor, utilize o formulário abaixo.');
+              onClick={async () => {
+                setLoading(true);
+                setError(null);
+                try {
+                  const { error } = await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                      redirectTo: window.location.origin
+                    }
+                  });
+                  if (error) throw error;
+                } catch (err: any) {
+                  setError(err.message || 'Erro ao criar conta com Google.');
+                } finally {
+                  setLoading(false);
+                }
               }}
               className="w-full bg-white text-black py-4 rounded-3xl font-black text-xs uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 mb-6"
             >

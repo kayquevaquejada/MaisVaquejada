@@ -34,18 +34,13 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
     setLoading(true);
     setError(null);
     try {
-      if (Capacitor.isNativePlatform()) {
-        // Sign in with Apple nativo removido para estabilizar build
-        alert('O login com Apple nativo está em manutenção. Por favor, utilize o login com Google.');
-        return;
-      } else {
-        // Web fallback
-        const { error } = await supabase.auth.signInWithOAuth({
-          provider: 'apple',
-          options: { redirectTo: window.location.origin }
-        });
-        if (error) throw error;
-      }
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'apple',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+      if (error) throw error;
     } catch (err: any) {
       if (err?.message?.includes('cancelled') || err?.message?.includes('cancel')) return;
       console.error('[AppleLogin] Error:', err);
@@ -56,7 +51,22 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
   };
 
   const handleGoogleLogin = async () => {
-    alert('O login com Google nativo está em manutenção. Por favor, utilize outra forma de acesso.');
+    setGoogleLoading(true);
+    setError(null);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      console.error('[GoogleLogin] Error:', err);
+      setError(err.message || 'Erro ao entrar com Google');
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   return (
