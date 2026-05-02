@@ -18,8 +18,9 @@ workflows:
           cd mais-vaquejada
           npx cap copy ios
           npx cap sync ios
-          echo "Verificando arquivos gerados..."
+          echo "Arquivos dentro de ios/App/App:"
           ls -la ios/App/App
+          echo "Public:"
           ls -la ios/App/App/public || true
       - name: Check broken plugins
         script: |
