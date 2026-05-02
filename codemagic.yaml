@@ -13,18 +13,14 @@ workflows:
       - name: Build Web Assets
         script: |
           cd mais-vaquejada && npm run build
-      - name: Capacitor Sync e Reset de Pods
+      - name: Capacitor Copy e Sync
         script: |
           cd mais-vaquejada
+          npx cap copy ios
           npx cap sync ios
-          
-          echo "Limpando qualquer rastro de SPM..."
-          rm -rf ios/App/CapApp-SPM
-          
-          echo "Desintegrando e Reinstalando Pods (Reset Total)..."
-          cd ios/App
-          pod deintegrate
-          pod install
+          echo "Verificando arquivos gerados..."
+          ls -la ios/App/App
+          ls -la ios/App/App/public || true
       - name: Check broken plugins
         script: |
           cd mais-vaquejada
@@ -44,6 +40,11 @@ workflows:
             exit 1
           fi
           echo "✅ Nenhum plugin problemático encontrado!"
+      - name: CocoaPods
+        script: |
+          cd mais-vaquejada/ios/App
+          pod deintegrate
+          pod install
       - name: Build iOS Archive (Simples)
         script: |
           cd mais-vaquejada/ios/App
