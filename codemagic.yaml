@@ -1,4 +1,4 @@
-# Build Version: 1.0.18
+# Build Version: 1.0.19
 workflows:
   ios-workflow:
     name: iOS Build & Deploy
@@ -53,7 +53,8 @@ workflows:
           cd mais-vaquejada
           xcode-project build-ipa \
             --workspace ios/App/App.xcworkspace \
-            --scheme App
+            --scheme App \
+            --export-options-plist export_options.plist
     artifacts:
       - build/ios/ipa/*.ipa
       - mais-vaquejada/ios/App/build/*.xcarchive
