@@ -1,4 +1,4 @@
-# Build Version: 1.0.17
+# Build Version: 1.0.18
 workflows:
   ios-workflow:
     name: iOS Build & Deploy
@@ -46,16 +46,14 @@ workflows:
         script: |
           cd mais-vaquejada/ios/App
           rm -rf Pods Podfile.lock
+          pod deintegrate
           pod install
-      - name: Build iOS Archive (Simples)
+      - name: Build IPA
         script: |
-          cd mais-vaquejada/ios/App
-          xcodebuild -workspace App.xcworkspace \
-                     -scheme App \
-                     -sdk iphoneos \
-                     -configuration Release \
-                     CODE_SIGNING_ALLOWED=NO \
-                     archive -archivePath $FCI_BUILD_DIR/App.xcarchive
+          cd mais-vaquejada
+          xcode-project build-ipa \
+            --workspace ios/App/App.xcworkspace \
+            --scheme App
     artifacts:
-      - $FCI_BUILD_DIR/*.xcarchive
-      - $FCI_BUILD_DIR/ios/App/App.ipa
+      - build/ios/ipa/*.ipa
+      - mais-vaquejada/ios/App/build/*.xcarchive
