@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
+import { SignInWithApple } from '@capacitor-community/apple-sign-in';
 import LoginPremiumPartners from '../components/LoginPremiumPartners';
 
 interface LoginViewProps {
@@ -36,16 +37,36 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
     setError(null);
     try {
       const isNative = Capacitor.isNativePlatform();
-      const redirectTo = isNative 
-        ? 'com.maisvaquejada.app://' 
-        : window.location.origin;
+      
+      if (isNative && Capacitor.getPlatform() === 'ios') {
+        // Login Nativo Oficial no iPhone
+        const result = await SignInWithApple.authorize({
+          clientId: 'com.maisvaquejada.app',
+          redirectUri: 'https://foirjnhsrnhwhcmyutq.supabase.co/auth/v1/callback',
+          scopes: 'email name',
+        });
 
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'apple',
-        options: {
-          redirectTo: redirectTo
+        if (result.response.identityToken) {
+          const { error } = await supabase.auth.signInWithIdToken({
+            provider: 'apple',
+            token: result.response.identityToken,
+          });
+          if (error) throw error;
         }
-      });
+      } else {
+        // Web ou Android fallback
+        const redirectTo = isNative 
+          ? 'com.maisvaquejada.app://' 
+          : window.location.origin;
+
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'apple',
+          options: {
+            redirectTo: redirectTo
+          }
+        });
+        if (error) throw error;
+      }
       if (error) throw error;
     } catch (err: any) {
       if (err?.message?.includes('cancelled') || err?.message?.includes('cancel')) return;
