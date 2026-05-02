@@ -1,4 +1,4 @@
-# Build Version: 1.0.19
+# Build Version: 1.0.20
 workflows:
   ios-workflow:
     name: iOS Build & Deploy
@@ -54,7 +54,8 @@ workflows:
           xcode-project build-ipa \
             --workspace ios/App/App.xcworkspace \
             --scheme App \
-            --export-options-plist export_options.plist
+            --export-options-plist export_options.plist \
+            --archive-xcargs "CODE_SIGNING_ALLOWED=YES CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=CM6RTC63BW"
     artifacts:
       - build/ios/ipa/*.ipa
       - mais-vaquejada/ios/App/build/*.xcarchive
