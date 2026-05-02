@@ -1,4 +1,4 @@
-# Build Version: 1.0.22
+# Build Version: 1.0.23
 workflows:
   ios-workflow:
     name: iOS Build & Deploy
@@ -54,7 +54,6 @@ workflows:
           xcode-project build-ipa \
             --workspace ios/App/App.xcworkspace \
             --scheme App \
-            --archive-xcargs "CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=CM6RTC63BW" \
             --export-options-plist export_options.plist
     artifacts:
       - build/ios/ipa/*.ipa
