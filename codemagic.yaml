@@ -1,4 +1,4 @@
-# Build Version: 1.0.16
+# Build Version: 1.0.17
 workflows:
   ios-workflow:
     name: iOS Build & Deploy
@@ -42,10 +42,10 @@ workflows:
             exit 1
           fi
           echo "✅ Nenhum plugin problemático encontrado!"
-      - name: CocoaPods
+      - name: Reset Pods
         script: |
           cd mais-vaquejada/ios/App
-          pod deintegrate
+          rm -rf Pods Podfile.lock
           pod install
       - name: Build iOS Archive (Simples)
         script: |
