@@ -37,9 +37,10 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
     setError(null);
     try {
       const isNative = Capacitor.isNativePlatform();
+      const platform = Capacitor.getPlatform();
       
-      if (isNative && Capacitor.getPlatform() === 'ios') {
-        // Login Nativo Oficial no iPhone
+      if (isNative && platform === 'ios') {
+        // Fluxo Nativo (iPhone/iPad)
         const result = await SignInWithApple.authorize({
           clientId: 'com.maisvaquejada.app',
           redirectUri: 'https://foirjnhsrnhwhcmyutq.supabase.co/auth/v1/callback',
@@ -54,15 +55,12 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
           if (error) throw error;
         }
       } else {
-        // Web ou Android fallback
-        const redirectTo = isNative 
-          ? 'com.maisvaquejada.app://' 
-          : window.location.origin;
-
+        // Fluxo Web (Vercel ou Android)
+        // Nota: Requer Service ID configurado no Supabase para funcionar no Web
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'apple',
           options: {
-            redirectTo: redirectTo
+            redirectTo: window.location.origin
           }
         });
         if (error) throw error;
