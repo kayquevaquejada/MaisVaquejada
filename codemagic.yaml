@@ -16,13 +16,12 @@ workflows:
       - name: Capacitor Sync e CocoaPods
         script: |
           cd mais-vaquejada
-          # Sincroniza e garante que o CocoaPods seja o mestre
           npx cap sync ios
           
-          echo "Limpando qualquer rastro de SPM para evitar conflitos..."
+          echo "Limpando qualquer rastro de SPM..."
           rm -rf ios/App/CapApp-SPM
           
-          echo "Rodando Pod Install (Estabilidade Total)..."
+          echo "Rodando Pod Install..."
           cd ios/App
           pod install
       - name: Check broken plugins
@@ -39,15 +38,15 @@ workflows:
             exit 1
           fi
           echo "✅ Nenhum plugin problemático encontrado!"
-      - name: Build iOS Archive (Workspace Mode)
+      - name: Build iOS Archive (Simples)
         script: |
           cd mais-vaquejada/ios/App
           xcodebuild -workspace App.xcworkspace \
                      -scheme App \
                      -sdk iphoneos \
                      -configuration Release \
-                     -archivePath $FCI_BUILD_DIR/App.xcarchive \
-                     archive
+                     CODE_SIGNING_ALLOWED=NO \
+                     archive -archivePath $FCI_BUILD_DIR/App.xcarchive
     artifacts:
       - $FCI_BUILD_DIR/*.xcarchive
       - $FCI_BUILD_DIR/ios/App/App.ipa
