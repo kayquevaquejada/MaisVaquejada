@@ -51,8 +51,14 @@
 	<string>Precisamos de acesso à câmera para chamadas de vídeo e fotos no Arena +Vaquejada.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Precisamos de acesso ao microfone para chamadas de áudio e vídeo no Arena +Vaquejada.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>O +Vaquejada usa sua localização para mostrar eventos, vaquejadas, resultados e conteúdos próximos de você.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Precisamos de sua localização para mostrar eventos próximos de você no Arena +Vaquejada.</string>
+	<string>O +Vaquejada usa sua localização enquanto o app está em uso para exibir eventos e conteúdos próximos de você.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>O +Vaquejada precisa acessar sua galeria para permitir o envio de fotos de perfil, eventos, anúncios e publicações no app.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>O +Vaquejada pode salvar imagens relacionadas a eventos, ingressos ou conteúdos do app na sua galeria quando solicitado.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
