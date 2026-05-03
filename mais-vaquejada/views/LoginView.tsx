@@ -19,6 +19,9 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
   const [error, setError] = useState<string | null>(null);
   const DEFAULT_BG = 'https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80';
   const [loginBg, setLoginBg] = useState(DEFAULT_BG);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [emailLoading, setEmailLoading] = useState(false);
 
   useEffect(() => {
     // Carregar Background
@@ -96,6 +99,34 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
     }
   };
 
+  const handleEmailLogin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!email || !password) {
+      setError('Por favor, preencha e-mail e senha.');
+      return;
+    }
+
+    setEmailLoading(true);
+    setError(null);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+      if (data.user) {
+        onLogin(data.user);
+      }
+    } catch (err: any) {
+      console.error('[EmailLogin] Error:', err);
+      setError(err.message || 'Erro ao entrar com e-mail');
+    } finally {
+      setEmailLoading(true); // Manter true para evitar flicker durante redirecionamento
+      setTimeout(() => setEmailLoading(false), 2000);
+    }
+  };
+
   return (
     <div className="min-h-full flex flex-col bg-[#0F0A05] relative overflow-hidden">
       {/* Background Cinematográfico */}
@@ -149,7 +180,6 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
                 </>
               )}
             </button>
-
             <button
               onClick={signInWithApple}
               disabled={googleLoading || loading}
@@ -165,6 +195,65 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
               )}
             </button>
           </div>
+
+          {/* Divisor */}
+          <div className="my-8 flex items-center gap-4">
+            <div className="flex-1 h-[1px] bg-white/5" />
+            <span className="text-white/20 text-[8px] font-black uppercase tracking-[0.3em]">Ou use seu e-mail</span>
+            <div className="flex-1 h-[1px] bg-white/5" />
+          </div>
+
+          {/* Form de E-mail */}
+          <form onSubmit={handleEmailLogin} className="space-y-4">
+            <div className="space-y-4">
+              <div className="relative group">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 material-icons text-white/30 group-focus-within:text-[#ECA413] transition-colors text-lg">mail_outline</span>
+                <input
+                  type="email"
+                  placeholder="E-MAIL"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-black/40 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-white text-[10px] font-bold tracking-widest placeholder:text-white/20 focus:outline-none focus:border-[#ECA413]/50 focus:bg-black/60 transition-all"
+                />
+              </div>
+
+              <div className="relative group">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 material-icons text-white/30 group-focus-within:text-[#ECA413] transition-colors text-lg">lock_outline</span>
+                <input
+                  type="password"
+                  placeholder="SENHA"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-black/40 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-white text-[10px] font-bold tracking-widest placeholder:text-white/20 focus:outline-none focus:border-[#ECA413]/50 focus:bg-black/60 transition-all"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading || googleLoading || emailLoading}
+              className="w-full bg-[#ECA413] text-black py-4 rounded-3xl font-black text-[10px] uppercase tracking-[0.2em] shadow-[0_10px_30px_rgba(236,164,19,0.3)] active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 mt-6"
+            >
+              {emailLoading ? (
+                <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+              ) : (
+                <>
+                  <span className="material-icons text-lg">login</span>
+                  ENTRAR COM E-MAIL
+                </>
+              )}
+            </button>
+            
+            <div className="flex justify-center pt-2">
+              <button
+                type="button"
+                onClick={onForgotPassword}
+                className="text-white/40 text-[9px] font-bold uppercase tracking-widest hover:text-white transition-colors"
+              >
+                Esqueceu sua senha?
+              </button>
+            </div>
+          </form>
 
           <div className="mt-8 flex flex-col gap-4">
             <p className="text-[8px] text-white/30 text-center font-bold uppercase tracking-widest leading-relaxed px-4">
