@@ -37,14 +37,12 @@ workflows:
 
       - name: Set up code signing
         script: |
+          cd mais-vaquejada
           keychain initialize
-
           app-store-connect fetch-signing-files com.maisvaquejada.app \
             --type IOS_APP_STORE \
             --create
-
           keychain add-certificates
-
           xcode-project use-profiles
 
       - name: Build IPA
@@ -52,8 +50,7 @@ workflows:
           cd mais-vaquejada
           xcode-project build-ipa \
             --workspace ios/App/App.xcworkspace \
-            --scheme App \
-            --export-method app-store
+            --scheme App
 
     artifacts:
       - mais-vaquejada/build/ios/ipa/*.ipa
