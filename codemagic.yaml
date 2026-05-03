@@ -10,6 +10,7 @@ workflows:
     environment:
       node: 22
       xcode: latest
+
       vars:
         VITE_SUPABASE_URL: "https://oisrjnhsrnhwhcmyutq.supabase.co"
         VITE_SUPABASE_ANON_KEY: "sb_publishable_NlV5EDvJLhrVX0j7T4rNcg_kdo0vB-P"
@@ -46,35 +47,17 @@ workflows:
 
           keychain add-certificates
 
-          ls -la "$HOME/Library/MobileDevice/Provisioning Profiles" || true
-          security find-identity -v -p codesigning || true
-
           xcode-project use-profiles
 
-      - name: Build Archive
+      - name: Build IPA
         script: |
           cd mais-vaquejada
-          xcodebuild archive \
-            -workspace ios/App/App.xcworkspace \
-            -scheme App \
-            -configuration Release \
-            -archivePath build/App.xcarchive \
-            -destination generic/platform=iOS \
-            COMPILER_INDEX_STORE_ENABLE=NO
-
-      - name: Export IPA
-        script: |
-          cd mais-vaquejada
-          mkdir -p build/ipa
-
-          xcodebuild -exportArchive \
-            -archivePath build/App.xcarchive \
-            -exportPath build/ipa \
-            -exportOptionsPlist /Users/builder/export_options.plist
+          xcode-project build-ipa \
+            --workspace ios/App/App.xcworkspace \
+            --scheme App
 
     artifacts:
-      - mais-vaquejada/build/ipa/*.ipa
-      - /Users/builder/export_options.plist
+      - mais-vaquejada/build/ios/ipa/*.ipa
 
     publishing:
       email:
