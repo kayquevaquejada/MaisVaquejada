@@ -44,16 +44,56 @@ workflows:
           keychain add-certificates
           xcode-project use-profiles
 
-      - name: Build IPA
+      - name: Build Archive
         script: |
           cd mais-vaquejada
-          xcode-project build-ipa \
-            --workspace ios/App/App.xcworkspace \
-            --scheme App
+          xcodebuild archive \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -archivePath build/App.xcarchive \
+            -destination generic/platform=iOS \
+            DEVELOPMENT_TEAM=CM6RTC63BW \
+            CODE_SIGN_STYLE=Manual \
+            PROVISIONING_PROFILE_SPECIFIER="MaisVaquejada AppStore" \
+            COMPILER_INDEX_STORE_ENABLE=NO
+
+      - name: Export IPA
+        script: |
+          cd mais-vaquejada
+          mkdir -p build/ipa
+
+          cat > export_options.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store</string>
+              <key>teamID</key>
+              <string>CM6RTC63BW</string>
+              <key>signingStyle</key>
+              <string>manual</string>
+              <key>provisioningProfiles</key>
+              <dict>
+                  <key>com.maisvaquejada.app</key>
+                  <string>MaisVaquejada AppStore</string>
+              </dict>
+              <key>stripSwiftSymbols</key>
+              <true/>
+              <key>compileBitcode</key>
+              <false/>
+          </dict>
+          </plist>
+          EOF
+
+          xcodebuild -exportArchive \
+            -archivePath build/App.xcarchive \
+            -exportPath build/ipa \
+            -exportOptionsPlist export_options.plist
 
     artifacts:
-      - mais-vaquejada/build/ios/ipa/*.ipa
-      - mais-vaquejada/ios/App/build/outputs/ipa/*.ipa
+      - mais-vaquejada/build/ipa/*.ipa
 
     publishing:
       email:
