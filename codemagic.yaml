@@ -18,7 +18,7 @@ workflows:
       vars:
         VITE_SUPABASE_URL: "https://oisrjnhsrnhwhcmyutq.supabase.co"
         VITE_SUPABASE_ANON_KEY: "sb_publishable_NlV5EDvJLhrVX0j7T4rNcg_kdo0vB-P"
-        BUILD_NUMBER: "10"
+        BUILD_NUMBER: "11"
 
     scripts:
       - name: Install dependencies
