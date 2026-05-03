@@ -32,7 +32,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
       });
   }, []);
 
-  const handleAppleLogin = async () => {
+  const signInWithApple = async () => {
     setLoading(true);
     setError(null);
     try {
@@ -40,33 +40,33 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
       const platform = Capacitor.getPlatform();
       
       if (isNative && platform === 'ios') {
-        // Fluxo Nativo (iPhone/iPad)
+        console.log('Apple login iOS iniciado');
         const result = await SignInWithApple.authorize();
-
-        if (result.response.identityToken) {
+        
+        if (result.response && result.response.identityToken) {
+          console.log('Token Apple recebido');
           const { error } = await supabase.auth.signInWithIdToken({
             provider: 'apple',
             token: result.response.identityToken,
           });
           if (error) throw error;
+        } else {
+          throw new Error('Token não recebido da Apple');
         }
       } else {
-        // Fluxo Web (Vercel, Safari iOS) ou Nativo Android
-        const redirectTo = isNative 
-          ? 'com.maisvaquejada.app://' 
-          : 'https://mais-vaquejada.vercel.app';
-
+        console.log('Apple login WEB iniciado');
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'apple',
-          options: { redirectTo: redirectTo }
+          options: {
+            redirectTo: window.location.origin + '/auth/callback'
+          }
         });
         if (error) throw error;
       }
-      if (error) throw error;
-    } catch (err: any) {
-      if (err?.message?.includes('cancelled') || err?.message?.includes('cancel')) return;
-      console.error('[AppleLogin] Error:', err);
-      setError(err.message || 'Erro ao entrar com Apple');
+    } catch (error: any) {
+      if (error?.message?.includes('cancelled') || error?.message?.includes('cancel')) return;
+      console.error('Erro Apple login:', error);
+      setError(error.message || 'Erro ao entrar com Apple');
     } finally {
       setLoading(false);
     }
@@ -151,7 +151,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
             </button>
 
             <button
-              onClick={handleAppleLogin}
+              onClick={signInWithApple}
               disabled={googleLoading || loading}
               className="w-full bg-black text-white border border-white/10 py-4 rounded-3xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
             >
