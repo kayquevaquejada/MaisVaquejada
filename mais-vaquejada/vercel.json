@@ -1,21 +1,24 @@
 {
-    "buildCommand": "npm run build",
-    "rewrites": [
-        {
-            "source": "/.well-known/(.*)",
-            "destination": "/.well-known/$1"
-        },
-        {
-            "source": "/privacy",
-            "destination": "/privacy.html"
-        },
-        {
-            "source": "/terms",
-            "destination": "/terms.html"
-        },
-        {
-            "source": "/(.*)",
-            "destination": "/index.html"
-        }
-    ]
+  "buildCommand": "npm run build",
+  "routes": [
+    {
+      "src": "/.well-known/(.*)",
+      "dest": "/.well-known/$1",
+      "headers": {
+        "Content-Type": "text/plain"
+      }
+    },
+    {
+      "src": "/privacy",
+      "dest": "/privacy.html"
+    },
+    {
+      "src": "/terms",
+      "dest": "/terms.html"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
 }
