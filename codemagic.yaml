@@ -10,7 +10,6 @@ workflows:
     environment:
       node: 22
       xcode: latest
-
       vars:
         VITE_SUPABASE_URL: "https://oisrjnhsrnhwhcmyutq.supabase.co"
         VITE_SUPABASE_ANON_KEY: "sb_publishable_NlV5EDvJLhrVX0j7T4rNcg_kdo0vB-P"
@@ -38,7 +37,6 @@ workflows:
 
       - name: Set up code signing
         script: |
-          cd mais-vaquejada
           keychain initialize
 
           app-store-connect fetch-signing-files com.maisvaquejada.app \
@@ -54,10 +52,13 @@ workflows:
           cd mais-vaquejada
           xcode-project build-ipa \
             --workspace ios/App/App.xcworkspace \
-            --scheme App
+            --scheme App \
+            --export-method app-store
 
     artifacts:
       - mais-vaquejada/build/ios/ipa/*.ipa
+      - mais-vaquejada/ios/App/build/ios/ipa/*.ipa
+      - mais-vaquejada/ios/App/build/outputs/ipa/*.ipa
 
     publishing:
       email:
