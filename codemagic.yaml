@@ -39,10 +39,16 @@ workflows:
         script: |
           cd mais-vaquejada
           keychain initialize
+
           app-store-connect fetch-signing-files com.maisvaquejada.app \
             --type IOS_APP_STORE \
             --create
+
           keychain add-certificates
+
+          ls -la "$HOME/Library/MobileDevice/Provisioning Profiles" || true
+          security find-identity -v -p codesigning || true
+
           xcode-project use-profiles
 
       - name: Build Archive
@@ -54,8 +60,6 @@ workflows:
             -configuration Release \
             -archivePath build/App.xcarchive \
             -destination generic/platform=iOS \
-            DEVELOPMENT_TEAM=CM6RTC63BW \
-            CODE_SIGN_STYLE=Manual \
             COMPILER_INDEX_STORE_ENABLE=NO
 
       - name: Export IPA
@@ -63,32 +67,14 @@ workflows:
           cd mais-vaquejada
           mkdir -p build/ipa
 
-          cat > export_options.plist <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>method</key>
-              <string>app-store</string>
-              <key>teamID</key>
-              <string>CM6RTC63BW</string>
-              <key>signingStyle</key>
-              <string>manual</string>
-              <key>stripSwiftSymbols</key>
-              <true/>
-              <key>compileBitcode</key>
-              <false/>
-          </dict>
-          </plist>
-          EOF
-
           xcodebuild -exportArchive \
             -archivePath build/App.xcarchive \
             -exportPath build/ipa \
-            -exportOptionsPlist export_options.plist
+            -exportOptionsPlist /Users/builder/export_options.plist
 
     artifacts:
       - mais-vaquejada/build/ipa/*.ipa
+      - /Users/builder/export_options.plist
 
     publishing:
       email:
