@@ -1,1 +1,7 @@
-# COLE O CONTEÚDO FORNECIDO PELA APPLE AQUI E APAGUE ESTA LINHA
+{
+  "webcredentials": {
+    "apps": [
+      "CM6RTC63BW.com.maisvaquejada.app"
+    ]
+  }
+}
