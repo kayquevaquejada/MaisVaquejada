@@ -101,7 +101,7 @@
 						CreatedOnToolsVersion = 9.2;
 						LastSwiftMigration = 1100;
 						SystemCapabilities = {
-							com.apple.AppleSignIn = {
+							com.apple.SignInWithApple = {
 								enabled = 1;
 							};
 						};
