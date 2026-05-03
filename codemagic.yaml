@@ -28,10 +28,11 @@ workflows:
       - name: Build IPA
         script: |
           cd mais-vaquejada
-          # Gera o arquivo .xcarchive e o .ipa
+          # Gera o arquivo .xcarchive e o .ipa usando o seu arquivo plist
           xcode-project build-ipa \
             --workspace ios/App/App.xcworkspace \
-            --scheme App
+            --scheme App \
+            --export-options-plist export_options.plist
     artifacts:
       - mais-vaquejada/ios/App/build/outputs/ipa/*.ipa
     publishing:
