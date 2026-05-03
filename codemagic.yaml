@@ -10,14 +10,10 @@ workflows:
     environment:
       node: 22
       xcode: latest
-
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.maisvaquejada.app
-
       vars:
         VITE_SUPABASE_URL: "https://oisrjnhsrnhwhcmyutq.supabase.co"
         VITE_SUPABASE_ANON_KEY: "sb_publishable_NlV5EDvJLhrVX0j7T4rNcg_kdo0vB-P"
+        BUILD_NUMBER: "10"
 
     scripts:
       - name: Install dependencies
@@ -40,9 +36,17 @@ workflows:
           cd mais-vaquejada/ios/App
           pod install
 
+      - name: Set iOS version and build number
+        script: |
+          cd mais-vaquejada/ios/App
+          agvtool new-marketing-version 1.0
+          agvtool new-version -all $BUILD_NUMBER
+
       - name: Set up code signing
         script: |
+          cd mais-vaquejada
           keychain initialize
+          app-store-connect fetch-signing-files com.maisvaquejada.app --type IOS_APP_STORE --create
           keychain add-certificates
           xcode-project use-profiles
 
