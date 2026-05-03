@@ -10,6 +10,7 @@ workflows:
     environment:
       node: 22
       xcode: latest
+
       vars:
         VITE_SUPABASE_URL: "https://oisrjnhsrnhwhcmyutq.supabase.co"
         VITE_SUPABASE_ANON_KEY: "sb_publishable_NlV5EDvJLhrVX0j7T4rNcg_kdo0vB-P"
@@ -53,15 +54,32 @@ workflows:
             -scheme App \
             -archivePath build/App.xcarchive \
             -destination generic/platform=iOS \
+            -allowProvisioningUpdates \
             COMPILER_INDEX_STORE_ENABLE=NO
 
       - name: Export IPA
         script: |
           cd mais-vaquejada
+          mkdir -p build/ipa
+
+          cat > export_options.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store</string>
+              <key>signingStyle</key>
+              <string>automatic</string>
+          </dict>
+          </plist>
+          EOF
+
           xcodebuild -exportArchive \
             -archivePath build/App.xcarchive \
             -exportPath build/ipa \
-            -exportOptionsPlist export_options.plist
+            -exportOptionsPlist export_options.plist \
+            -allowProvisioningUpdates
 
     artifacts:
       - mais-vaquejada/build/ipa/*.ipa
