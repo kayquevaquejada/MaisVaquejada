@@ -40,7 +40,8 @@ workflows:
           cd mais-vaquejada
           keychain initialize
           app-store-connect fetch-signing-files com.maisvaquejada.app \
-            --type IOS_APP_STORE
+            --type IOS_APP_STORE \
+            --create
           keychain add-certificates
           xcode-project use-profiles
 
@@ -55,7 +56,6 @@ workflows:
             -destination generic/platform=iOS \
             DEVELOPMENT_TEAM=CM6RTC63BW \
             CODE_SIGN_STYLE=Manual \
-            PROVISIONING_PROFILE_SPECIFIER="MaisVaquejada AppStore" \
             COMPILER_INDEX_STORE_ENABLE=NO
 
       - name: Export IPA
@@ -74,11 +74,6 @@ workflows:
               <string>CM6RTC63BW</string>
               <key>signingStyle</key>
               <string>manual</string>
-              <key>provisioningProfiles</key>
-              <dict>
-                  <key>com.maisvaquejada.app</key>
-                  <string>MaisVaquejada AppStore</string>
-              </dict>
               <key>stripSwiftSymbols</key>
               <true/>
               <key>compileBitcode</key>
