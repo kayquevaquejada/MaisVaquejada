@@ -41,11 +41,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
       
       if (isNative && platform === 'ios') {
         // Fluxo Nativo (iPhone/iPad)
-        const result = await SignInWithApple.authorize({
-          clientId: 'com.maisvaquejada.app',
-          redirectUri: 'https://foirjnhsrnhwhcmyutq.supabase.co/auth/v1/callback',
-          scopes: 'email name',
-        });
+        const result = await SignInWithApple.authorize();
 
         if (result.response.identityToken) {
           const { error } = await supabase.auth.signInWithIdToken({
@@ -55,10 +51,14 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
           if (error) throw error;
         }
       } else {
-        // Fluxo Web (Vercel ou Android)
+        // Fluxo Web (Vercel, Safari iOS) ou Nativo Android
+        const redirectTo = isNative 
+          ? 'com.maisvaquejada.app://' 
+          : 'https://mais-vaquejada.vercel.app';
+
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'apple',
-          options: { redirectTo: window.location.origin }
+          options: { redirectTo: redirectTo }
         });
         if (error) throw error;
       }
