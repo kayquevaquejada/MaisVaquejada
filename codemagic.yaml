@@ -3,38 +3,61 @@ workflows:
     name: iOS Build & Deploy
     instance_type: mac_mini_m2
     max_build_duration: 60
+
+    integrations:
+      app_store_connect: Codemagic
+
     environment:
       node: 22
       xcode: latest
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.maisvaquejada.app
       vars:
-        # Variáveis do Supabase (O Codemagic vai usar estas para o build)
         VITE_SUPABASE_URL: "https://oisrjnhsrnhwhcmyutq.supabase.co"
         VITE_SUPABASE_ANON_KEY: "sb_publishable_NlV5EDvJLhrVX0j7T4rNcg_kdo0vB-P"
+
     scripts:
       - name: Install dependencies
         script: |
-          cd mais-vaquejada && npm install --force
+          cd mais-vaquejada
+          npm install --force
+
       - name: Build Web Assets
         script: |
-          cd mais-vaquejada && npm run build
+          cd mais-vaquejada
+          npm run build
+
       - name: Capacitor Sync
         script: |
           cd mais-vaquejada
           npx cap sync ios
+
       - name: Install Pods
         script: |
           cd mais-vaquejada/ios/App
           pod install
+
+      - name: Set up code signing
+        script: |
+          cd mais-vaquejada
+          keychain initialize
+          app-store-connect fetch-signing-files com.maisvaquejada.app \
+            --type IOS_APP_STORE \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
+
       - name: Build IPA
         script: |
           cd mais-vaquejada
-          # Gera o arquivo .xcarchive e o .ipa usando o seu arquivo plist
           xcode-project build-ipa \
             --workspace ios/App/App.xcworkspace \
-            --scheme App \
-            --export-options-plist export_options.plist
+            --scheme App
+
     artifacts:
       - mais-vaquejada/ios/App/build/outputs/ipa/*.ipa
+
     publishing:
       email:
         recipients:
