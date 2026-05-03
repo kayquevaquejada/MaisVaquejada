@@ -10,6 +10,11 @@ workflows:
     environment:
       node: 22
       xcode: latest
+
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.maisvaquejada.app
+
       vars:
         VITE_SUPABASE_URL: "https://oisrjnhsrnhwhcmyutq.supabase.co"
         VITE_SUPABASE_ANON_KEY: "sb_publishable_NlV5EDvJLhrVX0j7T4rNcg_kdo0vB-P"
@@ -45,52 +50,17 @@ workflows:
           keychain add-certificates
           xcode-project use-profiles
 
-      - name: Build Archive
+      - name: Build IPA (FORÇADO APP STORE)
         script: |
           cd mais-vaquejada
-          xcodebuild archive \
-            -workspace ios/App/App.xcworkspace \
-            -scheme App \
-            -configuration Release \
-            -archivePath build/App.xcarchive \
-            -destination generic/platform=iOS \
-            -allowProvisioningUpdates \
-            DEVELOPMENT_TEAM=CM6RTC63BW \
-            CODE_SIGN_STYLE=Automatic \
-            COMPILER_INDEX_STORE_ENABLE=NO
-
-      - name: Export IPA
-        script: |
-          cd mais-vaquejada
-          mkdir -p build/ipa
-
-          cat > export_options.plist <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>method</key>
-              <string>app-store</string>
-              <key>teamID</key>
-              <string>CM6RTC63BW</string>
-              <key>signingStyle</key>
-              <string>automatic</string>
-              <key>stripSwiftSymbols</key>
-              <true/>
-              <key>compileBitcode</key>
-              <false/>
-          </dict>
-          </plist>
-          EOF
-
-          xcodebuild -exportArchive \
-            -archivePath build/App.xcarchive \
-            -exportPath build/ipa \
-            -exportOptionsPlist export_options.plist \
-            -allowProvisioningUpdates
+          xcode-project build-ipa \
+            --workspace ios/App/App.xcworkspace \
+            --scheme App \
+            --export-method app-store \
+            --archive-xcargs "DEVELOPMENT_TEAM=CM6RTC63BW CODE_SIGN_STYLE=Automatic"
 
     artifacts:
-      - mais-vaquejada/build/ipa/*.ipa
+      - mais-vaquejada/ios/App/build/ios/ipa/*.ipa
 
     publishing:
       email:
