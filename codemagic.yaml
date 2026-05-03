@@ -10,11 +10,6 @@ workflows:
     environment:
       node: 22
       xcode: latest
-
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.maisvaquejada.app
-
       vars:
         VITE_SUPABASE_URL: "https://oisrjnhsrnhwhcmyutq.supabase.co"
         VITE_SUPABASE_ANON_KEY: "sb_publishable_NlV5EDvJLhrVX0j7T4rNcg_kdo0vB-P"
@@ -45,22 +40,20 @@ workflows:
           cd mais-vaquejada
           keychain initialize
           app-store-connect fetch-signing-files com.maisvaquejada.app \
-            --type IOS_APP_STORE \
-            --create
+            --type IOS_APP_STORE
           keychain add-certificates
           xcode-project use-profiles
 
-      - name: Build IPA (FORÇADO APP STORE)
+      - name: Build IPA
         script: |
           cd mais-vaquejada
           xcode-project build-ipa \
             --workspace ios/App/App.xcworkspace \
-            --scheme App \
-            --export-method app-store \
-            --archive-xcargs "DEVELOPMENT_TEAM=CM6RTC63BW CODE_SIGN_STYLE=Automatic"
+            --scheme App
 
     artifacts:
-      - mais-vaquejada/ios/App/build/ios/ipa/*.ipa
+      - mais-vaquejada/build/ios/ipa/*.ipa
+      - mais-vaquejada/ios/App/build/outputs/ipa/*.ipa
 
     publishing:
       email:
