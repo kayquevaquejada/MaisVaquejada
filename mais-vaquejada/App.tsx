@@ -104,9 +104,14 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
       return <StoreDetailView store={selectedStore} user={user} onBack={() => onSetCurrentView(View.MERCADO)} />;
     case View.RESULT_DETAIL:
       return <ResultDetailView resultId={selectedResultId || ''} onBack={() => onSetCurrentView(selectedEvent ? View.EVENT_DETAILS : View.NEWS)} />;
+    case View.AUTH_CALLBACK:
+      return <AuthCallback onComplete={(userId, authUser) => onFetchProfile(userId, authUser)} onFail={() => onSetCurrentView(View.LOGIN)} />;
     default:
-      if (!user || !user.profile_completed) return <LoginView onLogin={(u) => onFetchProfile(u.id, u)} onSignUp={() => onSetCurrentView(View.SIGNUP)} onForgotPassword={() => onSetCurrentView(View.FORGOT_PASSWORD)} onRecoveryAssisted={() => onSetCurrentView(View.RECOVERY_ASSISTED)} onTerms={() => onSetCurrentView(View.TERMS)} />;
-      return <EventsView />;
+      if (user) {
+        if (!user.profile_completed) return <CompleteProfileView user={user} onComplete={() => onFetchProfile(user.id)} onLogout={onLogout} />;
+        return <EventsView />;
+      }
+      return <LoginView onLogin={(u) => onFetchProfile(u.id, u)} onSignUp={() => onSetCurrentView(View.SIGNUP)} onForgotPassword={() => onSetCurrentView(View.FORGOT_PASSWORD)} onRecoveryAssisted={() => onSetCurrentView(View.RECOVERY_ASSISTED)} onTerms={() => onSetCurrentView(View.TERMS)} />;
   }
 };
 
@@ -183,11 +188,13 @@ const App: React.FC = () => {
   };
 
   const fetchProfile = async (userId: string, authUser?: any) => {
-    if (isFetchingProfile.current) return;
+    console.log('[App] fetchProfile iniciado para:', userId);
+    if (isFetchingProfile.current) {
+      console.log('[App] fetchProfile já está em execução, pulando...');
+      return;
+    }
     isFetchingProfile.current = true;
     
-    // Só mostramos o carregamento total se for a PRIMEIRA inicialização do app
-    // Nunca definimos setInitializing(true) novamente após o app ter aberto uma vez
     if (!user && initializing) setInitializing(true);
     
     try {
@@ -258,6 +265,21 @@ const App: React.FC = () => {
             }
           }
         }
+      } else if (authUser) {
+        // Fallback para usuários logados mas sem perfil na tabela 'profiles' (comum em novos logins sociais)
+        const tempUser: User = {
+          id: authUser.id,
+          name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || 'Vaqueiro',
+          email: authUser.email,
+          role: 'USER',
+          status: 'PENDING_PROFILE',
+          profile_completed: false,
+          username: '',
+          isMaster: authUser.email ? MASTER_EMAILS.includes(authUser.email.toLowerCase()) : false
+        } as any;
+        
+        setUser(tempUser);
+        setCurrentView(View.COMPLETE_PROFILE);
       }
     } catch (err) {
       console.error('Fetch Profile Error:', err);
@@ -273,15 +295,23 @@ const App: React.FC = () => {
     isMountedRef.current = true;
 
     const startup = async () => {
-      // Se já inicializou, não faz nada (previne loops no multitarefa se o App re-renderizar)
       if (isInitializedRef.current) return;
       
       try {
+        // DETECÇÃO DE ROTA DE CALLBACK
+        if (window.location.pathname === '/auth/callback') {
+          console.log('[App] Rota de callback detectada, mudando para View.AUTH_CALLBACK');
+          setCurrentView(View.AUTH_CALLBACK);
+          setInitializing(false);
+          isInitializedRef.current = true;
+          return;
+        }
 
-        // RESILIÊNCIA WEB: Se estivermos vindo de um login Google na Web (?code=)
-        // aguarda um breve momento para o sistema processar o token.
+        // RESILIÊNCIA WEB: Se estivermos vindo de um login Google/Apple na Web
+        // aguarda o sistema processar o token.
         if (!Capacitor.isNativePlatform() && (window.location.hash || window.location.search.includes('code='))) {
-          await new Promise(r => setTimeout(r, 1000));
+          console.log('[App] Detectado token de OAuth na URL, aguardando processamento...');
+          await new Promise(r => setTimeout(r, 2000));
         }
 
         // Tentar hidratar do cache primeiro para dar feedback instantâneo
@@ -296,18 +326,19 @@ const App: React.FC = () => {
         }
 
         const { data: { session } } = await supabase.auth.getSession();
+        console.log('[App] Sessão recuperada no startup:', session ? 'Sim' : 'Não');
         
         if (session?.user) {
-          // Já temos o usuário em cache? Ótimo, solta o loading logo.
-          // O fetchProfile fará a atualização real em background.
           if (cached && cached.id === session.user.id) {
+            console.log('[App] Usando perfil do cache e buscando atualização...');
             setInitializing(false);
             fetchProfile(session.user.id, session.user);
           } else {
-            // Se não tem cache ou é outro usuário, busca obrigatório antes de soltar splash
+            console.log('[App] Buscando perfil obrigatório (sem cache)...');
             await fetchProfile(session.user.id, session.user);
           }
         } else {
+          console.log('[App] Nenhuma sessão encontrada, indo para LOGIN');
           setCurrentView(View.LOGIN);
           setInitializing(false);
         }
@@ -480,6 +511,83 @@ const App: React.FC = () => {
         {user && user.profile_completed && <PushOnboardingModal userId={user.id} />}
       </div>
     </CallProvider>
+  );
+};
+
+// ─── Componente de Callback de Autenticação ───
+const AuthCallback: React.FC<{ onComplete: (userId: string, authUser: any) => void, onFail: () => void }> = ({ onComplete, onFail }) => {
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleCallback = async () => {
+      console.log('[AuthCallback] Iniciado');
+      
+      try {
+        // Pega erro da URL se existir
+        const params = new URLSearchParams(window.location.search);
+        const errorDesc = params.get('error_description');
+        if (errorDesc) {
+          console.error('[AuthCallback] Erro detectado na URL:', errorDesc);
+          setErrorMsg(errorDesc.replace(/\+/g, ' '));
+          return;
+        }
+
+        if (window.location.hash || window.location.search.includes('code=')) {
+          console.log('[AuthCallback] Token detectado na URL, aguardando Supabase...');
+          await new Promise(r => setTimeout(r, 1500));
+        }
+
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('[AuthCallback] Erro ao recuperar sessão:', error);
+          setErrorMsg(error.message);
+          return;
+        }
+
+        if (session?.user) {
+          console.log('[AuthCallback] Sessão encontrada:', session.user.id);
+          onComplete(session.user.id, session.user);
+        } else {
+          console.warn('[AuthCallback] Nenhuma sessão encontrada após callback');
+          const { data: refreshData } = await supabase.auth.refreshSession();
+          if (refreshData.session?.user) {
+            onComplete(refreshData.session.user.id, refreshData.session.user);
+          } else {
+            setErrorMsg('Não foi possível estabelecer uma sessão. Tente novamente.');
+          }
+        }
+      } catch (err: any) {
+        console.error('[AuthCallback] Erro crítico no callback:', err);
+        setErrorMsg(err.message || 'Erro desconhecido');
+      }
+    };
+
+    handleCallback();
+  }, []);
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#0F0A05] px-8 text-center">
+      {!errorMsg ? (
+        <>
+          <div className="w-12 h-12 border-4 border-[#ECA413]/30 border-t-[#ECA413] rounded-full animate-spin mb-6" />
+          <h1 className="text-white font-black italic uppercase tracking-widest text-sm animate-pulse">Finalizando login...</h1>
+          <p className="text-white/20 text-[10px] uppercase mt-2">Autenticando com a Apple Arena</p>
+        </>
+      ) : (
+        <div className="animate-in fade-in zoom-in duration-500">
+          <span className="material-icons text-red-500 text-5xl mb-4">error_outline</span>
+          <h1 className="text-white font-black italic uppercase tracking-tighter text-xl mb-2">Erro na Autenticação</h1>
+          <p className="text-white/60 text-xs mb-8 max-w-xs mx-auto uppercase font-bold tracking-tight">{errorMsg}</p>
+          <button 
+            onClick={onFail}
+            className="bg-[#ECA413] text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all"
+          >
+            VOLTAR PARA O LOGIN
+          </button>
+        </div>
+      )}
+    </div>
   );
 };
 

@@ -20,7 +20,8 @@ export enum View {
   EVENT_DETAILS = 'EVENT_DETAILS',
   LEGAL_CONSENT = 'LEGAL_CONSENT',
   STORE_DETAILS = 'STORE_DETAILS',
-  RESULT_DETAIL = 'RESULT_DETAIL'
+  RESULT_DETAIL = 'RESULT_DETAIL',
+  AUTH_CALLBACK = 'AUTH_CALLBACK'
 }
 
 export type ResultStatus = 'rascunho' | 'publicado' | 'arquivado';
