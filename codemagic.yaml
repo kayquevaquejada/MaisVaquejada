@@ -39,8 +39,15 @@ workflows:
       - name: Set iOS version and build number
         script: |
           cd mais-vaquejada/ios/App
-          agvtool new-marketing-version 1.0
-          agvtool new-version -all $BUILD_NUMBER
+
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.0" App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" App/Info.plist
+
+          echo "iOS Version:"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" App/Info.plist
+
+          echo "iOS Build Number:"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" App/Info.plist
 
       - name: Set up code signing
         script: |
