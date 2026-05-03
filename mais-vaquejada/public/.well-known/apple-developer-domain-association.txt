@@ -1,7 +1,1 @@
-{
-  "webcredentials": {
-    "apps": [
-      "CM6RTC63BW.com.maisvaquejada.app"
-    ]
-  }
-}
+
