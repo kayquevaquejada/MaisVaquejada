@@ -45,15 +45,26 @@ workflows:
           keychain add-certificates
           xcode-project use-profiles
 
-      - name: Build IPA
+      - name: Build Archive
         script: |
           cd mais-vaquejada
-          xcode-project build-ipa \
-            --workspace ios/App/App.xcworkspace \
-            --scheme App
+          xcodebuild archive \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -archivePath build/App.xcarchive \
+            -destination generic/platform=iOS \
+            COMPILER_INDEX_STORE_ENABLE=NO
+
+      - name: Export IPA
+        script: |
+          cd mais-vaquejada
+          xcodebuild -exportArchive \
+            -archivePath build/App.xcarchive \
+            -exportPath build/ipa \
+            -exportOptionsPlist export_options.plist
 
     artifacts:
-      - mais-vaquejada/ios/App/build/outputs/ipa/*.ipa
+      - mais-vaquejada/build/ipa/*.ipa
 
     publishing:
       email:
