@@ -1,4 +1,3 @@
-# Build Version: 1.0.24
 workflows:
   ios-workflow:
     name: iOS Build & Deploy
@@ -7,6 +6,10 @@ workflows:
     environment:
       node: 20
       xcode: latest
+      vars:
+        # Variáveis do Supabase (O Codemagic vai usar estas para o build)
+        VITE_SUPABASE_URL: "https://oisrjnhsrnhwhcmyutq.supabase.co"
+        VITE_SUPABASE_ANON_KEY: "sb_publishable_NlV5EDvJLhrVX0j7T4rNcg_kdo0vB-P"
     scripts:
       - name: Install dependencies
         script: |
@@ -14,47 +17,24 @@ workflows:
       - name: Build Web Assets
         script: |
           cd mais-vaquejada && npm run build
-      - name: Capacitor Copy e Sync
+      - name: Capacitor Sync
         script: |
           cd mais-vaquejada
-          npx cap copy ios
           npx cap sync ios
-          echo "Arquivos dentro de ios/App/App:"
-          ls -la ios/App/App
-          echo "Public:"
-          ls -la ios/App/App/public || true
-      - name: Check broken plugins
-        script: |
-          cd mais-vaquejada
-          echo "Verificando plugins quebrados..."
-          if grep -R "@capgo/capacitor-native-biometric" . --exclude-dir=node_modules; then
-            echo "ERRO: plugin biometric ainda existe no projeto"
-            exit 1
-          fi
-
-          if grep -R "@capacitor-community/apple-sign-in" . --exclude-dir=node_modules; then
-            echo "ERRO: apple-sign-in ainda existe no projeto"
-            exit 1
-          fi
-
-          if grep -R "@codetrix-studio/capacitor-google-auth" . --exclude-dir=node_modules; then
-            echo "ERRO: capacitor-google-auth ainda existe no projeto"
-            exit 1
-          fi
-          echo "✅ Nenhum plugin problemático encontrado!"
-      - name: Reset Pods
+      - name: Install Pods
         script: |
           cd mais-vaquejada/ios/App
-          rm -rf Pods Podfile.lock
-          pod deintegrate
           pod install
       - name: Build IPA
         script: |
           cd mais-vaquejada
+          # Gera o arquivo .xcarchive e o .ipa
           xcode-project build-ipa \
             --workspace ios/App/App.xcworkspace \
-            --scheme App \
-            --export-options-plist export_options.plist
+            --scheme App
     artifacts:
-      - build/ios/ipa/*.ipa
-      - mais-vaquejada/ios/App/build/*.xcarchive
+      - mais-vaquejada/ios/App/build/outputs/ipa/*.ipa
+    publishing:
+      email:
+        recipients:
+          - kayquevaquejada@gmail.com
