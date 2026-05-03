@@ -58,6 +58,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
         // Fluxo Web (Vercel ou Android)
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'apple',
+          options: { redirectTo: window.location.origin }
         });
         if (error) throw error;
       }
