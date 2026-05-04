@@ -280,7 +280,7 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
         {console.log('Rendering NewsView, check TV button')}
         <button
           onClick={() => setIsTvOpen(true)}
-          className="w-full flex items-center gap-4 bg-gradient-to-r from-red-700 via-red-600 to-red-700 rounded-2xl p-4 mb-3 shadow-2xl shadow-red-900/40 active:scale-[0.98] transition-all group relative overflow-hidden"
+          className="w-full flex items-center gap-4 bg-gradient-to-r from-[#8B0000] via-[#C91A1A] to-[#FF3B3B] rounded-[24px] p-5 mb-4 shadow-[0_10px_30px_rgba(255,59,59,0.3)] active:scale-[0.98] transition-all group relative overflow-hidden"
         >
           {/* Brilho animado */}
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
@@ -310,12 +310,12 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
         </button>
 
       {/* Filtros de categorias */}
-        <div className="flex gap-2 overflow-x-auto hide-scrollbar">
+        <div className="flex gap-2 overflow-x-auto hide-scrollbar bg-[#121212] p-1.5 rounded-full mt-2 mb-2">
           {TABS.map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-5 py-2 rounded-full font-bold text-xs whitespace-nowrap border-2 transition-all active:scale-95 ${activeTab === tab ? 'bg-primary-orange border-primary-orange text-white shadow-lg shadow-primary-orange/20' : 'border-white/10 text-white/40 hover:bg-white/5'}`}
+              className={`px-6 py-2.5 rounded-full font-black text-xs uppercase tracking-widest whitespace-nowrap transition-all duration-300 active:scale-95 ${activeTab === tab ? 'bg-[#D4AF37] text-black shadow-[0_4px_15px_rgba(212,175,55,0.4)]' : 'text-white/60 hover:text-white'}`}
             >
               {tab}
             </button>
@@ -331,8 +331,12 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
       {/* Conteúdo das notícias */}
       <div className="px-6 pt-6 space-y-6">
         <div>
-          <h2 className="text-4xl font-black text-primary-orange uppercase leading-none mb-1 font-display tracking-tight">ARENA NOTÍCIAS</h2>
-          <p className="text-white/40 text-sm">O seu canal oficial de informações</p>
+          <h2 className="flex items-center gap-2 text-[18px] font-black text-white uppercase leading-none mb-1 font-display tracking-wide">
+            {activeTab === 'RESULTADOS' ? '🏆 RESULTADOS EM DESTAQUE' : '📰 NOTÍCIAS EM DESTAQUE'}
+          </h2>
+          <p className="text-white/40 text-[12px] font-medium">
+            {activeTab === 'RESULTADOS' ? 'Acompanhe os resultados das competições' : 'As principais notícias do mundo da vaquejada'}
+          </p>
         </div>
 
         {activeTab === 'RESULTADOS' ? (
@@ -348,49 +352,45 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
                 onClick={() => window.dispatchEvent(new CustomEvent('arena_navigate', { 
                   detail: { view: View.RESULT_DETAIL, resultId: res.id } 
                 }))}
-                className="bg-[#1A1108] rounded-[32px] overflow-hidden shadow-2xl border border-[#D4AF37]/10 group active:scale-[0.98] transition-all relative min-h-[220px] flex flex-col justify-end"
+                className="bg-gradient-to-b from-[#1A1A1A] to-[#0A0A0A] rounded-[24px] overflow-hidden shadow-2xl border border-white/5 group active:scale-[0.98] transition-transform relative flex flex-col mb-4"
               >
-                {/* Imagem de Capa (se houver) */}
-                {res.capa_url && (
-                  <div className="absolute inset-0 z-0">
-                    <img src={res.capa_url} className="w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform duration-700" alt="" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#1A1108] via-[#1A1108]/60 to-transparent" />
-                  </div>
-                )}
-                
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37]/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl z-0" />
-                
-                <div className="relative z-10 p-8">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className={`text-black text-[9px] font-black px-2.5 py-1 rounded-lg uppercase tracking-tight shadow-lg ${res.status === 'publicado' ? 'bg-[#D4AF37] shadow-[#D4AF37]/10' : 'bg-gray-400 shadow-black/10'}`}>
-                      {res.status === 'publicado' ? 'Oficial' : 'Rascunho'}
+                {/* Imagem de Capa */}
+                <div className="h-[180px] w-full relative">
+                  {res.capa_url ? (
+                    <img src={res.capa_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={res.titulo} />
+                  ) : (
+                    <div className="w-full h-full bg-[#111] flex items-center justify-center">
+                       <span className="material-icons text-white/10 text-6xl">emoji_events</span>
                     </div>
-                    <div className="h-1 w-1 rounded-full bg-white/20" />
-                    <span className="text-white/40 text-[10px] font-black uppercase tracking-widest">
-                      {res.publicado_em ? `Publicado em ${new Date(res.publicado_em).toLocaleDateString('pt-BR')}` : 'Aguardando publicação'}
-                    </span>
-                  </div>
-
-                  <h3 className="text-3xl font-black text-white mb-3 uppercase leading-[1.1] italic tracking-tighter group-hover:text-[#D4AF37] transition-colors">{res.titulo}</h3>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/40 to-transparent" />
                   
-                  <div className="flex items-center gap-2 mb-6">
-                    <span className="material-icons text-[#D4AF37] text-sm">place</span>
-                    <p className="text-white/60 text-[11px] font-bold uppercase tracking-wide">
-                      {res.events?.park || 'Parque não informado'} • {res.events?.location || 'Localização'}
+                  {/* Badge Status */}
+                  <div className="absolute top-4 right-4">
+                    <div className={`text-[9px] font-black px-3 py-1.5 rounded-lg uppercase tracking-widest shadow-lg ${res.status === 'publicado' ? 'bg-[#D4AF37] text-black shadow-[#D4AF37]/20' : 'bg-red-600 text-white shadow-red-600/30 animate-pulse'}`}>
+                      {res.status === 'publicado' ? 'FINALIZADO' : 'AO VIVO'}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="relative z-10 p-6 pt-0 -mt-8 flex flex-col gap-2">
+                  <span className="text-white/40 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1">
+                    <span className="material-icons text-[12px]">calendar_today</span>
+                    {res.publicado_em ? new Date(res.publicado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).toUpperCase() : 'AGUARDANDO'}
+                  </span>
+
+                  <h3 className="text-xl font-black text-white uppercase leading-tight mt-1">{res.titulo}</h3>
+                  
+                  <div className="flex items-center gap-1 mt-1 mb-4">
+                    <span className="material-icons text-[#D4AF37] text-[14px]">place</span>
+                    <p className="text-white/60 text-[11px] font-medium truncate">
+                      {res.events?.park || 'Parque não informado'} • {res.events?.location?.split('-')[0]?.trim() || 'Brasil'}
                     </p>
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-white/5 pt-6">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
-                        <span className="material-icons text-white/40 text-sm">analytics</span>
-                      </div>
-                      <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.15em]">Ver Classificações</span>
-                    </div>
-                    <div className="w-10 h-10 rounded-full bg-[#D4AF37]/10 flex items-center justify-center group-hover:bg-[#D4AF37] group-hover:text-black transition-all text-[#D4AF37]">
-                      <span className="material-icons text-xl">chevron_right</span>
-                    </div>
-                  </div>
+                  <button className="w-full bg-[#D4AF37] text-black font-black text-[11px] uppercase tracking-widest py-3.5 rounded-xl flex items-center justify-center gap-2 mt-2 hover:bg-[#E2C355] transition-colors">
+                    VER RESULTADOS <span className="material-icons text-[16px]">chevron_right</span>
+                  </button>
                 </div>
               </div>
             ))
@@ -402,36 +402,48 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
           </div>
         ) : (
           filteredNews.map((item) => (
-            <div key={item.id} className="bg-sand-light rounded-2xl overflow-hidden shadow-2xl border border-white/10 group active:scale-[0.98] transition-all">
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <span className="bg-leather text-white text-[10px] font-black px-3 py-1 rounded flex items-center gap-1 shadow-sm">
-                    <span className="material-icons text-[12px]">verified</span> {item.tag}
-                  </span>
-                  <span className="text-[10px] text-leather/60 font-bold">{item.date}</span>
+            <div key={item.id} className="bg-gradient-to-br from-[#141414] to-[#0A0A0A] rounded-[24px] overflow-hidden shadow-2xl border border-white/5 group active:scale-[0.98] transition-transform flex flex-col mb-4">
+              <div className="flex flex-row">
+                <div className="w-[40%] min-h-[160px] relative shrink-0">
+                   {item.image_url ? (
+                     <img src={item.image_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={item.title} />
+                   ) : (
+                     <div className="w-full h-full bg-[#1A1A1A] flex items-center justify-center">
+                       <span className="material-icons text-white/10 text-4xl">image</span>
+                     </div>
+                   )}
+                   <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#0A0A0A]/80 md:hidden" />
                 </div>
-                <h3 className="text-2xl font-black text-leather mb-3 uppercase leading-tight font-display pr-4">{item.title}</h3>
-                <p className="text-leather/80 text-sm leading-relaxed mb-6 font-medium line-clamp-3">{item.description}</p>
-
-                <button
-                  onClick={() => setSelectedNews(item)}
-                  className="w-full bg-white hover:bg-leather text-leather hover:text-white border border-leather/20 font-black text-xs uppercase tracking-widest py-4 rounded-xl flex items-center justify-center gap-2 mb-4 transition-colors shadow-sm"
-                >
-                  <span className="material-icons text-sm">visibility</span>
-                  LER NOTÍCIA
-                </button>
-
-                <div className="flex items-center justify-between border-t border-leather/10 pt-4">
-                  <span className="text-[10px] font-black text-primary-orange uppercase tracking-widest">
-                    {item.tag || 'INFORMATIVO'}
-                  </span>
-                  <button
-                    className="flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity bg-leather/5 px-2 py-1 rounded"
-                    onClick={() => setSelectedNews(item)}
-                  >
-                    <span className="material-icons text-leather/40 text-[14px]">attachment</span>
-                    <span className="text-[9px] font-black text-leather/60">DETALHES</span>
-                  </button>
+                <div className="w-[60%] p-4 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="bg-[#D4AF37]/20 text-[#D4AF37] text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-widest border border-[#D4AF37]/30">
+                        {item.tag || 'OFICIAL'}
+                      </span>
+                      <span className="text-[9px] text-white/40 font-bold flex items-center gap-1">
+                         <span className="material-icons text-[10px]">calendar_today</span>
+                         {item.date?.split(' de ')[0] || item.date}
+                      </span>
+                    </div>
+                    <h3 className="text-[14px] font-black text-white uppercase leading-snug line-clamp-2 mb-1">
+                      {item.title}
+                    </h3>
+                    <p className="text-white/50 text-[10px] leading-relaxed font-medium line-clamp-2">
+                      {item.description}
+                    </p>
+                  </div>
+                  <div className="mt-3 flex flex-col gap-2">
+                    <div className="flex items-center gap-1">
+                      <span className="material-icons text-[#D4AF37] text-[12px]">place</span>
+                      <span className="text-white/60 text-[9px] font-medium truncate">{item.location || 'Brasil'}</span>
+                    </div>
+                    <button
+                      onClick={() => setSelectedNews(item)}
+                      className="w-full bg-[#D4AF37] hover:bg-[#E2C355] text-black font-black text-[10px] uppercase tracking-widest py-2.5 rounded-lg flex items-center justify-center gap-1 transition-colors"
+                    >
+                      LER NOTÍCIA <span className="material-icons text-[14px]">chevron_right</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
