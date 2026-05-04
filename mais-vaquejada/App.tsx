@@ -541,74 +541,118 @@ if (initializing) {
 
 // ─── Componente de Callback de Autenticação ───
 const AuthCallback: React.FC<{ onComplete: (userId: string, authUser: any) => void, onFail: () => void }> = ({ onComplete, onFail }) => {
+  const [logs, setLogs] = useState<string[]>(['[1] Iniciando processamento...']);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const addLog = (msg: string) => {
+    console.log(`[AuthCallback] ${msg}`);
+    setLogs(prev => [...prev.slice(-4), msg]);
+  };
 
   useEffect(() => {
     const handleCallback = async () => {
-      console.log('[AuthCallback] Iniciado');
-      
       try {
-        // Pega erro da URL se existir
+        addLog('[2] Verificando URL...');
         const params = new URLSearchParams(window.location.search);
-        const errorDesc = params.get('error_description');
-        if (errorDesc) {
-          console.error('[AuthCallback] Erro detectado na URL:', errorDesc);
-          setErrorMsg(errorDesc.replace(/\+/g, ' '));
+        if (params.get('error')) {
+          setErrorMsg(params.get('error_description') || 'Erro na autenticação');
           return;
         }
 
-        if (window.location.hash || window.location.search.includes('code=')) {
-          console.log('[AuthCallback] Token detectado na URL, aguardando Supabase...');
-          await new Promise(r => setTimeout(r, 1500));
-        }
+        addLog('[3] Sincronizando com Supabase...');
+        // Aguarda um pouco para o Supabase capturar o fragmento/hash
+        await new Promise(r => setTimeout(r, 2000));
 
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error('[AuthCallback] Erro ao recuperar sessão:', error);
+          addLog('[X] Erro no Supabase');
           setErrorMsg(error.message);
           return;
         }
 
         if (session?.user) {
-          console.log('[AuthCallback] Sessão encontrada:', session.user.id);
+          addLog('[4] Sucesso! Carregando perfil...');
           onComplete(session.user.id, session.user);
         } else {
-          console.warn('[AuthCallback] Nenhuma sessão encontrada após callback');
-          const { data: refreshData } = await supabase.auth.refreshSession();
-          if (refreshData.session?.user) {
-            onComplete(refreshData.session.user.id, refreshData.session.user);
+          addLog('[!] Sessão não encontrada');
+          // Tentativa final de refresh
+          const { data: refresh } = await supabase.auth.refreshSession();
+          if (refresh.session?.user) {
+            onComplete(refresh.session.user.id, refresh.session.user);
           } else {
-            setErrorMsg('Não foi possível estabelecer uma sessão. Tente novamente.');
+            setErrorMsg('Não foi possível recuperar sua sessão Apple. Tente novamente.');
           }
         }
       } catch (err: any) {
-        console.error('[AuthCallback] Erro crítico no callback:', err);
+        addLog('[X] Erro Crítico');
         setErrorMsg(err.message || 'Erro desconhecido');
       }
     };
 
     handleCallback();
+    
+    // Timeout de segurança: se ficar 15 segundos aqui, volta pro login
+    const timer = setTimeout(() => {
+      if (!errorMsg) onFail();
+    }, 15000);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#0F0A05] px-8 text-center">
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#0F0A05',
+      color: 'white',
+      padding: '20px',
+      textAlign: 'center',
+      fontFamily: 'sans-serif'
+    }}>
       {!errorMsg ? (
         <>
-          <div className="w-12 h-12 border-4 border-[#ECA413]/30 border-t-[#ECA413] rounded-full animate-spin mb-6" />
-          <h1 className="text-white font-black italic uppercase tracking-widest text-sm animate-pulse">Finalizando login...</h1>
-          <p className="text-white/20 text-[10px] uppercase mt-2">Autenticando com a Apple Arena</p>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '4px solid rgba(236, 164, 19, 0.2)',
+            borderTop: '4px solid #ECA413',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            marginBottom: '20px'
+          }} />
+          <h1 style={{ fontSize: '18px', fontWeight: 'bold', color: '#ECA413', margin: '10px 0' }}>FINALIZANDO LOGIN</h1>
+          <p style={{ fontSize: '12px', opacity: 0.6 }}>Autenticando sua Apple ID...</p>
+          
+          <div style={{ marginTop: '30px', padding: '10px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '10px' }}>
+             {logs.map((log, i) => (
+               <div key={i} style={{ fontSize: '10px', fontFamily: 'monospace', opacity: 0.4, marginBottom: '4px' }}>{log}</div>
+             ))}
+          </div>
+          
+          <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
         </>
       ) : (
-        <div className="animate-in fade-in zoom-in duration-500">
-          <span className="material-icons text-red-500 text-5xl mb-4">error_outline</span>
-          <h1 className="text-white font-black italic uppercase tracking-tighter text-xl mb-2">Erro na Autenticação</h1>
-          <p className="text-white/60 text-xs mb-8 max-w-xs mx-auto uppercase font-bold tracking-tight">{errorMsg}</p>
+        <div>
+          <div style={{ color: '#ff4444', fontSize: '40px', marginBottom: '20px' }}>⚠️</div>
+          <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '10px' }}>Ops! Algo deu errado</h2>
+          <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.7)', marginBottom: '30px', maxWidth: '300px' }}>{errorMsg}</p>
           <button 
             onClick={onFail}
-            className="bg-[#ECA413] text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all"
+            style={{
+              backgroundColor: '#ECA413',
+              color: 'black',
+              padding: '12px 30px',
+              borderRadius: '25px',
+              border: 'none',
+              fontWeight: 'bold',
+              cursor: 'pointer'
+            }}
           >
-            VOLTAR PARA O LOGIN
+            VOLTAR E TENTAR NOVAMENTE
           </button>
         </div>
       )}
