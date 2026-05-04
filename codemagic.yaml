@@ -23,27 +23,24 @@ workflows:
     scripts:
       - name: Install dependencies
         script: |
-          cd mais-vaquejada
           npm install --force
 
       - name: Build Web Assets
         script: |
-          cd mais-vaquejada
           npm run build
 
       - name: Capacitor Sync
         script: |
-          cd mais-vaquejada
           npx cap sync ios
 
       - name: Install Pods
         script: |
-          cd mais-vaquejada/ios/App
+          cd ios/App
           pod install
 
       - name: Set iOS version and build number
         script: |
-          cd mais-vaquejada/ios/App
+          cd ios/App
 
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.0" App/Info.plist
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" App/Info.plist
@@ -56,22 +53,20 @@ workflows:
 
       - name: Set up code signing
         script: |
-          cd mais-vaquejada
           keychain initialize
           keychain add-certificates
           xcode-project use-profiles
 
       - name: Build IPA
         script: |
-          cd mais-vaquejada
           xcode-project build-ipa \
             --workspace ios/App/App.xcworkspace \
             --scheme App
 
     artifacts:
-      - mais-vaquejada/build/ios/ipa/*.ipa
-      - mais-vaquejada/ios/App/build/ios/ipa/*.ipa
-      - mais-vaquejada/ios/App/build/outputs/ipa/*.ipa
+      - build/ios/ipa/*.ipa
+      - ios/App/build/ios/ipa/*.ipa
+      - ios/App/build/outputs/ipa/*.ipa
 
     publishing:
       email:
