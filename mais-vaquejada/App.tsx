@@ -543,37 +543,63 @@ const AuthCallback: React.FC<{ onComplete: (userId: string, authUser: any) => vo
 
   const addLog = (msg: string) => {
     console.log(`[AuthCallback] ${msg}`);
-    setLogs(prev => [...prev.slice(-4), msg]);
+    setLogs(prev => [...prev.slice(-6), msg]);
   };
 
   const handleAuth = async () => {
     try {
-      addLog('Processando login social...');
+      addLog('Verificando URL de callback...');
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get('code');
+      const errorDescription = url.searchParams.get('error_description');
+
+      if (errorDescription) {
+        throw new Error(errorDescription);
+      }
+
+      // Se houver um código (PKCE), tentamos trocar explicitamente
+      if (code) {
+        addLog('Código detectado, iniciando troca (PKCE)...');
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+        
+        if (error) {
+          addLog('Erro na troca de código: ' + error.message);
+          // Não lançamos erro ainda, tentamos getSession como fallback
+        } else if (data?.session?.user) {
+          addLog('Troca PKCE concluída com sucesso!');
+          onComplete(data.session.user.id, data.session.user);
+          return;
+        }
+      }
+
+      addLog('Aguardando processamento da sessão...');
+      // Pequeno delay para garantir que o Supabase processou os dados da URL (especialmente se for fragmento)
+      await new Promise(r => setTimeout(r, 2000));
       
-      // Pequeno delay para garantir que o Supabase processou os dados da URL
-      await new Promise(r => setTimeout(r, 1500));
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       
-      const { data, error } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
       
-      if (error) throw error;
-      
-      if (data?.session?.user) {
+      if (sessionData?.session?.user) {
         addLog('Sessão validada com sucesso!');
-        onComplete(data.session.user.id, data.session.user);
+        onComplete(sessionData.session.user.id, sessionData.session.user);
       } else {
-        addLog('Sessão não identificada, tentando recuperação...');
+        addLog('Sessão não identificada, tentando getUser...');
         const { data: { user }, error: userErr } = await supabase.auth.getUser();
         if (user) {
+           addLog('Usuário recuperado com sucesso!');
            onComplete(user.id, user);
         } else {
-           throw new Error('Sessão expirada ou inválida');
+           addLog('Nenhuma sessão ou usuário encontrado.');
+           throw new Error('Não foi possível identificar sua sessão de login. Por favor, tente entrar novamente.');
         }
       }
     } catch (err: any) {
       console.error('Erro no login:', err);
-      addLog('Erro: ' + (err.message || 'Falha na autenticação'));
+      addLog('ERRO: ' + (err.message || 'Falha na autenticação'));
       setErrorMsg(err.message || 'Erro ao processar login');
-      setTimeout(() => onFail(), 3000);
+      // Aumentamos o tempo do erro para o usuário ler
+      setTimeout(() => onFail(), 5000);
     }
   };
 
@@ -584,34 +610,33 @@ const AuthCallback: React.FC<{ onComplete: (userId: string, authUser: any) => vo
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#0F0A05] px-8 text-center">
       {!errorMsg ? (
-        <>
-          <div className="w-12 h-12 border-4 border-[#ECA413]/30 border-t-[#ECA413] rounded-full animate-spin mb-6" />
+        <div className="w-full max-w-xs">
+          <div className="w-12 h-12 border-4 border-[#ECA413]/30 border-t-[#ECA413] rounded-full animate-spin mb-6 mx-auto" />
           <h1 className="text-white font-black italic uppercase tracking-widest text-sm animate-pulse">Finalizando login...</h1>
-          <p className="text-white/20 text-[10px] uppercase mt-2">Autenticando com a Apple Arena</p>
+          <p className="text-white/20 text-[10px] uppercase mt-2">Autenticando com a Arena</p>
           
-          {/* Logs de depuração discretos */}
-          <div className="mt-8 opacity-10">
+          {/* Logs de depuração mais visíveis durante a fase de correção */}
+          <div className="mt-12 bg-white/5 border border-white/10 rounded-xl p-4 text-left">
+             <p className="text-[8px] text-[#ECA413] font-black uppercase tracking-widest mb-2 opacity-50">Status do Sistema:</p>
              {logs.map((log, i) => (
-               <div key={i} className="text-[8px] font-mono">{log}</div>
+               <div key={i} className="text-[9px] font-mono text-white/40 leading-relaxed truncate">
+                 <span className="text-[#ECA413]/30 mr-2">›</span>{log}
+               </div>
              ))}
           </div>
-        </>
+        </div>
       ) : (
-        <div>
-          <div style={{ color: '#ff4444', fontSize: '40px', marginBottom: '20px' }}>⚠️</div>
-          <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '10px' }}>Ops! Algo deu errado</h2>
-          <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.7)', marginBottom: '30px', maxWidth: '300px' }}>{errorMsg}</p>
+        <div className="animate-in fade-in zoom-in duration-500">
+          <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-6 mx-auto">
+            <span className="material-icons text-red-500 text-4xl">error_outline</span>
+          </div>
+          <h2 className="text-[#ECA413] text-xl font-black uppercase tracking-tighter mb-4">Ops! Algo deu errado</h2>
+          <p className="text-white/60 text-sm mb-8 leading-relaxed max-w-xs mx-auto">
+            {errorMsg}
+          </p>
           <button 
             onClick={onFail}
-            style={{
-              backgroundColor: '#ECA413',
-              color: 'black',
-              padding: '12px 30px',
-              borderRadius: '25px',
-              border: 'none',
-              fontWeight: 'bold',
-              cursor: 'pointer'
-            }}
+            className="bg-[#ECA413] text-black px-10 py-4 rounded-full font-black text-xs uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all"
           >
             VOLTAR E TENTAR NOVAMENTE
           </button>
