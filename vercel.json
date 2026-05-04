@@ -1,7 +1,8 @@
 {
-  "version": 2,
   "rewrites": [
-    { "source": "/auth/callback", "destination": "/mais-vaquejada/index.html" },
-    { "source": "/(.*)", "destination": "/mais-vaquejada/$1" }
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ]
 }
