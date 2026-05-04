@@ -309,8 +309,8 @@ const App: React.FC = () => {
       try {
         console.log('[DEBUG] 🌐 Verificando plataforma e URL...');
         // DETECÇÃO DE ROTA DE CALLBACK
-        if (window.location.pathname === '/auth/callback') {
-          console.log('[DEBUG] 🔗 Rota de callback detectada');
+        if (window.location.pathname.startsWith('/auth/callback')) {
+          console.log('[DEBUG] 🔗 Rota de callback detectada (Apple/Google)');
           setCurrentView(View.AUTH_CALLBACK);
           setInitializing(false);
           isInitializedRef.current = true;
