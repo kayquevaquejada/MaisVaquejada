@@ -205,7 +205,9 @@ const App: React.FC = () => {
     }
     isFetchingProfile.current = true;
     
-    if (!user && initializing) setInitializing(true);
+    if (!user && initializing && currentViewRef.current !== View.AUTH_CALLBACK) {
+      setInitializing(true);
+    }
     
     try {
       console.log('[App] Buscando perfil no banco...');
@@ -466,10 +468,11 @@ const App: React.FC = () => {
 
 if (initializing) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'red' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0F0A05' }}>
         <div style={{ color: 'white', textAlign: 'center' }}>
-           <h2 style={{ fontWeight: 'bold' }}>CARREGANDO...</h2>
-           <p>(Se você vê esta tela VERMELHA, o React está funcionando)</p>
+           <div style={{ width: '40px', height: '40px', border: '4px solid rgba(236,164,19,0.2)', borderTop: '4px solid #ECA413', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 20px' }} />
+           <h2 style={{ fontWeight: 'bold', color: '#ECA413' }}>CARREGANDO...</h2>
+           <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
         </div>
       </div>
     );
@@ -596,8 +599,8 @@ const AuthCallback: React.FC<{ onComplete: (userId: string, authUser: any) => vo
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: '#0F0A05',
-      color: 'white',
+      backgroundColor: '#ECA413', // AMARELO PARA TESTE
+      color: 'black',
       padding: '20px',
       textAlign: 'center',
       fontFamily: 'sans-serif'
