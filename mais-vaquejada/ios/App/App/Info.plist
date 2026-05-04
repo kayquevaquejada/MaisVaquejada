@@ -47,5 +47,13 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>O +Vaquejada precisa da sua localização para mostrar eventos e competições próximos a você.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>O +Vaquejada utiliza sua localização para fornecer alertas de eventos em tempo real na sua região.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>O +Vaquejada precisa acessar sua galeria para que você possa escolher fotos para o seu perfil e postagens.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>O +Vaquejada precisa acessar sua câmera para que você possa tirar fotos para o seu perfil e eventos.</string>
 </dict>
 </plist>
