@@ -5,6 +5,12 @@
       "size": "1024x1024",
       "filename": "AppIcon-512@2x.png",
       "platform": "ios"
+    },
+    {
+      "idiom": "ipad",
+      "size": "83.5x83.5",
+      "scale": "2x",
+      "filename": "AppIcon-83.5x83.5@2x.png"
     }
   ],
   "info": {
