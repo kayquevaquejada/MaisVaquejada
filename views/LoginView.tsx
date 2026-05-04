@@ -46,20 +46,22 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
         console.log('Apple login iOS iniciado');
         const result = await SignInWithApple.authorize({
           clientId: 'com.maisvaquejada.app',
-          redirectURI: 'maisvaquejada://auth/callback',
           scopes: 'email name',
         });
         
-        if (result.response && result.response.identityToken) {
-          console.log('Token Apple recebido');
-          const { error } = await supabase.auth.signInWithIdToken({
-            provider: 'apple',
-            token: result.response.identityToken,
-          });
-          if (error) throw error;
-        } else {
-          throw new Error('Token não recebido da Apple');
+        const identityToken = result?.response?.identityToken;
+        
+        if (!identityToken) {
+          throw new Error('Apple identityToken não retornado');
         }
+
+        console.log('Token Apple recebido');
+        const { error } = await supabase.auth.signInWithIdToken({
+          provider: 'apple',
+          token: identityToken,
+        });
+        
+        if (error) throw error;
       } else {
         console.log('Apple login WEB iniciado');
         const { error } = await supabase.auth.signInWithOAuth({
