@@ -5,7 +5,5 @@
     "@capacitor/core": "^8.3.1"
   },
   "scripts": {
-    "postinstall": "cd mais-vaquejada && npm install",
-    "build": "cd mais-vaquejada && npm run build"
   }
 }

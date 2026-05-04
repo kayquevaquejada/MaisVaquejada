@@ -1,9 +1,18 @@
 {
-  "outputDirectory": "mais-vaquejada/dist",
+  "version": 2,
+  "builds": [
+    {
+      "src": "mais-vaquejada/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/index.html"
+      "destination": "/mais-vaquejada/index.html"
     }
   ]
 }
