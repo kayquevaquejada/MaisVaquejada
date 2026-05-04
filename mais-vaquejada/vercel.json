@@ -1,7 +1,7 @@
 {
   "version": 2,
   "rewrites": [
-    { "source": "/auth/callback", "destination": "/" },
-    { "source": "/(.*)", "destination": "/" }
+    { "source": "/auth/callback", "destination": "/index.html" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
