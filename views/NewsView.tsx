@@ -395,7 +395,7 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
                 <div className="relative z-10 p-6 pt-0 -mt-8 flex flex-col gap-2">
                   <span className="text-white/40 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1">
                     <span className="material-icons text-[12px]">calendar_today</span>
-                    {res.publicado_em ? new Date(res.publicado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).toUpperCase() : 'AGUARDANDO'}
+                    {res.publicado_em ? formatDatePremium(res.publicado_em) : 'AGUARDANDO'}
                   </span>
 
                   <h3 className="text-xl font-black text-white uppercase leading-tight mt-1">{res.titulo}</h3>
