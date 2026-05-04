@@ -30,7 +30,7 @@ import { CallScreen } from './components/CallScreen';
 import LegalConsentView from './views/LegalConsentView';
 import { TERMS_VERSION, PRIVACY_VERSION } from './lib/constants';
 import { PushOnboardingModal } from './components/PushOnboardingModal';
-import StoreDetailView from './views/StoreDetailView';
+import ErrorBoundary from './ErrorBoundary';
 import ResultDetailView from './views/ResultDetailView';
 
 const MASTER_EMAILS = ["kayquegusmao@icloud.com", "kayquegusmao276@gmail.com", "Kayquegusmao1@gmail.com", "maisvaquejada1@gmail.com", "contato@maisvaquejada.com.br"];
@@ -125,6 +125,7 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [initializing, setInitializing] = useState(true);
   const [fatalError, setFatalError] = useState<string | null>(null);
+  const [debugSplash, setDebugSplash] = useState<boolean>(true);
   const isFetchingProfile = useRef(false);
   const currentViewRef = useRef(currentView);
   const isMountedRef = useRef(true);
@@ -295,59 +296,62 @@ const App: React.FC = () => {
   useEffect(() => {
     isMountedRef.current = true;
 
+    // debug splash handling moved to render layer
+
+
     const startup = async () => {
-      if (isInitializedRef.current) return;
+      console.log('[DEBUG] 🏁 Startup iniciada');
+      if (isInitializedRef.current) {
+        console.log('[DEBUG] ⏩ Já inicializado, pulando...');
+        return;
+      }
       
       try {
+        console.log('[DEBUG] 🌐 Verificando plataforma e URL...');
         // DETECÇÃO DE ROTA DE CALLBACK
         if (window.location.pathname === '/auth/callback') {
-          console.log('[App] Rota de callback detectada, mudando para View.AUTH_CALLBACK');
+          console.log('[DEBUG] 🔗 Rota de callback detectada');
           setCurrentView(View.AUTH_CALLBACK);
           setInitializing(false);
           isInitializedRef.current = true;
           return;
         }
 
-        // RESILIÊNCIA WEB: Se estivermos vindo de um login Google/Apple na Web
-        // aguarda o sistema processar o token.
         if (!Capacitor.isNativePlatform() && (window.location.hash || window.location.search.includes('code='))) {
-          console.log('[App] Detectado token de OAuth na URL, aguardando processamento...');
+          console.log('[DEBUG] ⏳ Aguardando processamento de OAuth...');
           await new Promise(r => setTimeout(r, 2000));
         }
 
-        // Tentar hidratar do cache primeiro para dar feedback instantâneo
-
+        console.log('[DEBUG] 📦 Carregando perfil do cache...');
         const cached = await getCachedProfile();
         if (cached && isMountedRef.current) {
+          console.log('[DEBUG] ✅ Cache encontrado:', cached.username);
           setUser(cached);
-          // Se o perfil parece completo, já liberamos a view
-          if (cached.profile_completed && !initializing) {
-             // Mantemos initializing true inicialmente para garantir splash, mas se cache existe, soltamos logo após getSession
-          }
         }
 
-        const { data: { session } } = await supabase.auth.getSession();
-        console.log('[App] Sessão recuperada no startup:', session ? 'Sim' : 'Não');
+        console.log('[DEBUG] 🔑 Obtendo sessão do Supabase...');
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('[DEBUG] ❌ Erro ao obter sessão:', sessionError);
+        }
+
+        console.log('[DEBUG] 👤 Sessão recuperada:', session ? 'Sim' : 'Não');
         
         if (session?.user) {
-          if (cached && cached.id === session.user.id) {
-            console.log('[App] Usando perfil do cache e buscando atualização...');
-            setInitializing(false);
-            fetchProfile(session.user.id, session.user);
-          } else {
-            console.log('[App] Buscando perfil obrigatório (sem cache)...');
-            await fetchProfile(session.user.id, session.user);
-          }
+          console.log('[DEBUG] 🚀 Buscando perfil no banco para:', session.user.id);
+          await fetchProfile(session.user.id, session.user);
         } else {
-          console.log('[App] Nenhuma sessão encontrada, indo para LOGIN');
+          console.log('[DEBUG] 🚪 Nenhuma sessão, redirecionando para LOGIN');
           setCurrentView(View.LOGIN);
           setInitializing(false);
         }
       } catch (err: any) {
-        console.error('Init Error:', err);
+        console.error('[DEBUG] 🚨 Erro crítico no startup:', err);
         setFatalError(err.message || 'Erro desconhecido na inicialização');
         setInitializing(false);
       } finally {
+        console.log('[DEBUG] 🏁 Startup finalizada');
         isInitializedRef.current = true;
       }
     };
@@ -458,7 +462,23 @@ const App: React.FC = () => {
 
   const showNavbar = user && ![View.LOGIN, View.SIGNUP, View.FORGOT_PASSWORD, View.COMPLETE_PROFILE, View.BLOCKED_ACCOUNT, View.RECOVERY_ASSISTED, View.AD_CREATION, View.LEGAL_CONSENT].includes(currentView);
 
-  if (initializing) {
+  if (debugSplash) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[#0F0A05] text-white">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold mb-4">App iniciou com sucesso</h1>
+        <button
+          onClick={() => setDebugSplash(false)}
+          className="mt-4 px-6 py-2 bg-[#ECA413] text-black rounded-full font-bold"
+        >
+          Continuar
+        </button>
+      </div>
+    </div>
+  );
+}
+
+if (initializing) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0F0A05] relative overflow-hidden">
         {/* Background do Cavalo */}
@@ -512,30 +532,32 @@ const App: React.FC = () => {
   }
 
   return (
-    <CallProvider userId={user?.id}>
-      <div className="min-h-screen flex flex-col bg-background-dark overflow-hidden">
-        <UpdateManager />
-        <div className="flex-1 overflow-y-auto relative scroll-smooth hide-scrollbar">
-          <div key={`${currentView}-${navKey}`} className="max-w-7xl mx-auto w-full h-full">
-            <ViewRenderer
-              currentView={currentView}
-              selectedEvent={selectedEvent}
-              selectedStore={selectedStore}
-              selectedResultId={selectedResultId}
-              user={user}
-              profileUsername={profileUsername}
-              onFetchProfile={fetchProfile}
-              onSetCurrentView={setCurrentView}
-              onLogout={handleLogout}
-            />
+    <ErrorBoundary>
+      <CallProvider userId={user?.id}>
+        <div className="min-h-screen flex flex-col bg-background-dark overflow-hidden">
+          <UpdateManager />
+          <div className="flex-1 overflow-y-auto relative scroll-smooth hide-scrollbar">
+            <div key={`${currentView}-${navKey}`} className="max-w-7xl mx-auto w-full h-full">
+              <ViewRenderer
+                currentView={currentView}
+                selectedEvent={selectedEvent}
+                selectedStore={selectedStore}
+                selectedResultId={selectedResultId}
+                user={user}
+                profileUsername={profileUsername}
+                onFetchProfile={fetchProfile}
+                onSetCurrentView={setCurrentView}
+                onLogout={handleLogout}
+              />
+            </div>
           </div>
+          {showNavbar && <Navbar currentView={currentView} user={user} />}
+          <CallBar />
+          <CallScreen />
+          {user && user.profile_completed && <PushOnboardingModal userId={user.id} />}
         </div>
-        {showNavbar && <Navbar currentView={currentView} user={user} />}
-        <CallBar />
-        <CallScreen />
-        {user && user.profile_completed && <PushOnboardingModal userId={user.id} />}
-      </div>
-    </CallProvider>
+      </CallProvider>
+    </ErrorBoundary>
   );
 };
 
