@@ -9,14 +9,14 @@ if (!rootElement) {
 
 const root = ReactDOM.createRoot(rootElement);
 
-// TELA DE DIAGNÓSTICO MÍNIMA (Isolamento Total)
+// TELA DE DIAGNÓSTICO MÍNIMA (Isolamento Total - FUNDO BRANCO)
 root.render(
   <React.StrictMode>
     <div style={{ 
-      padding: '40px', 
-      color: 'white', 
-      background: 'black', 
-      minHeight: '100vh',
+      minHeight: '100vh', 
+      background: '#ffffff', 
+      color: '#000000', 
+      padding: '40px',
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'center',
@@ -24,9 +24,9 @@ root.render(
       textAlign: 'center',
       fontFamily: 'sans-serif'
     }}>
-      <h1 style={{ color: '#ECA413' }}>+VAQUEJADA</h1>
-      <p style={{ fontSize: '20px', fontWeight: 'bold' }}>APP OK - iOS carregou a WebView</p>
-      <p style={{ color: '#666', fontSize: '14px' }}>Se você está vendo isso, o Capacitor está funcionando corretamente.</p>
+      <h1 style={{ margin: 0, fontSize: '32px' }}>+VAQUEJADA</h1>
+      <p style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '20px' }}>APP CARREGOU NO IOS</p>
+      <p style={{ marginTop: '10px', color: '#666' }}>Se você vê esta tela branca, o problema está no App.tsx</p>
     </div>
   </React.StrictMode>
 );
