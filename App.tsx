@@ -298,6 +298,16 @@ const App: React.FC = () => {
       try {
         console.log('[DEBUG] 🌐 Verificando plataforma e URL...');
         
+        // Limpar sessão em nova instalação do app (evita restaurar login antigo)
+        const marker = await Preferences.get({ key: 'app_installed_marker' });
+        if (!marker.value) {
+          console.log('[DEBUG] 🧹 Primeira abertura ou app reinstalado. Limpando sessão antiga.');
+          await supabase.auth.signOut();
+          localStorage.clear();
+          sessionStorage.clear();
+          await Preferences.set({ key: 'app_installed_marker', value: 'true' });
+        }
+        
         // ALERTA DE DIAGNÓSTICO (Remover após teste)
         if (typeof window !== 'undefined') {
            console.log('App URL:', window.location.href);
