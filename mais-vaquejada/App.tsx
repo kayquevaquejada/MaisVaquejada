@@ -125,7 +125,7 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [initializing, setInitializing] = useState(true);
   const [fatalError, setFatalError] = useState<string | null>(null);
-  const [debugSplash, setDebugSplash] = useState<boolean>(true);
+  const [debugSplash, setDebugSplash] = useState<boolean>(false);
   const isFetchingProfile = useRef(false);
   const currentViewRef = useRef(currentView);
   const isMountedRef = useRef(true);
