@@ -115,6 +115,13 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
   }
 };
 
+// Capturador de Erros Global para Web
+if (typeof window !== 'undefined') {
+  window.onerror = function(message, source, lineno, colno, error) {
+    alert('ERRO DETECTADO: ' + message + '\nLinha: ' + lineno);
+  };
+}
+
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(View.LOGIN);
   const [navKey, setNavKey] = useState(Date.now());
@@ -442,12 +449,12 @@ const App: React.FC = () => {
 
   if (debugSplash) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0F0A05] text-white">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold mb-4">App iniciou com sucesso</h1>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0F0A05', color: 'white' }}>
+      <div style={{ textAlign: 'center' }}>
+        <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px' }}>App iniciou com sucesso</h1>
         <button
           onClick={() => setDebugSplash(false)}
-          className="mt-4 px-6 py-2 bg-[#ECA413] text-black rounded-full font-bold"
+          style={{ padding: '10px 20px', backgroundColor: '#ECA413', color: 'black', borderRadius: '20px', fontWeight: 'bold', border: 'none' }}
         >
           Continuar
         </button>
@@ -458,29 +465,10 @@ const App: React.FC = () => {
 
 if (initializing) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0F0A05] relative overflow-hidden">
-        {/* Background do Cavalo */}
-        <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/40 to-[#0F0A05] z-10" />
-          <img
-            src="https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80"
-            className="w-full h-full object-cover scale-110 animate-pulse duration-[10000ms]"
-            alt="Vaquejada Background"
-          />
-        </div>
-        
-        <div className="flex flex-col items-center gap-8 relative z-10 transition-all duration-1000 text-center">
-          <div className="w-16 h-16 border-4 border-[#ECA413]/30 border-t-[#ECA413] rounded-full animate-spin" />
-          
-          <div className="animate-in fade-in slide-in-from-top-10 duration-1000">
-            <div className="flex justify-center mb-4">
-              <p className="font-black tracking-tighter italic leading-none flex items-baseline">
-                <span className="text-[#ECA413]" style={{ fontSize: '4rem', lineHeight: 1, marginRight: '-0.1em' }}>+V</span>
-                <span className="text-white text-[2.5rem] tracking-tight">AQUEJADA</span>
-              </p>
-            </div>
-            <p className="text-white/40 text-xs font-bold uppercase tracking-widest italic">A maior paixão do Nordeste em um só lugar</p>
-          </div>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'red' }}>
+        <div style={{ color: 'white', textAlign: 'center' }}>
+           <h2 style={{ fontWeight: 'bold' }}>CARREGANDO...</h2>
+           <p>(Se você vê esta tela VERMELHA, o React está funcionando)</p>
         </div>
       </div>
     );
