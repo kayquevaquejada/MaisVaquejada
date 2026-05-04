@@ -26,6 +26,25 @@ function extractYouTubeId(url: string): string | null {
   return null;
 }
 
+// Formata data para o padrão premium: "21 ABR 2026"
+function formatDatePremium(dateStr: string): string {
+  if (!dateStr) return '---';
+  try {
+    // Tenta lidar com formatos comuns (ISO, "DD de Mes de YYYY", etc)
+    const normalized = dateStr.replace(/ de /gi, ' ');
+    const d = new Date(normalized);
+    if (isNaN(d.getTime())) return dateStr.toUpperCase();
+    
+    const day = d.getDate().toString().padStart(2, '0');
+    const month = d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+    const year = d.getFullYear();
+    
+    return `${day} ${month} ${year}`;
+  } catch {
+    return dateStr.toUpperCase();
+  }
+}
+
 const NewsView: React.FC<NewsViewProps> = ({ user }) => {
   const [localNews, setLocalNews] = React.useState<any[]>([]);
   const [results, setResults] = React.useState<any[]>([]);
@@ -402,9 +421,9 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
           </div>
         ) : (
           filteredNews.map((item) => (
-            <div key={item.id} className="bg-gradient-to-br from-[#141414] to-[#0A0A0A] rounded-[24px] overflow-hidden shadow-2xl border border-white/5 group active:scale-[0.98] transition-transform flex flex-col mb-4">
+            <div key={item.id} className="bg-gradient-to-br from-[#0A0A0A] to-[#141414] rounded-[16px] overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.5)] border border-white/5 group active:scale-[0.97] transition-transform flex flex-col mb-4">
               <div className="flex flex-row">
-                <div className="w-[40%] min-h-[160px] relative shrink-0">
+                <div className="w-[40%] min-h-[160px] relative shrink-0 rounded-l-[16px] overflow-hidden">
                    {item.image_url ? (
                      <img src={item.image_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={item.title} />
                    ) : (
@@ -412,30 +431,30 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
                        <span className="material-icons text-white/10 text-4xl">image</span>
                      </div>
                    )}
-                   <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#0A0A0A]/80 md:hidden" />
+                   <div className="absolute inset-0 bg-gradient-to-r from-black/30 to-transparent opacity-50 md:hidden" />
                 </div>
-                <div className="w-[60%] p-4 flex flex-col justify-between">
+                <div className="w-[60%] p-[16px] flex flex-col justify-between gap-3">
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="bg-[#D4AF37]/20 text-[#D4AF37] text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-widest border border-[#D4AF37]/30">
+                      <span className="bg-[#D4AF37]/15 text-[#D4AF37] text-[11px] font-black px-3 py-1 rounded-full uppercase tracking-widest border border-[#D4AF37]/20 shadow-sm">
                         {item.tag || 'OFICIAL'}
                       </span>
-                      <span className="text-[9px] text-white/40 font-bold flex items-center gap-1">
-                         <span className="material-icons text-[10px]">calendar_today</span>
-                         {item.date?.split(' de ')[0] || item.date}
+                      <span className="text-[10px] text-white/40 font-bold flex items-center gap-1.5">
+                         <span className="material-icons text-[12px]">calendar_today</span>
+                         {formatDatePremium(item.date)}
                       </span>
                     </div>
-                    <h3 className="text-[14px] font-black text-white uppercase leading-snug line-clamp-2 mb-1">
+                    <h3 className="text-[16px] font-black text-white uppercase line-clamp-2 mb-1 leading-[1.4] tracking-tight">
                       {item.title}
                     </h3>
-                    <p className="text-white/50 text-[10px] leading-relaxed font-medium line-clamp-2">
+                    <p className="text-white/60 text-[12px] leading-[1.5] font-medium line-clamp-2">
                       {item.description}
                     </p>
                   </div>
                   <div className="mt-3 flex flex-col gap-2">
                     <div className="flex items-center gap-1">
                       <span className="material-icons text-[#D4AF37] text-[12px]">place</span>
-                      <span className="text-white/60 text-[9px] font-medium truncate">{item.location || 'Brasil'}</span>
+                      <span className="text-white/60 text-[11px] font-medium truncate">{item.location || 'Brasil'}</span>
                     </div>
                     <button
                       onClick={() => setSelectedNews(item)}
