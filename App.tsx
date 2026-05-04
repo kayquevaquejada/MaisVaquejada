@@ -3,6 +3,7 @@ import { supabase } from './lib/supabase';
 import { App as CapApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
+import { Browser } from '@capacitor/browser';
 import { View, User } from './types';
 import Navbar from './components/Navbar';
 import LoginView from './views/LoginView';
@@ -381,10 +382,29 @@ const App: React.FC = () => {
       }
     });
 
+    const urlOpenListener = CapApp.addListener('appUrlOpen', async ({ url }) => {
+      if (url.includes('auth/callback')) {
+        await Browser.close();
+
+        // O Supabase pode retornar params no fragmento (hash) ou query string
+        const urlObj = new URL(url.replace('#', '?'));
+        const code = urlObj.searchParams.get('code');
+        const accessToken = urlObj.searchParams.get('access_token');
+
+        if (code) {
+          await supabase.auth.exchangeCodeForSession(code);
+        } else if (accessToken) {
+          // Se for implicit flow com access_token, podemos definir a sessão ou forçar o AuthCallback web a processar
+          // O AuthCallback já pega o authListener
+        }
+      }
+    });
+
     return () => {
       isMountedRef.current = false;
       subscription.unsubscribe();
       stateListener.then(l => l.remove());
+      urlOpenListener.then(l => l.remove());
     };
 
   }, []);

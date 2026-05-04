@@ -44,7 +44,11 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
       
       if (isNative && platform === 'ios') {
         console.log('Apple login iOS iniciado');
-        const result = await SignInWithApple.authorize();
+        const result = await SignInWithApple.authorize({
+          clientId: 'com.maisvaquejada.app',
+          redirectURI: 'maisvaquejada://auth/callback',
+          scopes: 'email name',
+        });
         
         if (result.response && result.response.identityToken) {
           console.log('Token Apple recebido');
@@ -81,16 +85,30 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
     try {
       const isNative = Capacitor.isNativePlatform();
       const redirectTo = isNative 
-        ? 'com.maisvaquejada.app://' 
-        : window.location.origin;
+        ? 'maisvaquejada://auth/callback' 
+        : window.location.origin + '/auth/callback';
 
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: redirectTo
+      if (isNative && Capacitor.getPlatform() === 'ios') {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: redirectTo,
+            skipBrowserRedirect: true
+          }
+        });
+        if (error) throw error;
+        if (data?.url) {
+          await Browser.open({ url: data.url });
         }
-      });
-      if (error) throw error;
+      } else {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: redirectTo
+          }
+        });
+        if (error) throw error;
+      }
     } catch (err: any) {
       console.error('[GoogleLogin] Error:', err);
       setError(err.message || 'Erro ao entrar com Google');
