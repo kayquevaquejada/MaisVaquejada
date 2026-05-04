@@ -115,18 +115,19 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, user }) => {
             </button>
           </div>
 
-          {/* Central Home "Bolinha" (O Gatilho e Botão Home) */}
-          <button
-            onClick={handleCenterClick}
-            className={`relative z-10 w-[56px] h-[56px] rounded-full flex items-center justify-center transition-all duration-500 active:scale-90 ${currentView === View.EVENTS
-              ? 'bg-gradient-to-br from-[#ECA413] via-[#B47B09] to-[#8B4513] text-white shadow-[#ECA413]/40 shadow-2xl'
-              : 'bg-neutral-800 border border-white/5 text-white/40'
-              }`}
-          >
-            <span className={`material-icons text-3xl transition-transform duration-500 ${isExpanded ? 'rotate-[360deg]' : ''}`}>
-              home
-            </span>
-          </button>
+          {(currentView !== View.LOGIN && currentView !== View.SIGNUP && currentView !== View.AUTH_CALLBACK) && (
+            <button
+              onClick={handleCenterClick}
+              className={`relative z-10 w-[56px] h-[56px] rounded-full flex items-center justify-center transition-all duration-500 active:scale-90 ${currentView === View.EVENTS
+                ? 'bg-gradient-to-br from-[#ECA413] via-[#B47B09] to-[#8B4513] text-white shadow-[#ECA413]/40 shadow-2xl'
+                : 'bg-neutral-800 border border-white/5 text-white/40'
+                }`}
+            >
+              <span className={`material-icons text-3xl transition-transform duration-500 ${isExpanded ? 'rotate-[360deg]' : ''}`}>
+                home
+              </span>
+            </button>
+          )}
 
           {/* Lado Direito (Icons saindo da bolinha) */}
           <div className={`absolute right-6 flex items-center gap-8 transition-all duration-500 ${isExpanded ? 'opacity-100 translate-x-0 scale-100 delay-100' : 'opacity-0 -translate-x-12 scale-50 pointer-events-none'
