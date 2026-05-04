@@ -546,41 +546,39 @@ const AuthCallback: React.FC<{ onComplete: (userId: string, authUser: any) => vo
     setLogs(prev => [...prev.slice(-4), msg]);
   };
 
-  useEffect(() => {
-    const handleAuth = async () => {
-      addLog('Iniciando troca de código por sessão...');
-      try {
-        const { data, error } = await supabase.auth.exchangeCodeForSession(window.location.href);
-
-        if (error) {
-          console.error("Erro no login:", error.message);
-          addLog('Erro na troca: ' + error.message);
-          setErrorMsg(error.message);
-          setTimeout(() => onFail(), 3000);
-          return;
-        }
-
-        if (data?.session) {
-          addLog('Sessão obtida com sucesso!');
-          onComplete(data.session.user.id, data.session.user);
+  const handleAuth = async () => {
+    try {
+      addLog('Processando login social...');
+      
+      // Pequeno delay para garantir que o Supabase processou os dados da URL
+      await new Promise(r => setTimeout(r, 1500));
+      
+      const { data, error } = await supabase.auth.getSession();
+      
+      if (error) throw error;
+      
+      if (data?.session?.user) {
+        addLog('Sessão validada com sucesso!');
+        onComplete(data.session.user.id, data.session.user);
+      } else {
+        addLog('Sessão não identificada, tentando recuperação...');
+        const { data: { user }, error: userErr } = await supabase.auth.getUser();
+        if (user) {
+           onComplete(user.id, user);
         } else {
-          addLog('Nenhuma sessão encontrada.');
-          onFail();
+           throw new Error('Sessão expirada ou inválida');
         }
-      } catch (err: any) {
-        console.error('Erro fatal:', err);
-        setErrorMsg(err.message || 'Erro interno');
-        setTimeout(() => onFail(), 3000);
       }
-    };
+    } catch (err: any) {
+      console.error('Erro no login:', err);
+      addLog('Erro: ' + (err.message || 'Falha na autenticação'));
+      setErrorMsg(err.message || 'Erro ao processar login');
+      setTimeout(() => onFail(), 3000);
+    }
+  };
 
+  useEffect(() => {
     handleAuth();
-
-    const timer = setTimeout(() => {
-      onFail();
-    }, 20000);
-    
-    return () => clearTimeout(timer);
   }, []);
 
   return (
