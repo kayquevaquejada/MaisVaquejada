@@ -155,16 +155,10 @@ const AdsCarousel: React.FC<AdsCarouselProps> = ({ targetPosition }) => {
                             />
                             
                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-4">
-                                <span className="bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37] backdrop-blur-md px-2 py-0.5 rounded text-[7px] font-black uppercase tracking-widest w-fit mb-1 shadow-sm">Patrocinado</span>
                                 {ad.title && <h3 className="text-white font-black text-sm uppercase max-w-[80%] leading-tight drop-shadow-lg">{ad.title}</h3>}
                                 {ad.description && <p className="text-white/80 text-[9px] font-medium max-w-[70%] mt-0.5 line-clamp-1">{ad.description}</p>}
                             </div>
 
-                            {ad.action_type !== 'none' && ad.cta_text && (
-                                <div className="absolute bottom-4 right-4 bg-[#D4AF37] text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-md flex items-center gap-1 active:scale-95">
-                                    {ad.cta_text} <span className="material-icons text-[10px]">chevron_right</span>
-                                </div>
-                            )}
                         </div>
                     );
                 })}
