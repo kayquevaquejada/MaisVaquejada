@@ -1,4 +1,7 @@
 {
+  "version": 2,
+  "buildCommand": "cd mais-vaquejada && npm install && npm run build",
+  "outputDirectory": "mais-vaquejada/dist",
   "rewrites": [
     {
       "source": "/(.*)",
