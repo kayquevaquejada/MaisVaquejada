@@ -1,24 +1,8 @@
 {
-  "buildCommand": "npm run build",
-  "headers": [
-    {
-      "source": "/.well-known/(.*)",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "text/plain"
-        }
-      ]
-    }
-  ],
   "rewrites": [
     {
-      "source": "/privacy",
-      "destination": "/privacy.html"
-    },
-    {
-      "source": "/terms",
-      "destination": "/terms.html"
+      "source": "/auth/callback",
+      "destination": "/index.html"
     },
     {
       "source": "/(.*)",
