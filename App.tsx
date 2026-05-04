@@ -392,10 +392,24 @@ const App: React.FC = () => {
         const accessToken = urlObj.searchParams.get('access_token');
 
         if (code) {
-          await supabase.auth.exchangeCodeForSession(code);
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) {
+            console.error('[App] Erro no exchangeCodeForSession:', error);
+            return;
+          }
+          
+          const { data: sessionData } = await supabase.auth.getSession();
+          if (sessionData.session?.user) {
+            fetchProfile(sessionData.session.user.id, sessionData.session.user);
+          }
         } else if (accessToken) {
-          // Se for implicit flow com access_token, podemos definir a sessão ou forçar o AuthCallback web a processar
-          // O AuthCallback já pega o authListener
+          // Se for implicit flow, aguarda um pouco e pega a sessão
+          setTimeout(async () => {
+            const { data: sessionData } = await supabase.auth.getSession();
+            if (sessionData.session?.user) {
+              fetchProfile(sessionData.session.user.id, sessionData.session.user);
+            }
+          }, 500);
         }
       }
     });
