@@ -124,6 +124,7 @@ const App: React.FC = () => {
   const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [initializing, setInitializing] = useState(true);
+  const [fatalError, setFatalError] = useState<string | null>(null);
   const isFetchingProfile = useRef(false);
   const currentViewRef = useRef(currentView);
   const isMountedRef = useRef(true);
@@ -342,9 +343,10 @@ const App: React.FC = () => {
           setCurrentView(View.LOGIN);
           setInitializing(false);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Init Error:', err);
-        setInitializing(false); // Garante saída do splash em erro
+        setFatalError(err.message || 'Erro desconhecido na inicialização');
+        setInitializing(false);
       } finally {
         isInitializedRef.current = true;
       }
@@ -482,6 +484,29 @@ const App: React.FC = () => {
             <p className="text-white/40 text-xs font-bold uppercase tracking-widest italic">A maior paixão do Nordeste em um só lugar</p>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (fatalError) {
+    return (
+      <div className="min-h-screen bg-[#0F0A05] flex flex-col items-center justify-center p-8 text-center">
+        <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-6">
+          <span className="material-icons text-red-500 text-4xl">error_outline</span>
+        </div>
+        <h1 className="text-[#ECA413] text-xl font-black uppercase tracking-widest mb-4">Erro de Inicialização</h1>
+        <p className="text-white/60 text-sm mb-8 leading-relaxed">
+          Ocorreu um problema ao iniciar o +Vaquejada. Isso pode ser devido a uma conexão instável ou erro de configuração.
+        </p>
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-4 mb-8 w-full max-w-sm">
+          <p className="text-red-400 text-[10px] font-mono break-all">{fatalError}</p>
+        </div>
+        <button 
+          onClick={() => window.location.reload()}
+          className="bg-[#ECA413] text-black px-8 py-3 rounded-full font-black text-xs uppercase tracking-widest active:scale-95 transition-all"
+        >
+          Tentar Novamente
+        </button>
       </div>
     );
   }
