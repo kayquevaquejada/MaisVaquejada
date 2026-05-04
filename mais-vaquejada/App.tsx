@@ -200,25 +200,21 @@ const App: React.FC = () => {
     if (!user && initializing) setInitializing(true);
     
     try {
+      console.log('[App] Buscando perfil no banco...');
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*, user_legal_acceptances(*)')
         .eq('id', userId)
         .maybeSingle();
 
-      let targetProfile = profile;
-      if (error) {
-        console.error('Supabase Profile Fetch Error:', error);
-        const { data: fallback } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
-        targetProfile = fallback;
-      }
+      if (error) throw error;
 
-      if (targetProfile) {
-        const profile = targetProfile;
+      if (profile) {
+        console.log('[App] Perfil encontrado:', profile.username);
         const mappedUser: User = {
           id: profile.id,
           name: profile.full_name || profile.name || 'Vaqueiro',
-          email: profile.email,
+          email: profile.email || authUser?.email || '',
           role: profile.role,
           status: profile.status,
           profile_completed: profile.profile_completed,
@@ -228,63 +224,45 @@ const App: React.FC = () => {
           admin_social: profile.admin_social || false,
           admin_eventos: profile.admin_eventos || false,
           admin_noticias: profile.admin_noticias || false,
-          isMaster: MASTER_EMAILS.includes(profile.email?.toLowerCase()),
+          isMaster: MASTER_EMAILS.includes(profile.email?.toLowerCase() || ''),
           bio: profile.bio
         } as any;
         
         setUser(mappedUser);
-        saveCachedProfile(mappedUser);
+        await saveCachedProfile(mappedUser);
 
         const lastAcceptance = profile.user_legal_acceptances?.[0];
-        const { value: localConsent } = await Preferences.get({ key: `arena_legal_accepted_${userId}` });
         const hasValidConsent = !!(lastAcceptance && 
-                                lastAcceptance.terms_version === TERMS_VERSION && 
-                                lastAcceptance.privacy_version === PRIVACY_VERSION) ||
-                                localConsent === `${TERMS_VERSION}_${PRIVACY_VERSION}`;
-
+                                 lastAcceptance.terms_version === TERMS_VERSION && 
+                                 lastAcceptance.privacy_version === PRIVACY_VERSION);
         
         hasValidConsentRef.current = hasValidConsent;
 
-        const isEstablished = !!profile.profile_completed;
-        const activeView = currentViewRef.current;
-        const onboardingViews = [View.LOGIN, View.SIGNUP, View.COMPLETE_PROFILE, View.LEGAL_CONSENT];
-
-        if (!isEstablished) {
+        if (!profile.profile_completed) {
           setCurrentView(View.COMPLETE_PROFILE);
         } else if (!hasValidConsent) {
           setCurrentView(View.LEGAL_CONSENT);
         } else {
-          if (onboardingViews.includes(activeView)) {
-            const { value: savedView } = await Preferences.get({ key: 'arena_last_view' });
-            const navData = await getCachedNavData();
-            
-            if (savedView) {
-              setCurrentView(savedView as View);
-              if (navData.store) setSelectedStore(navData.store);
-              if (navData.event) setSelectedEvent(navData.event);
-            } else {
-              setCurrentView(View.EVENTS);
-            }
-          }
+          setCurrentView(View.EVENTS);
         }
       } else if (authUser) {
-        // Fallback para usuários logados mas sem perfil na tabela 'profiles' (comum em novos logins sociais)
+        console.log('[App] Perfil não existe, criando temporário...');
         const tempUser: User = {
           id: authUser.id,
           name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || 'Vaqueiro',
-          email: authUser.email,
+          email: authUser.email || '',
           role: 'USER',
           status: 'PENDING_PROFILE',
           profile_completed: false,
           username: '',
           isMaster: authUser.email ? MASTER_EMAILS.includes(authUser.email.toLowerCase()) : false
         } as any;
-        
         setUser(tempUser);
         setCurrentView(View.COMPLETE_PROFILE);
       }
-    } catch (err) {
-      console.error('Fetch Profile Error:', err);
+    } catch (err: any) {
+      console.error('[App] Erro fatal no fetchProfile:', err);
+      setFatalError(`Erro ao carregar perfil: ${err.message || 'Erro de conexão'}`);
     } finally {
       if (isMountedRef.current) {
         isFetchingProfile.current = false;
