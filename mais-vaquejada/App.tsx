@@ -296,18 +296,23 @@ const App: React.FC = () => {
       
       try {
         console.log('[DEBUG] 🌐 Verificando plataforma e URL...');
-        // DETECÇÃO DE ROTA DE CALLBACK
-        if (window.location.pathname.startsWith('/auth/callback')) {
-          console.log('[DEBUG] 🔗 Rota de callback detectada (Apple/Google)');
+        
+        // ALERTA DE DIAGNÓSTICO (Remover após teste)
+        if (typeof window !== 'undefined') {
+           console.log('App URL:', window.location.href);
+        }
+
+        // DETECÇÃO UNIVERSAL DE CALLBACK (Apple/Google)
+        const hasAuthParams = window.location.hash.includes('access_token') || 
+                            window.location.search.includes('code=') ||
+                            window.location.pathname.startsWith('/auth/callback');
+
+        if (hasAuthParams) {
+          console.log('[DEBUG] 🔗 Parâmetros de autenticação detectados');
           setCurrentView(View.AUTH_CALLBACK);
           setInitializing(false);
           isInitializedRef.current = true;
           return;
-        }
-
-        if (!Capacitor.isNativePlatform() && (window.location.hash || window.location.search.includes('code='))) {
-          console.log('[DEBUG] ⏳ Aguardando processamento de OAuth...');
-          await new Promise(r => setTimeout(r, 2000));
         }
 
         console.log('[DEBUG] 📦 Carregando perfil do cache...');
