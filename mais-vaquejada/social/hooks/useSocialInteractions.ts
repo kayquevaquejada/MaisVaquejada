@@ -15,7 +15,7 @@ export function useSocialInteractions(user: any) {
     setLikedPosts(prev => {
       const liked = new Set(prev);
       posts.forEach(p => {
-        if (p.isLikedByMe) liked.add(p.id);
+        if (p.isLiked) liked.add(p.id);
       });
       return liked;
     });

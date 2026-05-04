@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { EventItem, User } from '../types';
+import { View } from '../types';
 import { supabase } from '../lib/supabase';
 
 interface EventDetailViewProps {

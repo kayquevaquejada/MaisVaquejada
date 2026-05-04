@@ -13,6 +13,7 @@ import EventDetailView from './views/EventDetailView';
 import MarketplaceView from './views/MarketView';
 import NewsView from './views/NewsView';
 import ProfileView from './views/ProfileView';
+import StoreDetailView from './views/StoreDetailView';
 import MediaCreationView from './views/MediaCreationView';
 import SettingsView from './views/SettingsView';
 import AdminView from './views/AdminView';
