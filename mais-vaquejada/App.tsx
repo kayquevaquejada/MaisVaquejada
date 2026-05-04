@@ -598,39 +598,19 @@ const AuthCallback: React.FC<{ onComplete: (userId: string, authUser: any) => vo
   }, []);
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: '#ECA413', // AMARELO PARA TESTE
-      color: 'black',
-      padding: '20px',
-      textAlign: 'center',
-      fontFamily: 'sans-serif'
-    }}>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#0F0A05] px-8 text-center">
       {!errorMsg ? (
         <>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            border: '4px solid rgba(236, 164, 19, 0.2)',
-            borderTop: '4px solid #ECA413',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            marginBottom: '20px'
-          }} />
-          <h1 style={{ fontSize: '18px', fontWeight: 'bold', color: '#ECA413', margin: '10px 0' }}>FINALIZANDO LOGIN</h1>
-          <p style={{ fontSize: '12px', opacity: 0.6 }}>Autenticando sua Apple ID...</p>
+          <div className="w-12 h-12 border-4 border-[#ECA413]/30 border-t-[#ECA413] rounded-full animate-spin mb-6" />
+          <h1 className="text-white font-black italic uppercase tracking-widest text-sm animate-pulse">Finalizando login...</h1>
+          <p className="text-white/20 text-[10px] uppercase mt-2">Autenticando com a Apple Arena</p>
           
-          <div style={{ marginTop: '30px', padding: '10px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '10px' }}>
+          {/* Logs de depuração discretos */}
+          <div className="mt-8 opacity-10">
              {logs.map((log, i) => (
-               <div key={i} style={{ fontSize: '10px', fontFamily: 'monospace', opacity: 0.4, marginBottom: '4px' }}>{log}</div>
+               <div key={i} className="text-[8px] font-mono">{log}</div>
              ))}
           </div>
-          
-          <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
         </>
       ) : (
         <div>

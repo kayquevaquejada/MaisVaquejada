@@ -1,16 +1,5 @@
 {
-  "cleanUrls": true,
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT" }
-      ]
-    }
-  ],
   "rewrites": [
-    { "source": "/auth/callback", "destination": "/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
