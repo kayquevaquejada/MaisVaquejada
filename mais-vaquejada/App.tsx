@@ -547,52 +547,38 @@ const AuthCallback: React.FC<{ onComplete: (userId: string, authUser: any) => vo
   };
 
   useEffect(() => {
-    const handleCallback = async () => {
+    const handleAuth = async () => {
+      addLog('Iniciando troca de código por sessão...');
       try {
-        addLog('[2] Verificando URL...');
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('error')) {
-          setErrorMsg(params.get('error_description') || 'Erro na autenticação');
-          return;
-        }
+        const { data, error } = await supabase.auth.exchangeCodeForSession(window.location.href);
 
-        addLog('[3] Sincronizando com Supabase...');
-        // Aguarda um pouco para o Supabase capturar o fragmento/hash
-        await new Promise(r => setTimeout(r, 2000));
-
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
         if (error) {
-          addLog('[X] Erro no Supabase');
+          console.error("Erro no login:", error.message);
+          addLog('Erro na troca: ' + error.message);
           setErrorMsg(error.message);
+          setTimeout(() => onFail(), 3000);
           return;
         }
 
-        if (session?.user) {
-          addLog('[4] Sucesso! Carregando perfil...');
-          onComplete(session.user.id, session.user);
+        if (data?.session) {
+          addLog('Sessão obtida com sucesso!');
+          onComplete(data.session.user.id, data.session.user);
         } else {
-          addLog('[!] Sessão não encontrada');
-          // Tentativa final de refresh
-          const { data: refresh } = await supabase.auth.refreshSession();
-          if (refresh.session?.user) {
-            onComplete(refresh.session.user.id, refresh.session.user);
-          } else {
-            setErrorMsg('Não foi possível recuperar sua sessão Apple. Tente novamente.');
-          }
+          addLog('Nenhuma sessão encontrada.');
+          onFail();
         }
       } catch (err: any) {
-        addLog('[X] Erro Crítico');
-        setErrorMsg(err.message || 'Erro desconhecido');
+        console.error('Erro fatal:', err);
+        setErrorMsg(err.message || 'Erro interno');
+        setTimeout(() => onFail(), 3000);
       }
     };
 
-    handleCallback();
-    
-    // Timeout de segurança: se ficar 15 segundos aqui, volta pro login
+    handleAuth();
+
     const timer = setTimeout(() => {
-      if (!errorMsg) onFail();
-    }, 15000);
+      onFail();
+    }, 20000);
     
     return () => clearTimeout(timer);
   }, []);
