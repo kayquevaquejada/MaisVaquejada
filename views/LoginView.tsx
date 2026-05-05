@@ -277,13 +277,21 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
               )}
             </button>
             
-            <div className="flex justify-center pt-2">
+            <div className="flex flex-col items-center gap-4 pt-2">
               <button
                 type="button"
                 onClick={onForgotPassword}
                 className="text-white/40 text-[9px] font-bold uppercase tracking-widest hover:text-white transition-colors"
               >
                 Esqueceu sua senha?
+              </button>
+              
+              <button
+                type="button"
+                onClick={onSignUp}
+                className="text-[#ECA413] text-[10px] font-black uppercase tracking-widest hover:opacity-80 transition-all mt-2"
+              >
+                Não tem uma conta? Criar agora
               </button>
             </div>
           </form>
