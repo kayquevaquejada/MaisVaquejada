@@ -39,7 +39,11 @@ const ResultDetailView: React.FC<ResultDetailViewProps> = ({ resultId, onBack })
         event_location: resData.events?.location,
         event_date: `${resData.events?.date_day || ''} ${resData.events?.date_month || ''}`,
         event_image: resData.events?.image_url || resData.events?.imageUrl,
-        event_data: resData.events
+        event_data: resData.events ? {
+          ...resData.events,
+          imageUrl: resData.events.image_url,
+          date: { month: resData.events.date_month, day: resData.events.date_day }
+        } : null
       };
       setResult(mappedRes);
 

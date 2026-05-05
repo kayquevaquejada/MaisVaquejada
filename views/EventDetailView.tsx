@@ -230,7 +230,7 @@ const EventDetailView: React.FC<EventDetailViewProps> = ({ event, user, onBack }
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white/5 border border-white/10 rounded-3xl p-4 flex flex-col justify-center">
               <p className="text-[8px] font-black uppercase text-[#ECA413] tracking-widest mb-1">📅 Data do Evento</p>
-              <p className="text-lg font-black text-white">{event.date.day} de {event.date.month}</p>
+              <p className="text-lg font-black text-white">{(event.date?.day || '--')} de {(event.date?.month || '--')}</p>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-3xl p-4 flex flex-col justify-center">
               <p className="text-[8px] font-black uppercase text-[#ECA413] tracking-widest mb-1">🏆 Premiação</p>
