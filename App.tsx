@@ -372,56 +372,56 @@ const App: React.FC = () => {
     });
 
     const urlOpenListener = CapApp.addListener('appUrlOpen', async ({ url }) => {
-      // Log seguro: não exibe a URL completa que contém tokens/códigos
-      console.log('[App] Deep Link capturado');
+      console.log('[App] Deep Link capturado:', url.includes('auth/callback') ? 'Callback de Autenticação' : 'Outro link');
       
       if (url.includes('auth/callback')) {
-        // Pequena pausa para garantir que o sistema/storage esteja estável
-        await new Promise(r => setTimeout(r, 1000));
+        // IMEDIATAMENTE mudar para a view de callback para mostrar o loading
+        setCurrentView(View.AUTH_CALLBACK);
+        setInitializing(false);
         
+        // Pequena pausa para garantir que o Browser feche e o storage esteja pronto
         await Browser.close();
+        await new Promise(r => setTimeout(r, 500));
 
         // O Supabase pode retornar params no fragmento (hash) ou query string
         // Usamos uma abordagem mais robusta para extrair tokens/codes
         const rawUrl = url.replace('#', '?');
         const urlObj = new URL(rawUrl);
         const code = urlObj.searchParams.get('code');
-        const accessToken = urlObj.searchParams.get('access_token');
 
         if (code) {
-          console.log('[App] Deep Link: Código detectado, processando...');
+          console.log('[App] Deep Link: Processando código PKCE...');
           const { data, error } = await supabase.auth.exchangeCodeForSession(code);
           
           if (error) {
-            console.error('Erro ao trocar código por sessão');
-            // Mesmo com erro, tentamos ver se a sessão foi estabelecida automaticamente
+            console.error('Erro na troca de código:', error.message);
+            // Mesmo com erro, pode ser que o session já exista (race condition com onAuthStateChange)
           }
           
-          const currentSession = data?.session;
-          if (currentSession) {
-            console.log('[App] Autenticação concluída, processando perfil...');
-            await supabase.auth.setSession(currentSession);
-            
-            if (currentSession.user) {
-              fetchProfile(currentSession.user.id, currentSession.user);
-            }
+          const currentSession = data?.session || (await supabase.auth.getSession()).data.session;
+          if (currentSession?.user) {
+            console.log('[App] Login via Deep Link bem sucedido:', currentSession.user.email);
+            await fetchProfile(currentSession.user.id, currentSession.user);
           } else {
-            console.warn('[App] Erro na sincronização pós-login');
+            console.warn('[App] Falha ao obter sessão após troca de código');
+            setCurrentView(View.LOGIN);
           }
-        } else if (accessToken) {
-          console.log('[App] Deep Link: Access Token detectado');
-          // Se for implicit flow, aguarda um pouco e pega a sessão
-          setTimeout(async () => {
-            const { data: sessionData } = await supabase.auth.getSession();
-            if (sessionData.session?.user) {
-              fetchProfile(sessionData.session.user.id, sessionData.session.user);
-            }
-          }, 500);
         } else {
-          // Caso genérico: tenta apenas atualizar a sessão
+          // Fallback para quando não há código direto, mas a URL é de callback
+          console.log('[App] Sem código na URL, tentando recuperar sessão...');
           const { data: sessionData } = await supabase.auth.getSession();
           if (sessionData.session?.user) {
-            fetchProfile(sessionData.session.user.id, sessionData.session.user);
+            await fetchProfile(sessionData.session.user.id, sessionData.session.user);
+          } else {
+            // Aguarda um pouco mais se for implicit flow
+            setTimeout(async () => {
+                const { data: retryData } = await supabase.auth.getSession();
+                if (retryData.session?.user) {
+                    await fetchProfile(retryData.session.user.id, retryData.session.user);
+                } else {
+                    setCurrentView(View.LOGIN);
+                }
+            }, 1500);
           }
         }
       }
@@ -638,23 +638,21 @@ const AuthCallback: React.FC<{ onComplete: (userId: string, authUser: any) => vo
       // Fallback 1: Verificar se já temos um usuário (o SDK pode ter processado em background)
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       if (currentUser) {
-        addLog('Usuário já identificado pelo sistema.');
+        addLog('Usuário detectado. Carregando dados...');
         onComplete(currentUser.id, currentUser);
         return;
       }
 
-      addLog('Aguardando sincronização da sessão...');
-      // Delay adaptativo: verifica a cada 500ms até 5 segundos
-      for (let i = 0; i < 10; i++) {
-        await new Promise(r => setTimeout(r, 500));
+      addLog('Aguardando sessão do Supabase...');
+      // Delay adaptativo: verifica a cada 300ms até 8 segundos (mais agressivo para iOS)
+      for (let i = 0; i < 25; i++) {
+        await new Promise(r => setTimeout(r, 300));
         const { data: sessionData } = await supabase.auth.getSession();
         
         if (sessionData?.session?.user) {
-          addLog('Sessão sincronizada com sucesso!');
+          addLog('Sessão sincronizada!');
           onComplete(sessionData.session.user.id, sessionData.session.user);
           return;
-        } else {
-          addLog(`Tentativa ${i + 1} de 10...`);
         }
       }
 
