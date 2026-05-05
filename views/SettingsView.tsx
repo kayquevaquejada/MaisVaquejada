@@ -21,6 +21,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
     const [activeTab, setActiveTab] = useState<SettingsTab>('MAIN');
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState<string | null>(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deleting, setDeleting] = useState(false);
 
     const { t, lang, changeLanguage } = useI18n();
 
@@ -181,6 +183,29 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
             console.error('Failed to update push pref', e);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDeleteAccount = async () => {
+        if (!user) return;
+        setDeleting(true);
+        try {
+            // 1. Chamar RPC de deleção (deleta do auth.users via SECURITY DEFINER)
+            const { error: rpcError } = await supabase.rpc('delete_user');
+            if (rpcError) throw rpcError;
+
+            // 2. Logout local e limpeza
+            await supabase.auth.signOut();
+            setSuccess('Conta excluída com sucesso');
+            
+            setTimeout(() => {
+                onLogout(); // Chama o callback de logout para resetar o estado global do app
+            }, 2000);
+        } catch (err: any) {
+            console.error('Erro ao excluir conta:', err);
+            alert('Erro ao excluir conta: ' + (err.message || 'Tente novamente mais tarde.'));
+            setDeleting(false);
+            setShowDeleteConfirm(false);
         }
     };
 
@@ -584,10 +609,50 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
                 )}
 
 
-                <div className="p-8 mt-4">
-                    <button onClick={onLogout} className="w-full bg-red-50 text-red-600 font-black py-5 rounded-[24px] uppercase text-[11px] tracking-widest active:scale-95 transition-all">Sair da Conta</button>
+                <div className="p-8 mt-4 space-y-4">
+                    <button onClick={onLogout} className="w-full bg-black/5 text-black/60 font-black py-5 rounded-[24px] uppercase text-[11px] tracking-widest active:scale-95 transition-all">Sair da Conta</button>
+                    
+                    <button 
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="w-full text-red-500 font-bold py-4 uppercase text-[10px] tracking-widest active:opacity-60 transition-all"
+                    >
+                        Excluir minha conta
+                    </button>
                 </div>
             </div>
+
+            {/* Modal de Confirmação de Exclusão */}
+            {showDeleteConfirm && (
+                <div className="fixed inset-0 z-[500] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-300">
+                    <div className="bg-white rounded-[40px] p-8 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-300">
+                        <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-6 mx-auto">
+                            <span className="material-icons text-red-500 text-3xl">delete_forever</span>
+                        </div>
+                        <h3 className="text-xl font-black text-center text-[#1A1108] uppercase italic tracking-tighter mb-2">Excluir Conta</h3>
+                        <p className="text-center text-sm font-medium text-black/60 leading-relaxed mb-8">
+                            Tem certeza que deseja excluir sua conta? Esta ação é irreversível e todos os seus dados serão removidos permanentemente.
+                        </p>
+                        
+                        <div className="space-y-3">
+                            <button 
+                                disabled={deleting}
+                                onClick={handleDeleteAccount}
+                                className="w-full bg-red-600 text-white py-5 rounded-3xl font-black uppercase text-[11px] tracking-widest shadow-xl shadow-red-600/20 active:scale-95 transition-all disabled:opacity-50"
+                            >
+                                {deleting ? 'Excluindo...' : 'Sim, Excluir Minha Conta'}
+                            </button>
+                            <button 
+                                disabled={deleting}
+                                onClick={() => setShowDeleteConfirm(false)}
+                                className="w-full bg-black/5 text-black/40 py-5 rounded-3xl font-black uppercase text-[11px] tracking-widest active:scale-95 transition-all"
+                            >
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {success && <div className="fixed bottom-24 left-6 right-6 bg-black text-white p-4 rounded-2xl shadow-2xl z-[200] text-center font-bold text-sm animate-in fade-in slide-in-from-bottom-4 transition-all">{success}</div>}
         </div>
     );

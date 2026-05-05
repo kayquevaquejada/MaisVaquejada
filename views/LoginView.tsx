@@ -16,6 +16,7 @@ interface LoginViewProps {
 const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPassword, onRecoveryAssisted, onTerms }) => {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const DEFAULT_BG = 'https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80';
   const [loginBg, setLoginBg] = useState(DEFAULT_BG);
@@ -36,47 +37,60 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
   }, []);
 
   const signInWithApple = async () => {
-    setLoading(true);
+    if (appleLoading) return;
+    setAppleLoading(true);
     setError(null);
+    console.log('SignInWithApple: Botão clicado');
+    
     try {
       const isNative = Capacitor.isNativePlatform();
       const platform = Capacitor.getPlatform();
       
       if (isNative && platform === 'ios') {
-        console.log('Autenticação Apple iniciada');
+        console.log('SignInWithApple: Iniciando fluxo NATIVO iOS');
         const result = await SignInWithApple.authorize({
           clientId: 'com.maisvaquejada.app',
           scopes: 'email name',
         });
         
+        console.log('SignInWithApple: Resultado recebido', result ? 'Sucesso' : 'Vazio');
         const identityToken = result?.response?.identityToken;
         
         if (!identityToken) {
-          throw new Error('Apple identityToken não retornado');
+          console.error('SignInWithApple: identityToken ausente');
+          throw new Error('Não foi possível obter o token da Apple. Tente novamente.');
         }
 
-        const { error } = await supabase.auth.signInWithIdToken({
+        console.log('SignInWithApple: Validando token no Supabase');
+        const { error: authError } = await supabase.auth.signInWithIdToken({
           provider: 'apple',
           token: identityToken,
         });
         
-        if (error) throw error;
+        if (authError) {
+          console.error('SignInWithApple: Erro Supabase', authError);
+          throw authError;
+        }
+        console.log('SignInWithApple: Login concluído com sucesso');
       } else {
-        console.log('Apple login WEB iniciado');
-        const { error } = await supabase.auth.signInWithOAuth({
+        console.log('SignInWithApple: Iniciando fluxo WEB');
+        const { error: oauthError } = await supabase.auth.signInWithOAuth({
           provider: 'apple',
           options: {
             redirectTo: window.location.origin
           }
         });
-        if (error) throw error;
+        if (oauthError) throw oauthError;
       }
-    } catch (error: any) {
-      if (error?.message?.includes('cancelled') || error?.message?.includes('cancel')) return;
-      console.error('Erro na autenticação Apple');
-      setError(error.message || 'Erro ao entrar com Apple');
+    } catch (err: any) {
+      if (err?.message?.toLowerCase().includes('cancel') || err?.message?.toLowerCase().includes('user limit')) {
+          console.log('SignInWithApple: Operação cancelada pelo usuário');
+          return;
+      }
+      console.error('SignInWithApple: Erro Crítico', err);
+      setError(err.message || 'Erro ao iniciar login Apple. Tente novamente.');
     } finally {
-      setLoading(false);
+      setAppleLoading(false);
     }
   };
 
@@ -201,10 +215,10 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
             </button>
             <button
               onClick={signInWithApple}
-              disabled={googleLoading || loading}
+              disabled={googleLoading || appleLoading || loading}
               className="w-full bg-black text-white border border-white/10 py-4 rounded-3xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
             >
-              {loading ? (
+              {appleLoading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
