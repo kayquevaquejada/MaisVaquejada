@@ -187,7 +187,11 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                 const fileExt = file.name.split('.').pop();
                 const fileName = `market/${user.id}/${Date.now()}_${i}.${fileExt}`;
                 
-                const { error: uploadError } = await supabase.storage.from('vaquejadas').upload(fileName, fileToUpload);
+                const arrayBuffer = await fileToUpload.arrayBuffer();
+                const { error: uploadError } = await supabase.storage.from('vaquejadas').upload(fileName, arrayBuffer, {
+                    contentType: file.type,
+                    upsert: true
+                });
                 if (uploadError) continue;
 
                 const { data: { publicUrl } } = supabase.storage.from('vaquejadas').getPublicUrl(fileName);

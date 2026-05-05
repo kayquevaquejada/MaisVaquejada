@@ -68,7 +68,7 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
       fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${selectedState}/municipios?orderBy=nome`)
         .then(res => res.json())
         .then(data => setCities(data))
-        .catch(err => console.error('Error fetching cities:', err));
+        .catch(() => console.error('Erro ao buscar cidades'));
     }
   }, [selectedState]);
 
@@ -134,7 +134,7 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
           .insert(profileData);
 
         if (profileError) {
-          console.error('Error creating profile:', profileError);
+          console.error('Erro ao criar perfil');
           // If profile fails, it might be RLS, but we checked that.
         }
 

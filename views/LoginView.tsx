@@ -43,7 +43,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
       const platform = Capacitor.getPlatform();
       
       if (isNative && platform === 'ios') {
-        console.log('Apple login iOS iniciado');
+        console.log('Autenticação Apple iniciada');
         const result = await SignInWithApple.authorize({
           clientId: 'com.maisvaquejada.app',
           scopes: 'email name',
@@ -55,7 +55,6 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
           throw new Error('Apple identityToken não retornado');
         }
 
-        console.log('Token Apple recebido');
         const { error } = await supabase.auth.signInWithIdToken({
           provider: 'apple',
           token: identityToken,
@@ -74,7 +73,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
       }
     } catch (error: any) {
       if (error?.message?.includes('cancelled') || error?.message?.includes('cancel')) return;
-      console.error('Erro Apple login:', error);
+      console.error('Erro na autenticação Apple');
       setError(error.message || 'Erro ao entrar com Apple');
     } finally {
       setLoading(false);
@@ -112,7 +111,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
         if (error) throw error;
       }
     } catch (err: any) {
-      console.error('[GoogleLogin] Error:', err);
+      console.error('Erro na autenticação Google');
       setError(err.message || 'Erro ao entrar com Google');
     } finally {
       setGoogleLoading(false);
@@ -139,7 +138,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
         onLogin(data.user);
       }
     } catch (err: any) {
-      console.error('[EmailLogin] Error:', err);
+      console.error('Erro na autenticação por e-mail');
       setError(err.message || 'Erro ao entrar com e-mail');
     } finally {
       setEmailLoading(true); // Manter true para evitar flicker durante redirecionamento

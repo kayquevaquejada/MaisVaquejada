@@ -120,7 +120,7 @@ const AdminMasterView: React.FC<AdminMasterViewProps> = ({ user, onBack }) => {
       });
 
     } catch (error) {
-      console.error('Error fetching master data:', error);
+      console.error('Erro ao buscar dados administrativos');
     } finally {
       setLoading(false);
     }
@@ -140,7 +140,7 @@ const AdminMasterView: React.FC<AdminMasterViewProps> = ({ user, onBack }) => {
         fetchGlobalData(); // Refresh list
         setSelectedUser(null);
       } catch (err: any) {
-        console.error('Delete Error:', err);
+        console.error('Erro ao deletar registro');
         alert('Erro ao excluir usuário: ' + err.message);
       } finally {
         setLoading(false);

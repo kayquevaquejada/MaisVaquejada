@@ -14,7 +14,7 @@ export const SocialService = {
       .limit(50);
 
     const { data, error } = await query;
-    if (error) { console.error('fetchFeed error:', error.message); return []; }
+    if (error) { console.error('Erro ao carregar feed'); return []; }
 
     // 2. Fetch like + comment counts in parallel for all post IDs
     const postIds = (data || []).map(p => p.id);
@@ -81,7 +81,7 @@ export const SocialService = {
     try {
       await supabase.from('stories').delete().lt('expires_at', now);
     } catch (e) {
-      console.warn('Falha na limpeza de stories expirados:', e);
+      console.warn('Falha na limpeza de cache');
     }
 
     // 2. BUSCAR APENAS OS ATIVOS
@@ -95,7 +95,7 @@ export const SocialService = {
       .in('user_id', authorizedIds)
       .order('created_at', { ascending: false });
 
-    if (error) { console.error('fetchStories error:', error.message); return []; }
+    if (error) { console.error('Erro ao carregar stories'); return []; }
 
     const grouped = (data || []).reduce((acc: any, s: any) => {
       const username = s.profiles?.username || 'vaqueiro';
@@ -131,8 +131,8 @@ export const SocialService = {
       .from('post_likes')
       .insert({ user_id: userId, post_id: postId });
     if (error) { 
-      console.error('Like error:', error.message); 
-      throw new Error(error.message); 
+      console.error('Erro ao curtir postagem'); 
+      throw new Error('Falha ao processar curtida'); 
     }
   },
 
@@ -143,8 +143,8 @@ export const SocialService = {
       .eq('user_id', userId)
       .eq('post_id', postId);
     if (error) { 
-      console.error('Unlike error:', error.message); 
-      throw new Error(error.message); 
+      console.error('Erro ao descurtir postagem'); 
+      throw new Error('Falha ao remover curtida'); 
     }
   },
 
@@ -159,7 +159,7 @@ export const SocialService = {
       .eq('post_id', postId)
       .order('created_at', { ascending: true });
     
-    if (error) { console.error('Comments error:', error.message); return []; }
+    if (error) { console.error('Erro ao carregar comentários'); return []; }
     return (data || []).map(c => ({
       id: c.id,
       post_id: c.post_id,
@@ -179,8 +179,8 @@ export const SocialService = {
       .single();
 
     if (error) {
-      console.error('Post comment error:', error.message);
-      throw new Error(error.message);
+      console.error('Erro ao publicar comentário');
+      throw new Error('Falha ao enviar comentário');
     }
     return data;
   },
@@ -192,7 +192,7 @@ export const SocialService = {
       .select('following_id')
       .eq('follower_id', userId);
     
-    if (error) { console.warn('Follows schema error:', error); return []; }
+    if (error) { console.warn('Erro ao carregar lista de seguidores'); return []; }
     return data?.map(f => f.following_id) || [];
   },
 
@@ -203,7 +203,7 @@ export const SocialService = {
        .select('*')
        .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
        .order('created_at', { ascending: false });
-     if (error) { console.warn('Messages schema error:', error); return []; }
+     if (error) { console.warn('Erro ao carregar conversas'); return []; }
      return data;
   },
 
@@ -233,7 +233,7 @@ export const SocialService = {
           await supabase.storage.from('vaquejadas').remove([path]);
         }
       } catch (e) {
-        console.warn('Falha ao remover arquivo do storage:', e);
+        console.warn('Falha ao remover arquivo do storage');
         // We don't throw here, the record is already gone
       }
     }
@@ -267,7 +267,7 @@ export const SocialService = {
           await supabase.storage.from('vaquejadas').remove([path]);
         }
       } catch (e) {
-        console.warn('Falha ao remover arquivo do storage:', e);
+        console.warn('Falha ao remover arquivo do storage');
       }
     }
     return true;

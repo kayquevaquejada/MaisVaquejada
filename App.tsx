@@ -199,9 +199,7 @@ const App: React.FC = () => {
   };
 
   const fetchProfile = async (userId: string, authUser?: any) => {
-    console.log('[App] fetchProfile iniciado para:', userId);
     if (isFetchingProfile.current) {
-      console.log('[App] fetchProfile já está em execução, pulando...');
       return;
     }
     isFetchingProfile.current = true;
@@ -272,7 +270,7 @@ const App: React.FC = () => {
         setCurrentView(View.COMPLETE_PROFILE);
       }
     } catch (err: any) {
-      console.error('[App] Erro fatal no fetchProfile:', err);
+      console.error('Erro ao carregar perfil do usuário');
       setFatalError(`Erro ao carregar perfil: ${err.message || 'Erro de conexão'}`);
     } finally {
       if (isMountedRef.current) {
@@ -289,19 +287,15 @@ const App: React.FC = () => {
 
 
     const startup = async () => {
-      console.log('[DEBUG] 🏁 Startup iniciada');
       if (isInitializedRef.current) {
-        console.log('[DEBUG] ⏩ Já inicializado, pulando...');
         return;
       }
       
       try {
-        console.log('[DEBUG] 🌐 Verificando plataforma e URL...');
         
         // Limpar sessão em nova instalação do app (evita restaurar login antigo)
         const marker = await Preferences.get({ key: 'app_installed_marker' });
         if (!marker.value) {
-          console.log('[DEBUG] 🧹 Primeira abertura ou app reinstalado. Limpando sessão antiga.');
           await supabase.auth.signOut();
           localStorage.clear();
           sessionStorage.clear();
@@ -315,43 +309,35 @@ const App: React.FC = () => {
                             window.location.pathname.startsWith('/auth/callback');
 
         if (hasAuthParams) {
-          console.log('[DEBUG] 🔗 Parâmetros de autenticação detectados');
           setCurrentView(View.AUTH_CALLBACK);
           setInitializing(false);
           isInitializedRef.current = true;
           return;
         }
 
-        console.log('[DEBUG] 📦 Carregando perfil do cache...');
         const cached = await getCachedProfile();
         if (cached && isMountedRef.current) {
-          console.log('[DEBUG] ✅ Cache encontrado:', cached.username);
           setUser(cached);
         }
 
-        console.log('[DEBUG] 🔑 Obtendo sessão do Supabase...');
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
-          console.error('[DEBUG] ❌ Erro ao obter sessão:', sessionError);
+          console.error('Erro na sincronização de sessão');
         }
 
-        console.log('[DEBUG] 👤 Sessão recuperada:', session ? 'Sim' : 'Não');
         
         if (session?.user) {
-          console.log('[DEBUG] 🚀 Buscando perfil no banco para:', session.user.id);
           await fetchProfile(session.user.id, session.user);
         } else {
-          console.log('[DEBUG] 🚪 Nenhuma sessão, redirecionando para LOGIN');
           setCurrentView(View.LOGIN);
           setInitializing(false);
         }
       } catch (err: any) {
-        console.error('[DEBUG] 🚨 Erro crítico no startup:', err);
+        console.error('Erro crítico na inicialização');
         setFatalError(err.message || 'Erro desconhecido na inicialização');
         setInitializing(false);
       } finally {
-        console.log('[DEBUG] 🏁 Startup finalizada');
         isInitializedRef.current = true;
       }
     };
@@ -360,14 +346,14 @@ const App: React.FC = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMountedRef.current) return;
-      console.log(`[App] 🔄 Auth State Change: ${event}`, !!session);
+      // Log simplificado sem dados sensíveis
+      console.log(`[App] Auth event: ${event}`);
 
       if (session?.user) {
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
           fetchProfile(session.user.id, session.user);
         }
       } else if (event === 'SIGNED_OUT') {
-        console.log('[App] 🚪 Usuário saiu da conta');
         setUser(null);
         setCurrentView(View.LOGIN);
         setInitializing(false);
@@ -378,19 +364,21 @@ const App: React.FC = () => {
 
     const stateListener = CapApp.addListener('appStateChange', ({ isActive }) => {
       if (isActive && isMountedRef.current) {
-        // Ao voltar do background, apenas verifica se a sessão ainda é válida silenciamente
-        // NÃO ativa initializing(true) para não piscar splash
-        supabase.auth.getSession().then(({ data: { session } }) => {
-          if (session?.user && isMountedRef.current) {
-            // Atualiza em background sem travar UI
-            fetchProfile(session.user.id, session.user);
-          }
-        });
+        // Ao voltar do background, apenas verificamos a sessão silenciosamente se necessário.
+        // Removido o fetchProfile automático para evitar que o app volte para a Home 
+        // e limpe formulários que o usuário estava preenchendo.
+        supabase.auth.getSession();
       }
     });
 
     const urlOpenListener = CapApp.addListener('appUrlOpen', async ({ url }) => {
+      // Log seguro: não exibe a URL completa que contém tokens/códigos
+      console.log('[App] Deep Link capturado');
+      
       if (url.includes('auth/callback')) {
+        // Pequena pausa para garantir que o sistema/storage esteja estável
+        await new Promise(r => setTimeout(r, 1000));
+        
         await Browser.close();
 
         // O Supabase pode retornar params no fragmento (hash) ou query string
@@ -405,18 +393,20 @@ const App: React.FC = () => {
           const { data, error } = await supabase.auth.exchangeCodeForSession(code);
           
           if (error) {
-            console.error('[App] Erro no exchangeCodeForSession:', error);
+            console.error('Erro ao trocar código por sessão');
             // Mesmo com erro, tentamos ver se a sessão foi estabelecida automaticamente
           }
           
-          // Tenta usar os dados retornados da troca ou faz um getSession final
-          const session = data?.session || (await supabase.auth.getSession()).data.session;
-          
-          if (session?.user) {
-            console.log('[App] Deep Link: Usuário identificado, carregando perfil...');
-            fetchProfile(session.user.id, session.user);
+          const currentSession = data?.session;
+          if (currentSession) {
+            console.log('[App] Autenticação concluída, processando perfil...');
+            await supabase.auth.setSession(currentSession);
+            
+            if (currentSession.user) {
+              fetchProfile(currentSession.user.id, currentSession.user);
+            }
           } else {
-            console.warn('[App] Deep Link: Nenhum usuário encontrado após troca de código');
+            console.warn('[App] Erro na sincronização pós-login');
           }
         } else if (accessToken) {
           console.log('[App] Deep Link: Access Token detectado');
@@ -678,8 +668,8 @@ const AuthCallback: React.FC<{ onComplete: (userId: string, authUser: any) => vo
         throw new Error('Não foi possível identificar sua sessão de login. Por favor, tente entrar novamente.');
       }
     } catch (err: any) {
-      console.error('Erro no login:', err);
-      addLog('ERRO: ' + (err.message || 'Falha na autenticação'));
+      console.error('Erro no processamento da autenticação');
+      addLog('Falha na sincronização final');
       setErrorMsg(err.message || 'Erro ao processar login');
       // Aumentamos o tempo do erro para o usuário ler
       setTimeout(() => onFail(), 5000);
@@ -698,15 +688,7 @@ const AuthCallback: React.FC<{ onComplete: (userId: string, authUser: any) => vo
           <h1 className="text-white font-black italic uppercase tracking-widest text-sm animate-pulse">Finalizando login...</h1>
           <p className="text-white/20 text-[10px] uppercase mt-2">Autenticando com a Arena</p>
           
-          {/* Logs de depuração mais visíveis durante a fase de correção */}
-          <div className="mt-12 bg-white/5 border border-white/10 rounded-xl p-4 text-left">
-             <p className="text-[8px] text-[#ECA413] font-black uppercase tracking-widest mb-2 opacity-50">Status do Sistema:</p>
-             {logs.map((log, i) => (
-               <div key={i} className="text-[9px] font-mono text-white/40 leading-relaxed truncate">
-                 <span className="text-[#ECA413]/30 mr-2">›</span>{log}
-               </div>
-             ))}
-          </div>
+          {/* Logs de depuração removidos para privacidade em produção */}
         </div>
       ) : (
         <div className="animate-in fade-in zoom-in duration-500">

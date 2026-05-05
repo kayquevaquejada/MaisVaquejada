@@ -32,9 +32,13 @@ const EditStoreModal: React.FC<{ store: any, onClose: () => void, onSuccess: () 
             const fileExt = file.name.split('.').pop();
             const fileName = `stores/${store.id}/${type}_${Date.now()}.${fileExt}`;
             
+            const arrayBuffer = await file.arrayBuffer();
             const { error: uploadError } = await supabase.storage
                 .from('vaquejadas')
-                .upload(fileName, file);
+                .upload(fileName, arrayBuffer, {
+                    contentType: file.type,
+                    upsert: true
+                });
 
             if (uploadError) throw uploadError;
 
@@ -177,9 +181,13 @@ const AddProductModal: React.FC<{ storeId: string, onClose: () => void, onSucces
             const fileExt = file.name.split('.').pop();
             const fileName = `products/${storeId}/${Date.now()}.${fileExt}`;
             
+            const arrayBuffer = await file.arrayBuffer();
             const { error: uploadError } = await supabase.storage
                 .from('vaquejadas')
-                .upload(fileName, file);
+                .upload(fileName, arrayBuffer, {
+                    contentType: file.type,
+                    upsert: true
+                });
 
             if (uploadError) throw uploadError;
 

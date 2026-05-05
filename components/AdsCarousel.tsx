@@ -28,7 +28,7 @@ const AdsCarousel: React.FC<AdsCarouselProps> = ({ targetPosition }) => {
                 .order('display_order', { ascending: true });
 
             if (error) {
-                console.error("Erro ao buscar anúncios:", error);
+                console.error("Erro ao buscar anúncios");
                 return;
             }
 
@@ -64,7 +64,7 @@ const AdsCarousel: React.FC<AdsCarouselProps> = ({ targetPosition }) => {
             }
 
         } catch (err) {
-            console.error("Flow error fetching ads:", err);
+            console.error("Erro no fluxo de anúncios");
         } finally {
             setLoading(false);
         }

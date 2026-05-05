@@ -63,7 +63,7 @@ const CompleteProfileView: React.FC<CompleteProfileViewProps> = ({ user, onCompl
       fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${selectedState}/municipios?orderBy=nome`)
         .then(res => res.json())
         .then(data => setCities(data))
-        .catch(err => console.error('Error fetching cities:', err));
+        .catch(() => console.error('Erro ao buscar cidades'));
     }
   }, [selectedState]);
 
@@ -114,7 +114,7 @@ const CompleteProfileView: React.FC<CompleteProfileViewProps> = ({ user, onCompl
       if (updateError) throw updateError;
       onComplete();
     } catch (err: any) {
-      console.error("Save Error:", err);
+      console.error("Erro ao salvar perfil");
       setError(err.message || 'Erro ao salvar perfil.');
     } finally {
       setLoading(false);

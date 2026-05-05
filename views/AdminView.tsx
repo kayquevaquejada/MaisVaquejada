@@ -287,7 +287,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
             const { data, count, error } = await supabase.from('market_items').select('*', { count: 'exact' });
             
             if (error) {
-                console.error("ERRO SUPABASE:", error.message);
+                console.error("Erro ao processar dados administrativos");
                 return;
             }
 
@@ -295,14 +295,14 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                 setMarketList(data);
             }
         } catch (err: any) {
-            console.error("ERRO NO FLUXO:", err.message);
+            console.error("Erro no fluxo administrativo");
         }
     };
 
     const fetchStores = async () => {
         try {
             const { data, error } = await supabase.from('stores').select(`*, profiles:user_id(username, name)`).order('created_at', { ascending: false });
-            if (error) console.error("Error fetching stores:", error.message);
+            if (error) console.error("Erro ao buscar lojas");
             if (data) setStoresList(data);
         } catch(err) {
             console.error("Error fetching stores:", err);
@@ -321,7 +321,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
     const fetchBanners = async () => {
         try {
             const { data, error } = await supabase.from('banners').select('*').order('created_at', { ascending: false });
-            if (error) console.error("Error fetching banners:", error.message);
+            if (error) console.error("Erro ao buscar banners");
             if (data) setBannersList(data);
         } catch(err) {
             console.error("Error fetching banners:", err);
@@ -386,9 +386,17 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
             const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
             const filePath = `${fileName}`;
 
+            // Converter para ArrayBuffer para maior compatibilidade no iOS/Capacitor
+            // Isso evita erros de "Load failed" ao tentar ler o Blob durante o upload
+            const arrayBuffer = await fileToUpload.arrayBuffer();
+
             const { error: uploadError } = await supabase.storage
                 .from('vaquejadas')
-                .upload(filePath, fileToUpload);
+                .upload(filePath, arrayBuffer, {
+                    contentType: file.type,
+                    cacheControl: '3600',
+                    upsert: false
+                });
 
             if (uploadError) throw uploadError;
 

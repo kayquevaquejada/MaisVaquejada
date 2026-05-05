@@ -30,9 +30,11 @@ export function useMediaUpload() {
 
       // Em dispositivos móveis com Capacitor, o upload de Blob sem contentType pode falhar silenciosamente ou travar.
       // O ArrayBuffer costuma ser mais seguro se ainda houver problemas, mas o contentType ajuda na inferência.
+      const arrayBuffer = await fileToUpload.arrayBuffer();
+
       const { data, error } = await supabase.storage
         .from(BUCKET_NAME)
-        .upload(filePath, fileToUpload, {
+        .upload(filePath, arrayBuffer, {
           cacheControl: '3600',
           upsert: false,
           contentType: contentType

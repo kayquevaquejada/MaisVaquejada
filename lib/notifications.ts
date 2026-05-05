@@ -73,7 +73,7 @@ export async function createNotification(params: {
   });
 
   if (error) {
-    console.error('Erro ao criar notificação no DB:', error.message);
+    console.error('Erro ao criar notificação');
     return;
   }
 
