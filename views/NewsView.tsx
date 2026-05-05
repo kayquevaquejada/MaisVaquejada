@@ -99,14 +99,6 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
   const filteredNews = React.useMemo(() => {
     const news = localNews || [];
     switch (activeTab) {
-      case 'TUDO':
-        return news;
-      case 'EVENTOS':
-        return news.filter(n => 
-          n.tag?.toUpperCase() === 'EVENTO' || 
-          n.title?.toUpperCase().includes('EVENTO') ||
-          n.tag?.toUpperCase() === 'PROGRAMAÇÃO'
-        );
       case 'REGULAMENTO':
         return news.filter(n => n.title?.toUpperCase().includes('REGULAMENTO') || n.tag?.toUpperCase() === 'REGULAMENTO');
       case 'NOTÍCIAS':

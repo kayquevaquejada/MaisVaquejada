@@ -16,8 +16,7 @@ const CATEGORIES = {
     'EQUIPAMENTOS': ['Sela', 'Arreio', 'Manta', 'Cabeçada', 'Acessórios', 'Ferramentas'],
     'VEICULOS': ['Caminhão', 'Reboque', 'Trailer', 'Carreta', 'Máquinas'],
     'SERVICOS': ['Frete', 'Veterinário', 'Ferrador', 'Doma', 'Treinamento'],
-    'EVENTOS': ['Ingressos', 'Senhas', 'Camarotes'],
-    'OUTROS': ['Outro']
+    'OUTROS': ['Ingressos', 'Senhas', 'Camarotes', 'Outro']
 };
 
 interface MarketViewProps {
@@ -762,9 +761,14 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
 
             {/* Categories Filter */}
             <div className="px-6 py-4 overflow-x-auto hide-scrollbar flex gap-2">
-                <button onClick={() => setActiveFilterCat('all')} className={`px-4 py-2 rounded-xl text-xs font-black uppercase whitespace-nowrap transition-all ${activeFilterCat === 'all' ? 'bg-[#D4AF37] text-white' : 'bg-white border border-[#1A1108]/10 text-[#1A1108]/60'}`}>TODOS</button>
                 {Object.keys(CATEGORIES).map(cat => (
-                    <button key={cat} onClick={() => setActiveFilterCat(cat)} className={`px-4 py-2 rounded-xl text-xs font-black uppercase whitespace-nowrap transition-all ${activeFilterCat === cat ? 'bg-[#D4AF37] text-white' : 'bg-white border border-[#1A1108]/10 text-[#1A1108]/60'}`}>{cat}</button>
+                    <button 
+                        key={cat} 
+                        onClick={() => setActiveFilterCat(activeFilterCat === cat ? 'all' : cat)} 
+                        className={`px-4 py-2 rounded-xl text-xs font-black uppercase whitespace-nowrap transition-all ${activeFilterCat === cat ? 'bg-[#D4AF37] text-[#1A1108]' : 'bg-[#1A1108] border border-white/10 text-white/40'}`}
+                    >
+                        {cat}
+                    </button>
                 ))}
             </div>
 

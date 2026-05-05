@@ -54,7 +54,7 @@ const INITIAL_EVENTS: EventItem[] = [
 ];
 
 const STATES = [
-  'TODOS', 'AC', 'AL', 'AM', 'AP', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
+  'AC', 'AL', 'AM', 'AP', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
   'MG', 'MS', 'MT', 'PA', 'PB', 'PE', 'PI', 'PR', 'RJ', 'RN', 'RO',
   'RR', 'RS', 'SC', 'SE', 'SP', 'TO'
 ];
@@ -66,7 +66,7 @@ interface EventsViewProps {
 
 const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt }) => {
   const [events, setEvents] = useState<any[]>([]);
-  const [selectedState, setSelectedState] = useState('TODOS');
+  const [selectedState, setSelectedState] = useState('');
   const [selectedCircuit, setSelectedCircuit] = useState('todos');
   const [isCircuitPanelOpen, setIsCircuitPanelOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -154,7 +154,7 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
     if (!e) return false;
     const location = (e.location || '').toUpperCase();
     const title = (e.title || '').toLowerCase();
-    const matchesState = selectedState === 'TODOS' || location.includes(selectedState);
+    const matchesState = !selectedState || location.includes(selectedState);
     const matchesSearch = searchQuery === '' || location.toLowerCase().includes(searchQuery.toLowerCase()) || title.includes(searchQuery.toLowerCase());
     const matchesCircuit = selectedCircuit === 'todos' || e.circuitoId === selectedCircuit;
     return matchesState && matchesSearch && matchesCircuit;
@@ -197,12 +197,15 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
         <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
           {STATES.map((uf, idx) => (
              <React.Fragment key={uf}>
-               {idx === 1 && (
+               {idx === 0 && (
                  <button onClick={() => setIsCircuitPanelOpen(true)} className={`px-6 py-2.5 rounded-full font-black text-[11px] uppercase tracking-widest whitespace-nowrap transition-all border ${selectedCircuit !== 'todos' ? 'bg-[#D4AF37]/10 border-[#D4AF37] text-[#D4AF37]' : 'bg-white/5 border-white/10 text-[#D4AF37]'}`}>
                    {selectedCircuit !== 'todos' ? 'CIRCUITO ATIVO' : 'CIRCUITOS'}
                  </button>
                )}
-               <button onClick={() => setSelectedState(uf)} className={`px-6 py-2.5 rounded-full font-black text-[11px] uppercase tracking-widest whitespace-nowrap transition-all border ${selectedState === uf ? 'bg-[#D4AF37] border-[#D4AF37] text-background-dark' : 'bg-white/5 border-white/10 text-white/40'}`}>
+               <button 
+                 onClick={() => setSelectedState(selectedState === uf ? '' : uf)} 
+                 className={`px-6 py-2.5 rounded-full font-black text-[11px] uppercase tracking-widest whitespace-nowrap transition-all border ${selectedState === uf ? 'bg-[#D4AF37] border-[#D4AF37] text-background-dark' : 'bg-white/5 border-white/10 text-white/40'}`}
+               >
                  {uf}
                </button>
              </React.Fragment>
