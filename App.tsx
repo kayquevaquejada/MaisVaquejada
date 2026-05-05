@@ -360,13 +360,14 @@ const App: React.FC = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMountedRef.current) return;
+      console.log(`[App] 🔄 Auth State Change: ${event}`, !!session);
 
       if (session?.user) {
-        // SIGNED_IN pode disparar várias vezes dependendo do provedor, fetchProfile cuida do ref
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
           fetchProfile(session.user.id, session.user);
         }
       } else if (event === 'SIGNED_OUT') {
+        console.log('[App] 🚪 Usuário saiu da conta');
         setUser(null);
         setCurrentView(View.LOGIN);
         setInitializing(false);
@@ -648,14 +649,17 @@ const AuthCallback: React.FC<{ onComplete: (userId: string, authUser: any) => vo
       }
 
       addLog('Aguardando sincronização da sessão...');
-      // Delay adaptativo: verifica a cada 500ms até 3 segundos
-      for (let i = 0; i < 6; i++) {
+      // Delay adaptativo: verifica a cada 500ms até 5 segundos
+      for (let i = 0; i < 10; i++) {
         await new Promise(r => setTimeout(r, 500));
         const { data: sessionData } = await supabase.auth.getSession();
+        
         if (sessionData?.session?.user) {
           addLog('Sessão sincronizada com sucesso!');
           onComplete(sessionData.session.user.id, sessionData.session.user);
           return;
+        } else {
+          addLog(`Tentativa ${i + 1} de 10...`);
         }
       }
 
