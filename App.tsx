@@ -402,16 +402,21 @@ const App: React.FC = () => {
 
         if (code) {
           console.log('[App] Deep Link: Código detectado, processando...');
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          
           if (error) {
             console.error('[App] Erro no exchangeCodeForSession:', error);
-            // Mesmo com erro (ex: código já usado), tentamos pegar a sessão atual
+            // Mesmo com erro, tentamos ver se a sessão foi estabelecida automaticamente
           }
           
-          const { data: sessionData } = await supabase.auth.getSession();
-          if (sessionData.session?.user) {
-            console.log('[App] Deep Link: Sessão recuperada após exchange');
-            fetchProfile(sessionData.session.user.id, sessionData.session.user);
+          // Tenta usar os dados retornados da troca ou faz um getSession final
+          const session = data?.session || (await supabase.auth.getSession()).data.session;
+          
+          if (session?.user) {
+            console.log('[App] Deep Link: Usuário identificado, carregando perfil...');
+            fetchProfile(session.user.id, session.user);
+          } else {
+            console.warn('[App] Deep Link: Nenhum usuário encontrado após troca de código');
           }
         } else if (accessToken) {
           console.log('[App] Deep Link: Access Token detectado');
