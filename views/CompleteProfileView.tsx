@@ -143,7 +143,7 @@ const CompleteProfileView: React.FC<CompleteProfileViewProps> = ({ user, onCompl
             </button>
         </div>
 
-        <div className="bg-[#1A1108]/60 backdrop-blur-xl rounded-[32px] p-8 border border-white/5 shadow-2xl">
+        <div className="bg-[#1A1108]/60 backdrop-blur-xl rounded-[32px] px-6 py-8 border border-white/5 shadow-2xl">
             <form onSubmit={handleSave} className="space-y-6">
               <div className="space-y-1">
                 <label className="text-[10px] font-black uppercase tracking-widest text-[#ECA413] ml-2">Nome Completo</label>
@@ -169,11 +169,11 @@ const CompleteProfileView: React.FC<CompleteProfileViewProps> = ({ user, onCompl
               <div className="space-y-1">
                 <label className="text-[10px] font-black uppercase tracking-widest text-[#ECA413] ml-2">WhatsApp / Telefone</label>
                 <div className="flex gap-2">
-                    <div className="relative w-32 shrink-0">
+                    <div className="relative w-24 shrink-0">
                         <button 
                             type="button"
                             onClick={() => setShowDddList(!showDddList)}
-                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-4 text-sm font-bold text-white flex items-center justify-between"
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-3 text-sm font-bold text-white flex items-center justify-between"
                         >
                             <span className="truncate">({ddd})</span>
                             <span className="material-icons text-xs text-[#ECA413]">expand_more</span>
@@ -203,7 +203,7 @@ const CompleteProfileView: React.FC<CompleteProfileViewProps> = ({ user, onCompl
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-[10px] font-black uppercase tracking-widest text-[#ECA413] ml-2">Estado</label>
                   <select
