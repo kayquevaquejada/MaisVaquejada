@@ -81,7 +81,7 @@ const EventDetailView: React.FC<EventDetailViewProps> = ({ event, user, onBack }
 
   const togglePresence = async () => {
     if (!user || !event?.id) {
-      alert('Faça login para confirmar sua presença!');
+      window.dispatchEvent(new CustomEvent('arena_show_login'));
       return;
     }
 

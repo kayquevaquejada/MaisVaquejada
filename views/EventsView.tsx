@@ -124,17 +124,22 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
 
   const toggleFavorite = async (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    
+    // Verificar se o usuário está logado
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        window.dispatchEvent(new CustomEvent('arena_show_login'));
+        return;
+    }
+
     setFavorites(prev => prev.includes(id) ? prev.filter(fid => fid !== id) : [...prev, id]);
     try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-            if (!favorites.includes(id)) {
-                await supabase.from('event_likes').insert({ event_id: id, user_id: user.id });
-                setLikesCount(prev => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
-            } else {
-                await supabase.from('event_likes').delete().eq('event_id', id).eq('user_id', user.id);
-                setLikesCount(prev => ({ ...prev, [id]: Math.max(0, (prev[id] || 0) - 1) }));
-            }
+        if (!favorites.includes(id)) {
+            await supabase.from('event_likes').insert({ event_id: id, user_id: user.id });
+            setLikesCount(prev => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
+        } else {
+            await supabase.from('event_likes').delete().eq('event_id', id).eq('user_id', user.id);
+            setLikesCount(prev => ({ ...prev, [id]: Math.max(0, (prev[id] || 0) - 1) }));
         }
     } catch (err) {}
   };

@@ -34,6 +34,7 @@ import { TERMS_VERSION, PRIVACY_VERSION } from './lib/constants';
 import { PushOnboardingModal } from './components/PushOnboardingModal';
 import ErrorBoundary from './ErrorBoundary';
 import ResultDetailView from './views/ResultDetailView';
+import LoginRequiredModal from './components/LoginRequiredModal';
 
 const MASTER_EMAILS = ["kayquegusmao@icloud.com", "kayquegusmao276@gmail.com", "Kayquegusmao1@gmail.com", "maisvaquejada1@gmail.com", "contato@maisvaquejada.com.br"];
 
@@ -133,6 +134,7 @@ const App: React.FC = () => {
   const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [initializing, setInitializing] = useState(true);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [fatalError, setFatalError] = useState<string | null>(null);
   const [debugSplash, setDebugSplash] = useState<boolean>(false);
   const isFetchingProfile = useRef(false);
@@ -330,7 +332,8 @@ const App: React.FC = () => {
         if (session?.user) {
           await fetchProfile(session.user.id, session.user);
         } else {
-          setCurrentView(View.LOGIN);
+          // MODO VISITANTE: Se não tem sessão, vai direto para Eventos em vez de Login
+          setCurrentView(View.EVENTS);
           setInitializing(false);
         }
       } catch (err: any) {
@@ -443,8 +446,23 @@ const App: React.FC = () => {
       const eventData = e.detail?.event ?? null;
       const resultId = e.detail?.resultId ?? null;
 
-      if (!user && ![View.LOGIN, View.SIGNUP, View.FORGOT_PASSWORD, View.RECOVERY_ASSISTED, View.TERMS].includes(view)) {
-        setCurrentView(View.LOGIN);
+      const publicViews = [
+        View.EVENTS, 
+        View.NEWS, 
+        View.MERCADO, 
+        View.EVENT_DETAILS, 
+        View.STORE_DETAILS, 
+        View.RESULT_DETAIL,
+        View.LOGIN,
+        View.SIGNUP,
+        View.FORGOT_PASSWORD,
+        View.RECOVERY_ASSISTED,
+        View.TERMS,
+        View.AUTH_CALLBACK
+      ];
+
+      if (!user && !publicViews.includes(view)) {
+        setShowLoginModal(true);
         return;
       }
 
@@ -500,7 +518,17 @@ const App: React.FC = () => {
   // ViewRenderer agora é um componente de módulo (definido acima do App)
   // Passamos as props necessárias para evitar remontagem a cada render
 
-  const showNavbar = user && ![View.LOGIN, View.SIGNUP, View.FORGOT_PASSWORD, View.COMPLETE_PROFILE, View.BLOCKED_ACCOUNT, View.RECOVERY_ASSISTED, View.AD_CREATION, View.LEGAL_CONSENT].includes(currentView);
+  const showNavbar = ![
+    View.LOGIN, 
+    View.SIGNUP, 
+    View.FORGOT_PASSWORD, 
+    View.COMPLETE_PROFILE, 
+    View.BLOCKED_ACCOUNT, 
+    View.RECOVERY_ASSISTED, 
+    View.AD_CREATION, 
+    View.LEGAL_CONSENT,
+    View.AUTH_CALLBACK
+  ].includes(currentView);
 
   if (debugSplash) {
   return (
@@ -577,6 +605,11 @@ if (initializing) {
           <CallBar />
           <CallScreen />
           {user && user.profile_completed && <PushOnboardingModal userId={user.id} />}
+          
+          <LoginRequiredModal 
+            isOpen={showLoginModal} 
+            onClose={() => setShowLoginModal(false)} 
+          />
         </div>
       </CallProvider>
     </ErrorBoundary>

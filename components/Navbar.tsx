@@ -62,6 +62,15 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, user }) => {
   };
 
   const handleNav = (view: View) => {
+    // Áreas que exigem login
+    const restrictedViews = [View.SOCIAL, View.PROFILE, View.SETTINGS, View.MEDIA_CREATION];
+    
+    if (!user && restrictedViews.includes(view)) {
+      window.dispatchEvent(new CustomEvent('arena_show_login'));
+      setIsExpanded(false);
+      return;
+    }
+
     window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view } }));
     setIsExpanded(false);
   };

@@ -751,7 +751,13 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                             <p className="text-[10px] font-black uppercase text-[#D4AF37] tracking-[0.3em] mt-1">+VAQUEJADA</p>
                         </div>
                     </div>
-                    <button onClick={() => setShowCreateWizard(true)} className="bg-[#D4AF37] w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg active:scale-95 transition-transform"><span className="material-icons text-white">add</span></button>
+                    <button onClick={() => {
+                        if (!user) {
+                            window.dispatchEvent(new CustomEvent('arena_show_login'));
+                        } else {
+                            setShowCreateWizard(true);
+                        }
+                    }} className="bg-[#D4AF37] w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg active:scale-95 transition-transform"><span className="material-icons text-white">add</span></button>
                 </div>
                 {/* Search */}
                 <div className="relative">
