@@ -597,7 +597,12 @@ const AuthCallback: React.FC<{ onComplete: (userId: string, authUser: any) => vo
     setLogs(prev => [...prev.slice(-6), msg]);
   };
 
+  const hasHandledAuth = React.useRef(false);
+
   const handleAuth = async () => {
+    if (hasHandledAuth.current) return;
+    hasHandledAuth.current = true;
+
     try {
       addLog('Verificando URL de callback...');
       const url = new URL(window.location.href);
@@ -621,8 +626,12 @@ const AuthCallback: React.FC<{ onComplete: (userId: string, authUser: any) => vo
         const { data, error } = await supabase.auth.exchangeCodeForSession(code);
         
         if (error) {
-          addLog('Aviso na troca de código: ' + error.message);
-          // Não lançamos erro aqui, pois a sessão pode ter sido capturada pelo onAuthStateChange
+          // Ignora erro de "state already used" pois pode ter sido processado automaticamente pelo SDK
+          if (error.message.includes('already been used') || error.message.includes('flow_state_not_found')) {
+            addLog('Troca PKCE já processada anteriormente.');
+          } else {
+            addLog('Aviso na troca de código: ' + error.message);
+          }
         } else if (data?.session?.user) {
           addLog('Troca PKCE concluída com sucesso!');
           onComplete(data.session.user.id, data.session.user);
