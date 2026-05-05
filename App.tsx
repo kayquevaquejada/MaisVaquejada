@@ -393,22 +393,27 @@ const App: React.FC = () => {
         await Browser.close();
 
         // O Supabase pode retornar params no fragmento (hash) ou query string
-        const urlObj = new URL(url.replace('#', '?'));
+        // Usamos uma abordagem mais robusta para extrair tokens/codes
+        const rawUrl = url.replace('#', '?');
+        const urlObj = new URL(rawUrl);
         const code = urlObj.searchParams.get('code');
         const accessToken = urlObj.searchParams.get('access_token');
 
         if (code) {
+          console.log('[App] Deep Link: Código detectado, processando...');
           const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) {
             console.error('[App] Erro no exchangeCodeForSession:', error);
-            return;
+            // Mesmo com erro (ex: código já usado), tentamos pegar a sessão atual
           }
           
           const { data: sessionData } = await supabase.auth.getSession();
           if (sessionData.session?.user) {
+            console.log('[App] Deep Link: Sessão recuperada após exchange');
             fetchProfile(sessionData.session.user.id, sessionData.session.user);
           }
         } else if (accessToken) {
+          console.log('[App] Deep Link: Access Token detectado');
           // Se for implicit flow, aguarda um pouco e pega a sessão
           setTimeout(async () => {
             const { data: sessionData } = await supabase.auth.getSession();
@@ -416,6 +421,12 @@ const App: React.FC = () => {
               fetchProfile(sessionData.session.user.id, sessionData.session.user);
             }
           }, 500);
+        } else {
+          // Caso genérico: tenta apenas atualizar a sessão
+          const { data: sessionData } = await supabase.auth.getSession();
+          if (sessionData.session?.user) {
+            fetchProfile(sessionData.session.user.id, sessionData.session.user);
+          }
         }
       }
     });
@@ -590,7 +601,14 @@ const AuthCallback: React.FC<{ onComplete: (userId: string, authUser: any) => vo
     try {
       addLog('Verificando URL de callback...');
       const url = new URL(window.location.href);
-      const code = url.searchParams.get('code');
+      
+      // Tenta pegar 'code' tanto da query quanto do fragmento (alguns browsers/configs mudam isso)
+      let code = url.searchParams.get('code');
+      if (!code && window.location.hash.includes('code=')) {
+        const hashParams = new URLSearchParams(window.location.hash.substring(1).replace('?', '&'));
+        code = hashParams.get('code');
+      }
+
       const errorDescription = url.searchParams.get('error_description');
 
       if (errorDescription) {
@@ -603,8 +621,8 @@ const AuthCallback: React.FC<{ onComplete: (userId: string, authUser: any) => vo
         const { data, error } = await supabase.auth.exchangeCodeForSession(code);
         
         if (error) {
-          addLog('Erro na troca de código: ' + error.message);
-          // Não lançamos erro ainda, tentamos getSession como fallback
+          addLog('Aviso na troca de código: ' + error.message);
+          // Não lançamos erro aqui, pois a sessão pode ter sido capturada pelo onAuthStateChange
         } else if (data?.session?.user) {
           addLog('Troca PKCE concluída com sucesso!');
           onComplete(data.session.user.id, data.session.user);
@@ -612,27 +630,34 @@ const AuthCallback: React.FC<{ onComplete: (userId: string, authUser: any) => vo
         }
       }
 
-      addLog('Aguardando processamento da sessão...');
-      // Pequeno delay para garantir que o Supabase processou os dados da URL (especialmente se for fragmento)
-      await new Promise(r => setTimeout(r, 2000));
-      
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) throw sessionError;
-      
-      if (sessionData?.session?.user) {
-        addLog('Sessão validada com sucesso!');
-        onComplete(sessionData.session.user.id, sessionData.session.user);
-      } else {
-        addLog('Sessão não identificada, tentando getUser...');
-        const { data: { user }, error: userErr } = await supabase.auth.getUser();
-        if (user) {
-           addLog('Usuário recuperado com sucesso!');
-           onComplete(user.id, user);
-        } else {
-           addLog('Nenhuma sessão ou usuário encontrado.');
-           throw new Error('Não foi possível identificar sua sessão de login. Por favor, tente entrar novamente.');
+      // Fallback 1: Verificar se já temos um usuário (o SDK pode ter processado em background)
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (currentUser) {
+        addLog('Usuário já identificado pelo sistema.');
+        onComplete(currentUser.id, currentUser);
+        return;
+      }
+
+      addLog('Aguardando sincronização da sessão...');
+      // Delay adaptativo: verifica a cada 500ms até 3 segundos
+      for (let i = 0; i < 6; i++) {
+        await new Promise(r => setTimeout(r, 500));
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData?.session?.user) {
+          addLog('Sessão sincronizada com sucesso!');
+          onComplete(sessionData.session.user.id, sessionData.session.user);
+          return;
         }
+      }
+
+      // Fallback Final
+      addLog('Tentativa final de recuperação de sessão...');
+      const { data: lastCheck } = await supabase.auth.getSession();
+      
+      if (lastCheck?.session?.user) {
+        onComplete(lastCheck.session.user.id, lastCheck.session.user);
+      } else {
+        throw new Error('Não foi possível identificar sua sessão de login. Por favor, tente entrar novamente.');
       }
     } catch (err: any) {
       console.error('Erro no login:', err);

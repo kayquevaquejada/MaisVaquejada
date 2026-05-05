@@ -88,7 +88,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
       const isNative = Capacitor.isNativePlatform();
       const redirectTo = isNative 
         ? 'maisvaquejada://auth/callback' 
-        : window.location.origin;
+        : window.location.origin + '/auth/callback';
 
       if (isNative && Capacitor.getPlatform() === 'ios') {
         const { data, error } = await supabase.auth.signInWithOAuth({
