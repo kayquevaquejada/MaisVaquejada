@@ -308,10 +308,6 @@ const App: React.FC = () => {
           await Preferences.set({ key: 'app_installed_marker', value: 'true' });
         }
         
-        // ALERTA DE DIAGNÓSTICO (Remover após teste)
-        if (typeof window !== 'undefined') {
-           console.log('App URL:', window.location.href);
-        }
 
         // DETECÇÃO UNIVERSAL DE CALLBACK (Apple/Google)
         const hasAuthParams = window.location.hash.includes('access_token') || 
