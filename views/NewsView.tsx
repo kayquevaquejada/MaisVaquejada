@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import SponsorMarquee from '../components/SponsorMarquee';
 import AdsCarousel from '../components/AdsCarousel';
 
-const TABS = ['TUDO', 'EVENTOS', 'RESULTADOS', 'NOTÍCIAS'];
+const TABS = ['RESULTADOS', 'NOTÍCIAS'];
 
 interface NewsViewProps {
     user?: User | null;
