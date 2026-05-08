@@ -14,6 +14,7 @@ export default {
       colors: {
         'vaquejada-gold': '#ECA413',
         'vaquejada-dark': '#0F0A05',
+        'background-dark': '#0F0A05',
       },
     },
   },
