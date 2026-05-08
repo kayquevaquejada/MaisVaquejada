@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import AdsCarousel from '../components/AdsCarousel';
 import EventModal from '../components/EventModal';
 import CircuitPanel from '../components/CircuitPanel';
+import GuestCTA from '../components/GuestCTA';
 
 const MOCK_CIRCUITS: Circuito[] = [
   { id: 'todos', nome: 'Todos os circuitos', slug: 'todos', ativo: true, destaque: true, ordem: 0 },
@@ -198,6 +199,8 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
         <div className="-mx-6 border-b border-white/5 pb-4 mb-2">
             <AdsCarousel key="vaquejada_top_ads" targetPosition="vaquejada_top_carousel" />
         </div>
+
+        <GuestCTA />
 
         <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
           {STATES.map((uf, idx) => (

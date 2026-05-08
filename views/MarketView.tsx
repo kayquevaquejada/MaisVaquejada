@@ -3,6 +3,7 @@ import { View } from '../types';
 import { supabase } from '../lib/supabase';
 import AdsCarousel from '../components/AdsCarousel';
 import { compressImage } from '../lib/imageUtils';
+import GuestCTA from '../components/GuestCTA';
 
 const STATES = [
     'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
@@ -768,6 +769,8 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
 
             {/* Ads Carousel (Optional Banner) */}
             <AdsCarousel targetPosition="market_top_carousel" />
+
+            <GuestCTA />
 
             {/* Categories Filter */}
             <div className="px-6 py-4 overflow-x-auto hide-scrollbar flex gap-2">

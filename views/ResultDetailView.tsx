@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ResultItem, ResultCategory, ResultLine, View } from '../types';
 import { supabase } from '../lib/supabase';
+import GuestCTA from '../components/GuestCTA';
 
 interface ResultDetailViewProps {
   resultId?: string;
@@ -185,6 +186,8 @@ const ResultDetailView: React.FC<ResultDetailViewProps> = ({ resultId, onBack })
           </button>
         </div>
       </div>
+
+      <GuestCTA />
 
       {/* Indicadores / Métricas */}
       <div className="px-6 grid grid-cols-3 gap-3 mb-8">

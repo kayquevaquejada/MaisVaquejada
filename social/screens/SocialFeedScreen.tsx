@@ -17,6 +17,7 @@ import { SocialErrorBoundary } from '../components/SocialErrorBoundary';
 import { supabase } from '../../lib/supabase';
 import { SocialService } from '../services/SocialService';
 import { useCall } from '../../context/CallContext';
+import GuestCTA from '../../components/GuestCTA';
 
 interface SocialFeedScreenProps {
   user: any;
@@ -259,6 +260,8 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
         onStoryPress={setActiveStoryIndex} 
         onProfilePress={navigateToProfile}
       />
+
+      <GuestCTA />
 
       {/* Feed */}
       <main className="pb-20">

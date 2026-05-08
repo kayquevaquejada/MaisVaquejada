@@ -3,6 +3,7 @@ import { NewsItem, User, View } from '../types';
 import { supabase } from '../lib/supabase';
 import SponsorMarquee from '../components/SponsorMarquee';
 import AdsCarousel from '../components/AdsCarousel';
+import GuestCTA from '../components/GuestCTA';
 
 const TABS = ['RESULTADOS', 'NOTÍCIAS'];
 
@@ -338,6 +339,8 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
       <div className="-mx-0">
         <AdsCarousel key="news_top_ads" targetPosition="news_top_carousel" />
       </div>
+
+      <GuestCTA />
 
       {/* Conteúdo das notícias */}
       <div className="px-6 pt-6 space-y-6">

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { EventItem, User } from '../types';
 import { View } from '../types';
 import { supabase } from '../lib/supabase';
+import GuestCTA from '../components/GuestCTA';
 
 interface EventDetailViewProps {
   event: EventItem | null;
@@ -253,7 +254,7 @@ const EventDetailView: React.FC<EventDetailViewProps> = ({ event, user, onBack }
           </div>
         </div>
 
-
+        <GuestCTA />
 
         {/* Presença e Social */}
         <div className="bg-gradient-to-br from-[#ECA413] to-[#B87D0B] rounded-[40px] p-8 shadow-2xl mb-8 relative overflow-hidden group">
