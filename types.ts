@@ -220,6 +220,10 @@ export interface EventItem {
     month: string;
     day: string;
   };
+  date_month?: string;
+  date_day?: string;
+  start_date?: string;
+  end_date?: string;
   imageUrl: string; // Legacy
   image_url?: string; // New
   images?: string[]; // Legacy

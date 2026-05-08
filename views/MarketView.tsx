@@ -53,6 +53,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
     // Filters
     const [searchTerm, setSearchTerm] = useState('');
     const [activeFilterCat, setActiveFilterCat] = useState('all');
+    const [sortOrder, setSortOrder] = useState<'recent' | 'lowest' | 'highest' | 'most_viewed'>('recent');
     
     // Form State
     const [adData, setAdData] = useState({
@@ -264,25 +265,69 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
 
     // Filter Logic
     const filteredAds = useMemo(() => {
-        return publishedAds.filter(ad => {
-            if (activeFilterCat !== 'all') {
-                const cat = (ad.category || '').toUpperCase();
-                let matchCat = cat;
-                if (cat === 'CAVALOS') matchCat = 'ANIMAIS';
-                else if (cat === 'TRANSPORTE') matchCat = 'VEICULOS';
-                else if (cat === 'ALIMENTACAO') matchCat = 'ALIMENTACAO';
-                else if (cat === 'SERVIÇOS') matchCat = 'SERVICOS';
-                else if (cat === 'EQUIPAMENTOS') matchCat = 'EQUIPAMENTOS';
+        let result = [...publishedAds];
 
-                if (matchCat !== activeFilterCat) return false;
+        // 1. Filter by category
+        if (activeFilterCat !== 'all') {
+            result = result.filter(ad => {
+                const cat = (ad.category || '').toUpperCase();
+                const sub = (ad.subcategory || '').toUpperCase();
+                const title = (ad.title || '').toUpperCase();
+                
+                if (activeFilterCat === 'CAVALOS') {
+                    return cat === 'ANIMAIS' && (sub.includes('CAVALO') || title.includes('CAVALO') || title.includes('POTRO') || title.includes('ÉGUA'));
+                }
+                if (activeFilterCat === 'CAMINHÕES') {
+                    return cat === 'VEICULOS' && (sub.includes('CAMINHÃO') || title.includes('CAMINHÃO') || title.includes('CAMINHAO'));
+                }
+                if (activeFilterCat === 'ARREIOS') {
+                    return cat === 'EQUIPAMENTOS' && (sub.includes('ARREIO') || sub.includes('SELA') || title.includes('ARREIO') || title.includes('SELA'));
+                }
+                if (activeFilterCat === 'ACESSÓRIOS') {
+                    return cat === 'EQUIPAMENTOS' && (sub.includes('ACESSÓRIO') || title.includes('ACESSÓRIO'));
+                }
+                if (activeFilterCat === 'ANIMAIS') return cat === 'ANIMAIS';
+                if (activeFilterCat === 'OUTROS') return cat === 'OUTROS' || cat === 'SERVICOS';
+                
+                return cat === activeFilterCat;
+            });
+        }
+
+        // 2. Filter by search term
+        if (searchTerm) {
+            const term = searchTerm.toLowerCase();
+            result = result.filter(ad => 
+                ad.title?.toLowerCase().includes(term) || 
+                ad.description?.toLowerCase().includes(term) || 
+                ad.category?.toLowerCase().includes(term) || 
+                ad.subcategory?.toLowerCase().includes(term)
+            );
+        }
+
+        // 3. Sort
+        result.sort((a, b) => {
+            if (sortOrder === 'recent') {
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
             }
-            if (searchTerm) {
-                const term = searchTerm.toLowerCase();
-                return ad.title?.toLowerCase().includes(term) || ad.description?.toLowerCase().includes(term) || ad.category?.toLowerCase().includes(term) || ad.subcategory?.toLowerCase().includes(term);
+            if (sortOrder === 'lowest' || sortOrder === 'highest') {
+                // Parse price strings like "R$ 1.500,00" to numbers
+                const getPriceNum = (p: string) => {
+                    if (!p || p === 'A COMBINAR') return sortOrder === 'lowest' ? 999999999 : 0;
+                    return parseFloat(p.replace(/[^0-9,-]+/g, "").replace(",", "."));
+                };
+                const pA = getPriceNum(a.price);
+                const pB = getPriceNum(b.price);
+                return sortOrder === 'lowest' ? pA - pB : pB - pA;
             }
-            return true;
+            if (sortOrder === 'most_viewed') {
+                // Mock since we don't have views count yet, fallback to likes/random or id
+                return (b.id || '').localeCompare(a.id || '');
+            }
+            return 0;
         });
-    }, [publishedAds, activeFilterCat, searchTerm, selectedStore]);
+
+        return result;
+    }, [publishedAds, activeFilterCat, searchTerm, selectedStore, sortOrder]);
 
 
     // ==========================================
@@ -294,183 +339,234 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
         const isOwnerOrAdmin = user?.id === viewingAd.user_id || user?.role === 'ADMIN' || user?.role === 'ADMIN_MASTER' || user?.isMaster;
 
         return (
-            <div className="absolute inset-0 z-[100] bg-[#F5F1E9] flex flex-col animate-in slide-in-from-right duration-300">
-                <div className="flex-1 overflow-y-auto pb-32">
+            <div className="absolute inset-0 z-[100] bg-[#0F0A05] flex flex-col animate-in slide-in-from-right duration-300">
+                <div className="flex-1 overflow-y-auto pb-32 hide-scrollbar">
+                    {/* 1. HERO IMAGE PREMIUM */}
                     <div className="relative">
-                        <div className="absolute top-6 left-6 z-20">
-                            <button onClick={() => setViewingAd(null)} className="w-10 h-10 rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center text-white shadow-lg">
+                        {/* Action Buttons Top */}
+                        <div className="absolute top-8 left-6 z-20 flex gap-3">
+                            <button onClick={() => setViewingAd(null)} className="w-12 h-12 rounded-full bg-[#0F0A05]/40 backdrop-blur-md flex items-center justify-center text-white border border-white/10 shadow-[0_0_20px_rgba(0,0,0,0.5)] transition-transform active:scale-90">
                                 <span className="material-icons">arrow_back</span>
                             </button>
                         </div>
-                        {isOwnerOrAdmin && (
-                            <div className="absolute top-6 right-6 z-20">
-                                <button onClick={async () => { await deleteAdDirectly(viewingAd); setViewingAd(null); }} className="w-10 h-10 rounded-full bg-red-500/80 backdrop-blur-md flex items-center justify-center text-white shadow-lg active:scale-90">
+                        <div className="absolute top-8 right-6 z-20 flex gap-3">
+                            {isOwnerOrAdmin && (
+                                <button onClick={async () => { await deleteAdDirectly(viewingAd); setViewingAd(null); }} className="w-12 h-12 rounded-full bg-red-500/40 backdrop-blur-md flex items-center justify-center text-white border border-red-500/50 shadow-lg active:scale-90">
                                     <span className="material-icons text-xl">delete</span>
                                 </button>
-                            </div>
-                        )}
+                            )}
+                            <button onClick={() => {
+                                if (navigator.share) navigator.share({ title: viewingAd.title, url: window.location.href });
+                            }} className="w-12 h-12 rounded-full bg-[#0F0A05]/40 backdrop-blur-md flex items-center justify-center text-white border border-white/10 shadow-[0_0_20px_rgba(0,0,0,0.5)] transition-transform active:scale-90">
+                                <span className="material-icons">share</span>
+                            </button>
+                        </div>
 
-                        <div className="h-[380px] relative bg-neutral-900 group">
+                        <div className="h-[55vh] relative bg-[#1A1108] group overflow-hidden rounded-b-[40px] shadow-2xl">
                             {Array.isArray(viewingAd.photos) && viewingAd.photos.length > 1 ? (
                                 <div className="flex w-full h-full overflow-x-auto snap-x snap-mandatory hide-scrollbar" onScroll={(e: any) => setCurrentPhotoIdx(Math.round(e.target.scrollLeft / e.target.offsetWidth))}>
                                     {viewingAd.photos.map((ph: string, idx: number) => (
-                                        <div key={idx} className="w-full h-full shrink-0 snap-center" onClick={() => setFullscreenGallery({ photos: viewingAd.photos, index: idx })}>
+                                        <div key={idx} className="w-full h-full shrink-0 snap-center relative" onClick={() => setFullscreenGallery({ photos: viewingAd.photos, index: idx })}>
                                             <img src={ph} className="w-full h-full object-cover" alt="Preview" />
                                         </div>
                                     ))}
-                                    <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-2 z-10 bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-md">
+                                    <div className="absolute top-8 left-1/2 -translate-x-1/2 flex gap-1.5 z-10 bg-[#0F0A05]/40 px-3 py-1.5 rounded-full backdrop-blur-md border border-white/10">
                                         {viewingAd.photos.map((_: any, idx: number) => (
-                                            <div key={idx} className={`w-2 h-2 rounded-full transition-all duration-300 ${idx === currentPhotoIdx ? 'bg-[#D4AF37] w-4' : 'bg-white/40'}`} />
+                                            <div key={idx} className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${idx === currentPhotoIdx ? 'bg-[#D4AF37] w-4 shadow-[0_0_8px_#D4AF37]' : 'bg-white/40'}`} />
                                         ))}
                                     </div>
                                 </div>
                             ) : (
                                 <img src={viewingAd.img || viewingAd.photos?.[0]} className="w-full h-full object-cover" onClick={() => setFullscreenGallery({ photos: viewingAd.photos?.length ? viewingAd.photos : [viewingAd.img || ''], index: 0 })} alt="Preview" />
                             )}
-                            <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#F5F1E9] to-transparent"></div>
-                            <div className="absolute bottom-6 left-6 right-6 flex justify-between items-end">
-                                <div>
-                                    {viewingAd.product_type === 'ingresso' && <span className="bg-blue-500 text-white text-[10px] font-black px-2 py-1 rounded uppercase tracking-widest mb-2 inline-block shadow-lg mr-2">INGRESSO</span>}
-                                    {store?.verificado && <span className="bg-green-500 text-white text-[10px] font-black px-2 py-1 rounded uppercase tracking-widest mb-2 inline-block shadow-lg">LOJA OFICIAL</span>}
-                                    <h2 className="text-[#1A1108] text-2xl font-black uppercase leading-tight">{viewingAd.title}</h2>
+                            {/* Cinematic Gradient Overlay */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-[#0F0A05] via-[#0F0A05]/20 to-transparent pointer-events-none"></div>
+                            
+                            <div className="absolute bottom-8 left-6 right-6">
+                                <div className="flex flex-wrap gap-2 mb-3">
+                                    <span className="bg-[#D4AF37] text-[#0F0A05] text-[9px] font-black px-3 py-1 rounded shadow-lg uppercase tracking-widest">DESTAQUE</span>
+                                    {viewingAd.product_type === 'ingresso' && <span className="bg-blue-600/90 backdrop-blur-sm text-white text-[9px] font-black px-3 py-1 rounded shadow-lg uppercase tracking-widest border border-blue-400/30">INGRESSO</span>}
+                                    {store?.verificado && <span className="bg-[#0F0A05]/60 backdrop-blur-sm text-[#D4AF37] text-[9px] font-black px-3 py-1 rounded border border-[#D4AF37]/50 shadow-lg uppercase tracking-widest flex items-center gap-1">
+                                        <span className="material-icons text-[10px]">verified</span> OFICIAL
+                                    </span>}
                                 </div>
+                                <h1 className="text-white text-4xl font-black uppercase leading-none drop-shadow-2xl">{viewingAd.title}</h1>
                             </div>
                         </div>
                     </div>
 
-                    <div className="px-6 pt-2">
-                        <div className="flex justify-between items-start mb-6">
+                    <div className="px-6 pt-6 space-y-6">
+                        {/* 3. CARD PREMIUM DE PREÇO E LOCALIZAÇÃO */}
+                        <div className="bg-[#1A1108]/80 backdrop-blur-xl p-5 rounded-3xl border border-white/5 shadow-2xl flex justify-between items-center relative overflow-hidden">
+                            <div className="absolute -right-10 -top-10 w-32 h-32 bg-[#D4AF37]/10 rounded-full blur-2xl"></div>
                             <div>
-                                <p className="text-[10px] font-black text-[#1A1108]/40 uppercase tracking-widest mb-1">VALOR</p>
-                                <p className="text-3xl font-black text-[#D4AF37]">{viewingAd.price}</p>
+                                <p className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-1">VALOR DO INVESTIMENTO</p>
+                                <p className="text-4xl font-black text-[#D4AF37] tracking-tight drop-shadow-md">{viewingAd.price}</p>
                             </div>
-                            <div className="flex flex-col items-end">
-                                <div className="flex items-center gap-1 text-[#1A1108]/60 mb-1">
-                                    <span className="material-icons text-sm">place</span>
-                                    <span className="text-xs font-bold uppercase">{viewingAd.loc}</span>
+                            <div className="flex flex-col items-end gap-1 text-right">
+                                <div className="flex items-center gap-1.5 text-white/50 bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
+                                    <span className="material-icons text-[12px] text-[#D4AF37]">place</span>
+                                    <span className="text-[10px] font-bold uppercase tracking-wide">{viewingAd.loc}</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="space-y-6">
-                            {/* Loja / Seller Info */}
-                            {store ? (
-                                <div className="bg-white p-4 rounded-2xl shadow-sm border border-[#D4AF37]/20 flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-12 h-12 rounded-full overflow-hidden border border-[#D4AF37]">
-                                            <img src={store.logo_url || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" />
+                        {/* 4. CARD DO VENDEDOR */}
+                        {store ? (
+                            <div className="bg-gradient-to-r from-[#1A1108] to-[#1A1108]/80 p-4 rounded-3xl border border-[#D4AF37]/20 shadow-lg flex items-center justify-between group">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-[#D4AF37] shadow-[0_0_15px_rgba(212,175,55,0.2)]">
+                                        <img src={store.logo_url || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-1.5 mb-0.5">
+                                            <p className="text-sm font-black uppercase text-white tracking-wide">{store.nome}</p>
+                                            <span className="material-icons text-[12px] text-[#D4AF37]">verified</span>
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-black uppercase text-[#1A1108] tracking-wide">{store.nome}</p>
-                                            <div className="flex items-center gap-1">
-                                                <span className="material-icons text-[10px] text-green-500">store</span>
-                                                <p className="text-[9px] font-bold text-[#1A1108]/60">Loja Parceira</p>
-                                            </div>
+                                        <div className="flex items-center gap-1 text-[#D4AF37]/80">
+                                            <span className="material-icons text-[10px]">store</span>
+                                            <p className="text-[9px] font-black uppercase tracking-widest">Loja Oficial Parceira</p>
                                         </div>
                                     </div>
-                                    <button onClick={() => {
-                                        window.dispatchEvent(new CustomEvent('arena_navigate', { 
-                                            detail: { 
-                                                view: 'STORE_DETAILS', 
-                                                store: store 
-                                            } 
-                                        }));
-                                    }} className="text-[10px] font-black text-[#D4AF37] uppercase tracking-widest border border-[#D4AF37]/30 px-3 py-1.5 rounded-lg">Visitar Loja</button>
                                 </div>
-                            ) : (
-                                <div className="bg-white p-4 rounded-2xl shadow-sm border border-[#1A1108]/5 flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div onClick={() => navigateToProfile(seller.username)} className="w-12 h-12 rounded-full bg-neutral-200 overflow-hidden border border-[#D4AF37]/30 cursor-pointer">
-                                            <img src={seller.avatar_url || `https://ui-avatars.com/api/?name=${seller.name}&background=random`} className="w-full h-full object-cover" />
-                                        </div>
-                                        <div>
-                                            <p onClick={() => navigateToProfile(seller.username)} className="text-sm font-black uppercase text-[#1A1108] cursor-pointer hover:underline">{seller.name || 'Anunciante'}</p>
-                                            <p className="text-[9px] font-bold text-[#1A1108]/40">Vendedor</p>
-                                        </div>
-                                    </div>
-                                    <button onClick={() => navigateToProfile(seller.username)} className="text-[10px] font-black text-[#1A1108]/40 uppercase border border-[#1A1108]/10 px-3 py-1.5 rounded-lg">Ver Perfil</button>
-                                </div>
-                            )}
-
-                            {/* Details Grid */}
-                            <div>
-                                <h3 className="text-sm font-black text-[#1A1108] uppercase tracking-wide mb-3 border-l-4 border-[#D4AF37] pl-3">Detalhes</h3>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="bg-white p-3 rounded-xl border border-[#1A1108]/5">
-                                        <p className="text-[9px] font-black text-[#1A1108]/30 uppercase tracking-widest mb-1">CATEGORIA</p>
-                                        <p className="text-xs font-bold text-[#1A1108]">{viewingAd.category}</p>
-                                    </div>
-                                    {viewingAd.subcategory && (
-                                        <div className="bg-white p-3 rounded-xl border border-[#1A1108]/5">
-                                            <p className="text-[9px] font-black text-[#1A1108]/30 uppercase tracking-widest mb-1">TIPO</p>
-                                            <p className="text-xs font-bold text-[#1A1108]">{viewingAd.subcategory}</p>
-                                        </div>
-                                    )}
-                                    {/* Render Metadata Dynamic Fields */}
-                                    {viewingAd.metadata && Object.entries(viewingAd.metadata).map(([key, val]: any) => {
-                                        if (!val) return null;
-                                        // Translate keys
-                                        const labels: any = { estado_uso: 'CONDIÇÃO', sexo: 'SEXO', raca: 'RAÇA', ano: 'ANO', marca: 'MARCA' };
-                                        const label = labels[key] || key.toUpperCase();
-                                        return (
-                                            <div key={key} className="bg-white p-3 rounded-xl border border-[#1A1108]/5">
-                                                <p className="text-[9px] font-black text-[#1A1108]/30 uppercase tracking-widest mb-1">{label}</p>
-                                                <p className="text-xs font-bold text-[#1A1108]">{String(val).toUpperCase()}</p>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
+                                <button onClick={() => {
+                                    window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'STORE_DETAILS', store: store } }));
+                                }} className="w-10 h-10 rounded-full bg-[#D4AF37]/10 flex items-center justify-center text-[#D4AF37] group-hover:bg-[#D4AF37] group-hover:text-[#0F0A05] transition-colors border border-[#D4AF37]/30">
+                                    <span className="material-icons text-xl">arrow_forward</span>
+                                </button>
                             </div>
+                        ) : (
+                            <div className="bg-[#1A1108] p-4 rounded-3xl border border-white/5 shadow-lg flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div onClick={() => navigateToProfile(seller.username)} className="w-14 h-14 rounded-full bg-[#0F0A05] overflow-hidden border border-white/10 cursor-pointer">
+                                        <img src={seller.avatar_url || `https://ui-avatars.com/api/?name=${seller.name}&background=random`} className="w-full h-full object-cover" />
+                                    </div>
+                                    <div>
+                                        <p onClick={() => navigateToProfile(seller.username)} className="text-sm font-black uppercase text-white cursor-pointer hover:text-[#D4AF37] transition-colors">{seller.name || 'Anunciante'}</p>
+                                        <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mt-0.5">Vendedor</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => navigateToProfile(seller.username)} className="text-[9px] font-black text-white/60 uppercase tracking-widest border border-white/10 px-4 py-2 rounded-xl hover:bg-white/5 transition-colors">Ver Perfil</button>
+                            </div>
+                        )}
 
-                            <div className="pb-10">
-                                <h3 className="text-sm font-black text-[#1A1108] uppercase tracking-wide mb-3 border-l-4 border-[#D4AF37] pl-3">Descrição</h3>
-                                <p className="text-sm text-[#1A1108]/70 leading-relaxed font-medium whitespace-pre-wrap">
-                                    {viewingAd.description || 'Sem descrição.'}
-                                </p>
+                        {/* 6. INFORMAÇÕES DO ANIMAL / DETALHES GRID PREMIUM */}
+                        <div className="bg-[#1A1108]/50 rounded-3xl p-5 border border-white/5">
+                            <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                                <span className="material-icons text-[14px] text-[#D4AF37]">info</span>
+                                Ficha Técnica
+                            </h3>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                <div className="bg-[#0F0A05] p-3.5 rounded-2xl border border-white/5 flex flex-col justify-center">
+                                    <span className="material-icons text-white/20 text-lg mb-2">category</span>
+                                    <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-0.5">CATEGORIA</p>
+                                    <p className="text-xs font-bold text-white truncate">{viewingAd.category}</p>
+                                </div>
+                                {viewingAd.subcategory && (
+                                    <div className="bg-[#0F0A05] p-3.5 rounded-2xl border border-white/5 flex flex-col justify-center">
+                                        <span className="material-icons text-white/20 text-lg mb-2">sell</span>
+                                        <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-0.5">TIPO</p>
+                                        <p className="text-xs font-bold text-white truncate">{viewingAd.subcategory}</p>
+                                    </div>
+                                )}
+                                {/* Dynamic Metadata Fields */}
+                                {viewingAd.metadata && Object.entries(viewingAd.metadata).map(([key, val]: any) => {
+                                    if (!val) return null;
+                                    const ICONS: any = { estado_uso: 'handyman', sexo: 'male', raca: 'pets', ano: 'calendar_month', marca: 'stars' };
+                                    const labels: any = { estado_uso: 'CONDIÇÃO', sexo: 'SEXO', raca: 'RAÇA', ano: 'ANO', marca: 'MARCA' };
+                                    const label = labels[key] || key.toUpperCase();
+                                    const icon = ICONS[key] || 'label';
+                                    return (
+                                        <div key={key} className="bg-[#0F0A05] p-3.5 rounded-2xl border border-white/5 flex flex-col justify-center">
+                                            <span className="material-icons text-[#D4AF37]/50 text-lg mb-2">{icon}</span>
+                                            <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-0.5">{label}</p>
+                                            <p className="text-xs font-bold text-white truncate">{String(val).toUpperCase()}</p>
+                                        </div>
+                                    )
+                                })}
                             </div>
                         </div>
+
+                        {/* 5. DESCRIÇÃO */}
+                        <div className="bg-[#1A1108]/50 rounded-3xl p-6 border border-white/5">
+                            <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                                <span className="material-icons text-[14px] text-[#D4AF37]">description</span>
+                                Descrição
+                            </h3>
+                            <p className="text-sm text-white/80 leading-relaxed font-medium whitespace-pre-wrap">
+                                {viewingAd.description || 'Sem descrição.'}
+                            </p>
+                        </div>
+
+                        {/* 7. MINI GALERIA PREMIUM */}
+                        {Array.isArray(viewingAd.photos) && viewingAd.photos.length > 1 && (
+                            <div className="pt-2">
+                                <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mb-4">Galeria de Fotos</h3>
+                                <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-4">
+                                    {viewingAd.photos.map((ph: string, idx: number) => (
+                                        <div 
+                                            key={`thumb-${idx}`} 
+                                            onClick={() => setFullscreenGallery({ photos: viewingAd.photos, index: idx })}
+                                            className="w-24 h-24 shrink-0 rounded-2xl overflow-hidden border border-white/10 relative group cursor-pointer"
+                                        >
+                                            <img src={ph} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="Thumbnail" />
+                                            <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors"></div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        
+                        {/* Espaçamento extra para não colar na navbar fixa */}
+                        <div className="h-10"></div>
                     </div>
                 </div>
 
-                <div className="p-6 pb-8 bg-white border-t border-[#1A1108]/5 flex gap-3 z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
-                    <button onClick={() => toggleFavorite(viewingAd.title)} className={`w-14 h-14 rounded-xl bg-[#1A1108]/5 flex items-center justify-center ${favorites.includes(viewingAd.title) ? 'text-red-500' : 'text-[#1A1108]/40'}`}>
-                        <span className="material-icons">{favorites.includes(viewingAd.title) ? 'favorite' : 'favorite_border'}</span>
-                    </button>
-                    <button
-                        onClick={() => window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'SOCIAL', openDM: seller.username } }))}
-                        className="flex-1 bg-[#D4AF37] text-white rounded-xl flex items-center justify-center gap-2 font-black uppercase tracking-widest shadow-lg shadow-[#D4AF37]/20"
-                    >
-                        <span className="material-icons text-lg">chat_bubble</span>
-                        <span className="text-xs">Negociar no Chat</span>
-                    </button>
+                {/* 8. BARRA INFERIOR FIXA (Com buraco no meio para a Casinha Global) */}
+                <div className="absolute bottom-0 left-0 right-0 p-4 pb-8 bg-gradient-to-t from-[#0F0A05] via-[#0F0A05]/95 to-transparent flex justify-between items-end z-40 pointer-events-none">
+                    {/* Botão Favorito - Esquerda */}
+                    <div className="w-[30%] flex justify-start pointer-events-auto">
+                        <button onClick={() => toggleFavorite(viewingAd.title)} className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all backdrop-blur-md border ${favorites.includes(viewingAd.title) ? 'bg-[#1A1108] border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.2)] text-red-500' : 'bg-[#1A1108]/80 border-white/10 text-white/40 hover:text-white'}`}>
+                            <span className="material-icons text-2xl">{favorites.includes(viewingAd.title) ? 'favorite' : 'favorite_border'}</span>
+                        </button>
+                    </div>
+
+                    {/* Espaço Vazio Central (Aprox 80-100px para a casinha flutuante global) */}
+                    <div className="w-[20%] max-w-[100px] h-14"></div>
+
+                    {/* Botão Chat - Direita */}
+                    <div className="flex-1 flex justify-end pointer-events-auto">
+                        <button
+                            onClick={() => window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'SOCIAL', openDM: seller.username } }))}
+                            className="w-full max-w-[200px] h-14 bg-gradient-to-r from-[#D4AF37] to-[#AA8A2E] text-[#0F0A05] rounded-2xl flex items-center justify-center gap-2 font-black uppercase tracking-widest shadow-[0_0_20px_rgba(212,175,55,0.3)] active:scale-95 transition-transform border border-white/20 relative overflow-hidden group"
+                        >
+                            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
+                            <span className="material-icons text-xl relative z-10">forum</span>
+                            <span className="text-[10px] relative z-10 mt-0.5">Falar no Chat</span>
+                        </button>
+                    </div>
                 </div>
 
+                {/* FULLSCREEN GALLERY PREMIUM */}
                 {fullscreenGallery && (
                     <div 
-                        className="fixed inset-0 z-[1000] bg-black/95 flex flex-col items-center justify-center" 
+                        className="fixed inset-0 z-[1000] bg-[#0F0A05]/95 backdrop-blur-xl flex flex-col items-center justify-center animate-in fade-in duration-300" 
                         onClick={() => setFullscreenGallery(null)}
                         onTouchStart={(e) => setTouchStart(e.targetTouches[0].clientX)}
                         onTouchEnd={(e) => {
                             if (touchStart === null) return;
                             const distance = touchStart - e.changedTouches[0].clientX;
-                            const isLeftSwipe = distance > 50;
-                            const isRightSwipe = distance < -50;
-                            if (isLeftSwipe) {
-                                e.stopPropagation();
-                                setFullscreenGallery(prev => prev ? {...prev, index: (prev.index + 1) % prev.photos.length} : null);
-                            } else if (isRightSwipe) {
-                                e.stopPropagation();
-                                setFullscreenGallery(prev => prev ? {...prev, index: (prev.index - 1 + prev.photos.length) % prev.photos.length} : null);
-                            }
+                            if (distance > 50) { e.stopPropagation(); setFullscreenGallery(prev => prev ? {...prev, index: (prev.index + 1) % prev.photos.length} : null); } 
+                            else if (distance < -50) { e.stopPropagation(); setFullscreenGallery(prev => prev ? {...prev, index: (prev.index - 1 + prev.photos.length) % prev.photos.length} : null); }
                             setTouchStart(null);
                         }}
                     >
-                        <button onClick={() => setFullscreenGallery(null)} className="absolute top-10 right-10 text-white p-2 z-[1010]"><span className="material-icons text-3xl">close</span></button>
+                        <button onClick={() => setFullscreenGallery(null)} className="absolute top-12 right-6 w-12 h-12 rounded-full bg-[#1A1108]/80 text-white flex items-center justify-center z-[1010] border border-white/10 active:scale-90"><span className="material-icons">close</span></button>
                         
                         {fullscreenGallery.photos.length > 1 && (
                             <>
-                                <button onClick={(e) => { e.stopPropagation(); setFullscreenGallery(prev => prev ? {...prev, index: (prev.index - 1 + prev.photos.length) % prev.photos.length} : null) }} className="absolute left-4 top-1/2 -translate-y-1/2 text-white p-3 bg-black/50 rounded-full z-[1010]"><span className="material-icons">chevron_left</span></button>
-                                <button onClick={(e) => { e.stopPropagation(); setFullscreenGallery(prev => prev ? {...prev, index: (prev.index + 1) % prev.photos.length} : null) }} className="absolute right-4 top-1/2 -translate-y-1/2 text-white p-3 bg-black/50 rounded-full z-[1010]"><span className="material-icons">chevron_right</span></button>
+                                <button onClick={(e) => { e.stopPropagation(); setFullscreenGallery(prev => prev ? {...prev, index: (prev.index - 1 + prev.photos.length) % prev.photos.length} : null) }} className="absolute left-4 top-1/2 -translate-y-1/2 text-white w-12 h-12 flex items-center justify-center bg-[#1A1108]/80 rounded-full z-[1010] border border-white/10 active:scale-90"><span className="material-icons">chevron_left</span></button>
+                                <button onClick={(e) => { e.stopPropagation(); setFullscreenGallery(prev => prev ? {...prev, index: (prev.index + 1) % prev.photos.length} : null) }} className="absolute right-4 top-1/2 -translate-y-1/2 text-white w-12 h-12 flex items-center justify-center bg-[#1A1108]/80 rounded-full z-[1010] border border-white/10 active:scale-90"><span className="material-icons">chevron_right</span></button>
                             </>
                         )}
                         
@@ -479,16 +575,16 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                                 <img 
                                     key={idx} 
                                     src={ph} 
-                                    className={`absolute max-w-full max-h-[85vh] object-contain transition-opacity duration-300 pointer-events-none ${idx === fullscreenGallery.index ? 'opacity-100 z-10' : 'opacity-0 z-0'}`} 
+                                    className={`absolute max-w-full max-h-[85vh] object-contain transition-all duration-500 pointer-events-none rounded-xl ${idx === fullscreenGallery.index ? 'opacity-100 scale-100 z-10 shadow-2xl' : 'opacity-0 scale-95 z-0'}`} 
                                     alt={`zoom-${idx}`} 
                                 />
                             ))}
                         </div>
 
                         {fullscreenGallery.photos.length > 1 && (
-                            <div className="absolute bottom-10 flex gap-2 z-[1010]">
+                            <div className="absolute bottom-12 flex gap-2 z-[1010] bg-[#1A1108]/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/10">
                                 {fullscreenGallery.photos.map((_, idx) => (
-                                    <div key={idx} className={`w-2 h-2 rounded-full transition-all ${idx === fullscreenGallery.index ? 'bg-white scale-125' : 'bg-white/30'}`} />
+                                    <div key={idx} className={`w-2 h-2 rounded-full transition-all duration-300 ${idx === fullscreenGallery.index ? 'bg-[#D4AF37] w-4 shadow-[0_0_8px_#D4AF37]' : 'bg-white/30'}`} />
                                 ))}
                             </div>
                         )}
@@ -740,72 +836,155 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
     // ==========================================
     // RENDER: MAIN FEED
     // ==========================================
+    // ==========================================
+    // RENDER: MAIN FEED
+    // ==========================================
+    
+    const VISUAL_CATEGORIES = [
+        { id: 'all', label: 'Todos', icon: 'apps' },
+        { id: 'CAVALOS', label: 'Cavalos', icon: 'pets' },
+        { id: 'CAMINHÕES', label: 'Caminhões', icon: 'local_shipping' },
+        { id: 'ARREIOS', label: 'Arreios', icon: 'shopping_bag' },
+        { id: 'ACESSÓRIOS', label: 'Acessórios', icon: 'category' },
+        { id: 'ANIMAIS', label: 'Animais', icon: 'cruelty_free' },
+        { id: 'OUTROS', label: 'Outros', icon: 'more_horiz' }
+    ];
+
+    const highlights = publishedAds.length > 0 ? [...publishedAds].sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 4) : [];
+
     return (
-        <div className="min-h-full pb-24 relative bg-[#F5F1E9]">
-            {/* Header Sticky */}
-            <div className="sticky top-0 z-40 bg-[#1A1108] text-white px-6 pt-12 pb-4 shadow-xl">
-                <div className="flex justify-between items-center mb-4">
-                    <div className="flex items-center gap-2">
-                        <span className="material-icons text-[#D4AF37] text-3xl">storefront</span>
+        <div className="min-h-full pb-24 relative bg-[#0F0A05]">
+            {/* Header Sticky Premium */}
+            <div className="sticky top-0 z-40 bg-[#0F0A05]/90 backdrop-blur-xl border-b border-white/5 pt-12 pb-4 shadow-2xl">
+                <div className="px-6 flex justify-between items-center mb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#D4AF37]/20 to-black/40 border border-[#D4AF37]/30 flex items-center justify-center shadow-lg">
+                            <span className="material-icons text-[#D4AF37] text-xl drop-shadow-md">storefront</span>
+                        </div>
                         <div>
-                            <h1 className="text-3xl font-black italic uppercase tracking-tight leading-none">MERCADO</h1>
-                            <p className="text-[10px] font-black uppercase text-[#D4AF37] tracking-[0.3em] mt-1">+VAQUEJADA</p>
+                            <h1 className="text-2xl font-black italic uppercase tracking-tighter text-white leading-none">MERCADO</h1>
+                            <p className="text-[9px] font-black uppercase text-[#D4AF37] tracking-[0.3em] mt-0.5">+VAQUEJADA PREMIUM</p>
                         </div>
                     </div>
-                    <button onClick={() => {
-                        if (!user) {
-                            window.dispatchEvent(new CustomEvent('arena_show_login'));
-                        } else {
-                            setShowCreateWizard(true);
-                        }
-                    }} className="bg-[#D4AF37] w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg active:scale-95 transition-transform"><span className="material-icons text-white">add</span></button>
+                    <button 
+                        onClick={() => {
+                            if (!user) window.dispatchEvent(new CustomEvent('arena_show_login'));
+                            else setShowCreateWizard(true);
+                        }} 
+                        className="bg-gradient-to-r from-[#D4AF37] to-[#AA8A2E] px-4 h-10 rounded-xl flex items-center gap-2 shadow-lg shadow-[#D4AF37]/20 active:scale-95 transition-transform border border-white/20"
+                    >
+                        <span className="material-icons text-[#0F0A05] text-sm">add_circle</span>
+                        <span className="text-[#0F0A05] font-black uppercase tracking-widest text-[10px]">Anunciar</span>
+                    </button>
                 </div>
-                {/* Search */}
-                <div className="relative">
-                    <span className="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-white/40">search</span>
-                    <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} type="text" placeholder="Buscar cavalos, caminhões, arreios..." className="w-full bg-white/10 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-sm font-bold text-white placeholder:text-white/40 outline-none focus:border-[#D4AF37] transition-all" />
+                {/* Search Premium */}
+                <div className="px-6 relative group">
+                    <span className="material-icons absolute left-10 top-1/2 -translate-y-1/2 text-white/30 group-focus-within:text-[#D4AF37] transition-colors">search</span>
+                    <input 
+                        value={searchTerm} 
+                        onChange={e => setSearchTerm(e.target.value)} 
+                        type="text" 
+                        placeholder="Buscar cavalos, caminhões, arreios..." 
+                        className="w-full bg-[#1A1108] border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-sm font-bold text-white placeholder:text-white/30 outline-none focus:border-[#D4AF37]/50 focus:bg-[#1A1108]/80 shadow-inner transition-all" 
+                    />
                 </div>
             </div>
 
-            {/* Ads Carousel (Optional Banner) */}
-            <AdsCarousel targetPosition="market_top_carousel" />
+            {/* Top Banners */}
+            <div className="pt-4">
+                <AdsCarousel targetPosition="market_top_carousel" />
+            </div>
 
             <GuestCTA />
 
+            {/* Categorias Circulares Premium */}
+            <div className="py-6">
+                <div className="px-6 flex justify-between items-center mb-4">
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Explorar por Categoria</h3>
+                </div>
+                <div className="flex gap-4 overflow-x-auto hide-scrollbar px-6 pb-2">
+                    {VISUAL_CATEGORIES.map(cat => (
+                        <button 
+                            key={cat.id} 
+                            onClick={() => setActiveFilterCat(cat.id)} 
+                            className="flex flex-col items-center gap-2 group outline-none"
+                        >
+                            <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 border-2 ${activeFilterCat === cat.id ? 'bg-[#D4AF37]/10 border-[#D4AF37] shadow-[0_0_15px_rgba(212,175,55,0.2)]' : 'bg-[#1A1108] border-white/5 group-hover:border-[#D4AF37]/40 group-active:scale-95'}`}>
+                                <span className={`material-icons text-2xl transition-colors ${activeFilterCat === cat.id ? 'text-[#D4AF37]' : 'text-white/40 group-hover:text-[#D4AF37]/80'}`}>
+                                    {cat.icon}
+                                </span>
+                            </div>
+                            <span className={`text-[9px] font-black uppercase tracking-widest transition-colors ${activeFilterCat === cat.id ? 'text-[#D4AF37]' : 'text-white/40 group-hover:text-white/80'}`}>
+                                {cat.label}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+            </div>
 
-
-            {/* Partner Stores Section */}
-            {stores.length > 0 && (
-                <div className="py-6 border-b border-[#1A1108]/5">
-                    <div className="px-6 flex justify-between items-center mb-4">
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#1A1108]/60">Lojas Parceiras</h3>
+            {/* Destaques (Highlights) */}
+            {highlights.length > 0 && activeFilterCat === 'all' && !searchTerm && (
+                <div className="py-4 mb-2">
+                    <div className="px-6 flex items-center gap-2 mb-4">
+                        <span className="material-icons text-[#D4AF37] text-sm animate-pulse">local_fire_department</span>
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#D4AF37]">Destaques do Mercado</h3>
                     </div>
-                    <div className="flex overflow-x-auto px-6 gap-6 scrollbar-hide pb-2">
+                    <div className="flex gap-4 overflow-x-auto hide-scrollbar px-6 pb-4">
+                        {highlights.map(ad => (
+                            <div 
+                                key={`highlight-${ad.id}`} 
+                                onClick={() => setViewingAd(ad)} 
+                                className="w-72 shrink-0 bg-[#1A1108] rounded-3xl overflow-hidden border border-white/10 shadow-xl relative group active:scale-[0.98] transition-all"
+                            >
+                                <div className="h-40 w-full relative">
+                                    <img src={ad.img || ad.photos?.[0]} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={ad.title} />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-[#1A1108] via-transparent to-black/30"></div>
+                                    <div className="absolute top-3 left-3 bg-[#D4AF37] text-[#0F0A05] text-[8px] font-black px-2 py-1 rounded shadow-lg uppercase tracking-widest">
+                                        EM ALTA
+                                    </div>
+                                    <div className="absolute bottom-3 left-4 right-4">
+                                        <h4 className="text-white font-black text-sm uppercase truncate drop-shadow-md">{ad.title}</h4>
+                                        <p className="text-[#D4AF37] font-black text-sm drop-shadow-md">{ad.price}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Lojas Parceiras Premium */}
+            {stores.length > 0 && activeFilterCat === 'all' && !searchTerm && (
+                <div className="py-6 bg-gradient-to-b from-[#1A1108]/50 to-transparent border-t border-b border-white/5 mb-6">
+                    <div className="px-6 flex justify-between items-center mb-6">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Lojas Parceiras Oficiais</h3>
+                        <span className="text-[8px] text-[#D4AF37] border border-[#D4AF37]/30 px-2 py-0.5 rounded-full uppercase tracking-widest font-bold">Verificadas</span>
+                    </div>
+                    <div className="flex overflow-x-auto px-6 gap-5 hide-scrollbar pb-2">
                         {stores.map((store) => (
                             <div 
                                 key={store.id} 
                                 onClick={() => {
-                                    window.dispatchEvent(new CustomEvent('arena_navigate', { 
-                                        detail: { 
-                                            view: 'STORE_DETAILS', 
-                                            store: store 
-                                        } 
-                                    }));
+                                    window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'STORE_DETAILS', store: store } }));
                                 }}
-                                className="flex flex-col items-center shrink-0 cursor-pointer active:scale-95 transition-all group"
+                                className="flex flex-col items-center shrink-0 cursor-pointer group w-20"
                             >
-                                <div className="w-16 h-16 rounded-full border-2 p-0.5 border-[#1A1108]/5 group-hover:border-[#1A1108]/20 transition-all mb-2">
-                                    <div className="w-full h-full rounded-full bg-white overflow-hidden flex items-center justify-center border border-white/50">
+                                <div className="w-16 h-16 rounded-full p-0.5 bg-gradient-to-tr from-[#D4AF37]/20 via-white/5 to-[#D4AF37]/40 group-hover:from-[#D4AF37] group-hover:to-[#AA8A2E] transition-all mb-3 shadow-lg relative active:scale-95">
+                                    <div className="w-full h-full rounded-full bg-[#1A1108] overflow-hidden flex items-center justify-center border-2 border-[#0F0A05]">
                                         {store.logo_url ? (
                                             <img src={store.logo_url} className="w-full h-full object-cover" alt={store.nome} />
                                         ) : (
-                                            <span className="material-icons text-[#1A1108]/20 text-3xl">store</span>
+                                            <span className="material-icons text-white/20 text-2xl">store</span>
                                         )}
                                     </div>
+                                    {store.verificado && (
+                                        <div className="absolute -bottom-1 -right-1 bg-[#0F0A05] rounded-full p-0.5">
+                                            <span className="material-icons text-[#D4AF37] text-sm">verified</span>
+                                        </div>
+                                    )}
                                 </div>
-                                <span className={`text-[10px] font-black uppercase tracking-tight text-center max-w-[80px] truncate ${selectedStore?.id === store.id ? 'text-[#D4AF37]' : 'text-[#1A1108]/60'}`}>
+                                <span className={`text-[9px] font-black uppercase tracking-widest text-center w-full truncate transition-colors ${selectedStore?.id === store.id ? 'text-[#D4AF37]' : 'text-white/60 group-hover:text-white'}`}>
                                     {store.nome}
-                                    {store.verificado && <span className="material-icons text-[10px] ml-0.5 align-middle text-[#D4AF37]">verified</span>}
                                 </span>
                             </div>
                         ))}
@@ -813,40 +992,80 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                 </div>
             )}
 
+            {/* Listagem Principal e Ordenação */}
+            <div className="px-6 mb-4 flex items-center justify-between">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Catálogo</h3>
+                
+                {/* Modern Sort Filters */}
+                <div className="flex gap-2 bg-[#1A1108] p-1 rounded-xl border border-white/5">
+                    <button 
+                        onClick={() => setSortOrder('recent')}
+                        className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${sortOrder === 'recent' ? 'bg-[#D4AF37] text-[#0F0A05]' : 'text-white/40 hover:text-white'}`}
+                    >Recentes</button>
+                    <button 
+                        onClick={() => setSortOrder('lowest')}
+                        className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${sortOrder === 'lowest' ? 'bg-[#D4AF37] text-[#0F0A05]' : 'text-white/40 hover:text-white'}`}
+                    >Menor R$</button>
+                    <button 
+                        onClick={() => setSortOrder('highest')}
+                        className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${sortOrder === 'highest' ? 'bg-[#D4AF37] text-[#0F0A05]' : 'text-white/40 hover:text-white'}`}
+                    >Maior R$</button>
+                </div>
+            </div>
 
             {/* Grid */}
             <div className="px-6">
                 {loadingAds ? (
                     <div className="grid grid-cols-2 gap-4">
-                        {[1, 2, 3, 4].map(i => <div key={i} className="aspect-[3/4] bg-white rounded-2xl animate-pulse"></div>)}
+                        {[1, 2, 3, 4].map(i => (
+                            <div key={i} className="aspect-[3/4] bg-[#1A1108] rounded-3xl animate-pulse border border-white/5"></div>
+                        ))}
                     </div>
                 ) : filteredAds.length === 0 ? (
-                    <div className="text-center py-20">
-                        <span className="material-icons text-6xl text-[#1A1108]/10 mb-4">search_off</span>
-                        <h3 className="text-[#1A1108]/40 font-black uppercase">Nenhum anúncio encontrado</h3>
+                    <div className="text-center py-20 bg-[#1A1108] rounded-3xl border border-white/5 mt-4">
+                        <span className="material-icons text-6xl text-white/10 mb-4">search_off</span>
+                        <h3 className="text-white/40 font-black uppercase tracking-widest text-xs">Nenhum anúncio encontrado</h3>
+                        <p className="text-white/20 text-[10px] mt-2 px-8 uppercase">Tente buscar por outros termos ou categorias.</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-2 gap-4">
                         {filteredAds.map((ad, i) => (
                             <React.Fragment key={i}>
-                                <div onClick={() => setViewingAd(ad)} className="bg-white rounded-2xl overflow-hidden shadow-sm border border-[#1A1108]/5 active:scale-[0.98] transition-transform">
-                                    <div className="aspect-square relative bg-neutral-200">
-                                        <img src={ad.img || ad.photos?.[0]} className="w-full h-full object-cover" alt={ad.title} />
-                                        {ad.product_type === 'ingresso' && <div className="absolute top-2 left-2 bg-blue-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded uppercase">INGRESSO</div>}
-                                        {ad.stores?.is_official && <div className="absolute top-2 right-2 bg-green-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded uppercase flex items-center gap-1"><span className="material-icons text-[10px]">verified</span> OFICIAL</div>}
-                                    </div>
-                                    <div className="p-3">
-                                        <h3 className="text-xs font-black uppercase text-[#1A1108] leading-tight truncate">{ad.title}</h3>
-                                        <p className="text-sm font-black text-[#D4AF37] my-1 truncate">{ad.price}</p>
-                                        <div className="flex items-center gap-1 text-[#1A1108]/40">
-                                            <span className="material-icons text-[10px]">place</span>
-                                            <span className="text-[8px] font-bold uppercase truncate">{ad.loc}</span>
+                                <div onClick={() => setViewingAd(ad)} className="bg-[#1A1108] rounded-[24px] overflow-hidden shadow-lg border border-white/5 active:scale-[0.98] transition-transform group">
+                                    <div className="aspect-[4/5] relative bg-[#0F0A05] overflow-hidden">
+                                        <img src={ad.img || ad.photos?.[0]} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={ad.title} />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-[#1A1108] via-transparent to-black/20"></div>
+                                        
+                                        {/* Badges Overlay */}
+                                        <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+                                            {ad.product_type === 'ingresso' && <div className="bg-blue-600/90 text-white text-[7px] font-black px-2 py-1 rounded shadow-lg uppercase tracking-widest backdrop-blur-md">INGRESSO</div>}
+                                            {ad.stores?.is_official && <div className="bg-gradient-to-r from-[#D4AF37] to-[#AA8A2E] text-[#0F0A05] text-[7px] font-black px-2 py-1 rounded shadow-lg uppercase tracking-widest flex items-center gap-1 backdrop-blur-md">
+                                                <span className="material-icons text-[8px]">verified</span> OFICIAL
+                                            </div>}
                                         </div>
+
+                                        {/* Heart Overlay */}
+                                        <button className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center">
+                                            <span className="material-icons text-white/60 text-sm">favorite_border</span>
+                                        </button>
+
+                                        {/* Content Overlay */}
+                                        <div className="absolute bottom-0 left-0 right-0 p-4">
+                                            <h3 className="text-xs font-black uppercase text-white leading-tight truncate drop-shadow-md">{ad.title}</h3>
+                                            <p className="text-sm font-black text-[#D4AF37] my-1 truncate drop-shadow-md">{ad.price}</p>
+                                        </div>
+                                    </div>
+                                    <div className="px-4 py-3 bg-[#1A1108] flex items-center justify-between">
+                                        <div className="flex items-center gap-1.5 text-white/40">
+                                            <span className="material-icons text-[10px] text-[#D4AF37]">place</span>
+                                            <span className="text-[8px] font-bold uppercase truncate max-w-[90px]">{ad.loc}</span>
+                                        </div>
+                                        <span className="text-[7px] font-black text-white/20 uppercase tracking-widest">{ad.category}</span>
                                     </div>
                                 </div>
                                 
-                                {/* A cada 20 anúncios, injeta um banner */}
-                                {(i + 1) % 20 === 0 && (
+                                {/* A cada 12 anúncios, injeta um banner */}
+                                {(i + 1) % 12 === 0 && (
                                     <div className="col-span-2 my-2">
                                         <AdsCarousel targetPosition="market_inline_banner" />
                                     </div>

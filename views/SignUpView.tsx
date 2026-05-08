@@ -60,6 +60,8 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cities, setCities] = useState<any[]>([]);
 
@@ -152,6 +154,68 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
     }
   };
 
+  const handleGoogleSignUp = async () => {
+    setGoogleLoading(true);
+    setError(null);
+    try {
+      const isNative = Capacitor.isNativePlatform();
+      const redirectTo = isNative 
+        ? 'maisvaquejada://auth/callback' 
+        : window.location.origin + '/auth/callback';
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectTo
+        }
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      setError(err.message || 'Erro ao criar conta com Google.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleAppleSignUp = async () => {
+    if (appleLoading) return;
+    setAppleLoading(true);
+    setError(null);
+    try {
+      const isNative = Capacitor.isNativePlatform();
+      const platform = Capacitor.getPlatform();
+      
+      if (isNative && platform === 'ios') {
+        const result = await SignInWithApple.authorize({
+          clientId: 'com.maisvaquejada.app',
+          scopes: 'email name',
+        });
+        
+        const identityToken = result?.response?.identityToken;
+        if (!identityToken) throw new Error('Token da Apple não obtido.');
+
+        const { error: authError } = await supabase.auth.signInWithIdToken({
+          provider: 'apple',
+          token: identityToken,
+        });
+        if (authError) throw authError;
+      } else {
+        const { error: oauthError } = await supabase.auth.signInWithOAuth({
+          provider: 'apple',
+          options: {
+            redirectTo: window.location.origin + '/auth/callback'
+          }
+        });
+        if (oauthError) throw oauthError;
+      }
+    } catch (err: any) {
+      if (err?.message?.toLowerCase().includes('cancel')) return;
+      setError(err.message || 'Erro ao criar conta com Apple.');
+    } finally {
+      setAppleLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-full flex flex-col bg-[#0F0A05] relative overflow-hidden">
       <div className="absolute inset-0 z-0">
@@ -189,35 +253,39 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
             <h1 className="text-4xl font-black text-white italic tracking-tighter mb-2 uppercase">Junte-se ao <span className="text-[#ECA413]">+Vaquejada</span></h1>
             <p className="text-white/40 text-xs font-bold uppercase tracking-widest mb-10">Faça parte da maior arena digital de vaquejada</p>
 
-            <button
-              type="button"
-              onClick={async () => {
-                setLoading(true);
-                setError(null);
-                try {
-                  const isNative = Capacitor.isNativePlatform();
-                  const redirectTo = isNative 
-                    ? 'com.maisvaquejada.app://' 
-                    : window.location.origin;
+            <div className="space-y-4 mb-10">
+              <button
+                type="button"
+                onClick={handleGoogleSignUp}
+                disabled={googleLoading || appleLoading || loading}
+                className="w-full bg-white text-black py-4 rounded-3xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+              >
+                {googleLoading ? (
+                  <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
+                    CRIAR COM GOOGLE
+                  </>
+                )}
+              </button>
 
-                  const { error } = await supabase.auth.signInWithOAuth({
-                    provider: 'google',
-                    options: {
-                      redirectTo: redirectTo
-                    }
-                  });
-                  if (error) throw error;
-                } catch (err: any) {
-                  setError(err.message || 'Erro ao criar conta com Google.');
-                } finally {
-                  setLoading(false);
-                }
-              }}
-              className="w-full bg-white text-black py-4 rounded-3xl font-black text-xs uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 mb-6"
-            >
-              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
-              CRIAR COM GOOGLE
-            </button>
+              <button
+                type="button"
+                onClick={handleAppleSignUp}
+                disabled={googleLoading || appleLoading || loading}
+                className="w-full bg-black text-white border border-white/10 py-4 rounded-3xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+              >
+                {appleLoading ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <span className="material-icons text-lg">apple</span>
+                    CRIAR COM APPLE ID
+                  </>
+                )}
+              </button>
+            </div>
 
             <div className="flex items-center gap-4 mb-6">
               <div className="flex-1 h-[1px] bg-white/10" />

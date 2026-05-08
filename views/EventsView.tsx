@@ -5,6 +5,8 @@ import AdsCarousel from '../components/AdsCarousel';
 import EventModal from '../components/EventModal';
 import CircuitPanel from '../components/CircuitPanel';
 import GuestCTA from '../components/GuestCTA';
+import { VaquejadaCalendar } from '../components/VaquejadaCalendar';
+import { CalendarEventsSheet } from '../components/CalendarEventsSheet';
 
 const MOCK_CIRCUITS: Circuito[] = [
   { id: 'todos', nome: 'Todos os circuitos', slug: 'todos', ativo: true, destaque: true, ordem: 0 },
@@ -79,6 +81,14 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
     } catch { return []; }
   });
   const [likesCount, setLikesCount] = useState<Record<string, number>>({});
+  
+  // Calendar States
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | null>(null);
+  const [eventsOnSelectedDate, setEventsOnSelectedDate] = useState<any[]>([]);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+
+  // Layout State
+  const [layoutOrder, setLayoutOrder] = useState<string[]>(['banners', 'calendar', 'highlights', 'list']);
 
   useEffect(() => {
     if (publicEventId && events.length > 0) {
@@ -115,6 +125,12 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
             setLikesCount(counts);
         } else {
             setEvents(INITIAL_EVENTS);
+        }
+
+        // Fetch Layout Order
+        const { data: settingsData } = await supabase.from('app_settings').select('value').eq('key', 'events_layout_order').maybeSingle();
+        if (settingsData && settingsData.value && Array.isArray(settingsData.value)) {
+            setLayoutOrder(settingsData.value);
         }
       } catch (err) {
         setEvents(INITIAL_EVENTS);
@@ -196,13 +212,9 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
           </button>
         </div>
 
-        <div className="-mx-6 border-b border-white/5 pb-4 mb-2">
-            <AdsCarousel key="vaquejada_top_ads" targetPosition="vaquejada_top_carousel" />
-        </div>
-
         <GuestCTA />
 
-        <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
+        <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2 pt-4">
           {STATES.map((uf, idx) => (
              <React.Fragment key={uf}>
                <button 
@@ -216,49 +228,97 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredEvents.map((event) => {
-          const isFav = favorites.includes(event.id);
-          return (
-            <div key={event.id} onClick={() => handleCardClick(event)} className="group relative bg-[#1A1108] rounded-[32px] overflow-hidden shadow-2xl border border-white/5 cursor-pointer hover:-translate-y-1 transition-all">
-              <div className="relative h-[280px] w-full overflow-hidden">
-                <img src={event.imageUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt={event.title} />
-                <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-[#1A1108]"></div>
-                <div className="absolute top-5 left-5 bg-[#D4AF37]/90 px-2.5 py-1 rounded-lg text-[9px] font-black text-background-dark shadow-lg">OFFICIAL</div>
-                <div className="absolute top-5 right-5 bg-black/60 rounded-2xl px-4 py-2 text-center border border-white/10">
-                  <p className="text-[8px] font-black text-white/50 uppercase mb-1">{event.date.month}</p>
-                  <p className="text-lg font-black text-white">{event.date.day}</p>
-                </div>
-                <div className="absolute top-[160px] right-5 flex flex-col gap-3 z-20">
-                  <div className="flex flex-col items-center gap-0.5">
-                    <button onClick={(e) => toggleFavorite(event.id, e)} className={`w-11 h-11 rounded-2xl flex items-center justify-center backdrop-blur-xl border border-white/20 ${isFav ? 'bg-[#D4AF37] text-black' : 'bg-black/40 text-white'}`}><span className="material-icons text-xl">{isFav ? 'favorite' : 'favorite_border'}</span></button>
-                    {(likesCount[event.id] || 0) > 0 && (
-                      <span className="text-[10px] font-black text-white drop-shadow-lg">{likesCount[event.id]}</span>
-                    )}
-                  </div>
-                  <button onClick={(e) => handleShare(event, e)} className="w-11 h-11 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/20 text-white"><span className="material-icons text-xl">share</span></button>
-                </div>
+      {/* Renderização Dinâmica Baseada no LayoutOrder */}
+      <div className="space-y-10">
+        {layoutOrder.map(blockId => {
+          if (blockId === 'banners') {
+            return (
+              <div key="banners" className="-mx-6 border-b border-white/5 pb-4 mb-2">
+                <AdsCarousel key="vaquejada_top_ads" targetPosition="vaquejada_top_carousel" />
               </div>
-              <div className="px-7 pb-8 -mt-6 relative z-10">
-                <h3 className="text-xl font-black text-white uppercase tracking-tighter italic truncate">{event.title}</h3>
-                <p className="text-sm font-bold text-white/80 truncate mt-1">{event.park}</p>
-                <div className="flex items-center justify-between pt-1">
-                  <div className="flex items-center gap-1.5 text-white/60">
-                    <span className="material-icons text-xs text-[#D4AF37]">place</span>
-                    <span className="text-[10px] font-black uppercase tracking-widest truncate">{event.location}</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-white/50">
-                    <span className="material-icons text-sm text-[#D4AF37]">favorite</span>
-                    <span className="text-[10px] font-black">{likesCount[event.id] || 0}</span>
-                  </div>
-                </div>
+            );
+          }
+
+          if (blockId === 'calendar') {
+            return (
+              <div key="calendar" className="relative z-10">
+                <VaquejadaCalendar 
+                  events={events} 
+                  onSelectDate={(date, evs) => {
+                    setSelectedCalendarDate(date);
+                    setEventsOnSelectedDate(evs);
+                    setIsSheetOpen(true);
+                  }}
+                />
               </div>
-            </div>
-          );
+            );
+          }
+
+          if (blockId === 'highlights') {
+             // Futuramente, destaques oficiais
+             return null;
+          }
+
+          if (blockId === 'list') {
+            return (
+              <div key="list" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-0">
+                {filteredEvents.map((event) => {
+                  const isFav = favorites.includes(event.id);
+                  return (
+                    <div key={event.id} onClick={() => handleCardClick(event)} className="group relative bg-[#1A1108] rounded-[32px] overflow-hidden shadow-2xl border border-white/5 cursor-pointer hover:-translate-y-1 transition-all">
+                      <div className="relative h-[280px] w-full overflow-hidden">
+                        <img src={event.imageUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt={event.title} />
+                        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-[#1A1108]"></div>
+                        {event.is_highlight && <div className="absolute top-5 left-5 bg-[#D4AF37]/90 px-2.5 py-1 rounded-lg text-[9px] font-black text-background-dark shadow-lg">OFFICIAL</div>}
+                        <div className="absolute top-5 right-5 bg-black/60 rounded-2xl px-4 py-2 text-center border border-white/10">
+                          <p className="text-[8px] font-black text-white/50 uppercase mb-1">{event.date.month || event.date_month}</p>
+                          <p className="text-lg font-black text-white">{event.date.day || event.date_day}</p>
+                        </div>
+                        <div className="absolute top-[160px] right-5 flex flex-col gap-3 z-20">
+                          <div className="flex flex-col items-center gap-0.5">
+                            <button onClick={(e) => toggleFavorite(event.id, e)} className={`w-11 h-11 rounded-2xl flex items-center justify-center backdrop-blur-xl border border-white/20 ${isFav ? 'bg-[#D4AF37] text-black' : 'bg-black/40 text-white'}`}><span className="material-icons text-xl">{isFav ? 'favorite' : 'favorite_border'}</span></button>
+                            {(likesCount[event.id] || 0) > 0 && (
+                              <span className="text-[10px] font-black text-white drop-shadow-lg">{likesCount[event.id]}</span>
+                            )}
+                          </div>
+                          <button onClick={(e) => handleShare(event, e)} className="w-11 h-11 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/20 text-white"><span className="material-icons text-xl">share</span></button>
+                        </div>
+                      </div>
+                      <div className="px-7 pb-8 -mt-6 relative z-10">
+                        <h3 className="text-xl font-black text-white uppercase tracking-tighter italic truncate">{event.title}</h3>
+                        <p className="text-sm font-bold text-white/80 truncate mt-1">{event.park}</p>
+                        <div className="flex items-center justify-between pt-1">
+                          <div className="flex items-center gap-1.5 text-white/60">
+                            <span className="material-icons text-xs text-[#D4AF37]">place</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest truncate">{event.location}</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-white/50">
+                            <span className="material-icons text-sm text-[#D4AF37]">favorite</span>
+                            <span className="text-[10px] font-black">{likesCount[event.id] || 0}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          }
+
+          return null;
         })}
       </div>
 
       <CircuitPanel isOpen={isCircuitPanelOpen} onClose={() => setIsCircuitPanelOpen(false)} circuits={MOCK_CIRCUITS} selectedId={selectedCircuit} onSelect={setSelectedCircuit} />
+      
+      {isSheetOpen && selectedCalendarDate && (
+        <CalendarEventsSheet 
+          date={selectedCalendarDate} 
+          events={eventsOnSelectedDate} 
+          onClose={() => setIsSheetOpen(false)} 
+          onEventClick={handleCardClick} 
+        />
+      )}
     </div>
   );
 };

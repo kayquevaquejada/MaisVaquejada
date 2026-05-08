@@ -3,6 +3,7 @@ import { User, View } from '../types';
 import { supabase } from '../lib/supabase';
 import AdminAdsManager from '../components/AdminAdsManager';
 import AdminMasterView from '../components/AdminMasterView';
+import { DateRangePicker } from '../components/DateRangePicker';
 import { compressImage } from '../lib/imageUtils';
 
 
@@ -1551,9 +1552,63 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                                     <input className="w-full bg-[#1A1108] border border-white/10 rounded-xl p-4 text-sm text-white font-bold focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Cidade / UF" value={eventForm.location || ''} onChange={(e)=>setEventForm({...eventForm, location: e.target.value})} />
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3">
-                                    <input className="w-full bg-[#1A1108] border border-white/10 rounded-xl p-4 text-sm text-white font-bold focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Mês (ex: Set)" value={eventForm.date_month || ''} onChange={(e)=>setEventForm({...eventForm, date_month: e.target.value})} />
-                                    <input className="w-full bg-[#1A1108] border border-white/10 rounded-xl p-4 text-sm text-white font-bold focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Dia (ex: 15..17)" value={eventForm.date_day || ''} onChange={(e)=>setEventForm({...eventForm, date_day: e.target.value})} />
+                                {/* Date Picker Automático */}
+                                <DateRangePicker 
+                                    startDate={eventForm.start_date || ''}
+                                    endDate={eventForm.end_date || ''}
+                                    onChange={(start, end) => {
+                                        if (!start) return;
+                                        
+                                        const startDateObj = new Date(start + 'T12:00:00');
+                                        const endDateObj = end ? new Date(end + 'T12:00:00') : startDateObj;
+                                        
+                                        const sDay = startDateObj.getDate().toString().padStart(2, '0');
+                                        const eDay = endDateObj.getDate().toString().padStart(2, '0');
+                                        
+                                        let generatedDateDay = sDay;
+                                        if (start !== end && sDay !== eDay) {
+                                            const startNum = parseInt(sDay);
+                                            const endNum = parseInt(eDay);
+                                            // Handle cross-month later, keep it simple for now
+                                            if (endNum > startNum) {
+                                                const days = [];
+                                                for(let i=startNum; i<=endNum; i++){
+                                                    days.push(i.toString().padStart(2, '0'));
+                                                }
+                                                if (days.length === 2) {
+                                                    generatedDateDay = `${days[0]} e ${days[1]}`;
+                                                } else if (days.length > 2) {
+                                                    const last = days.pop();
+                                                    generatedDateDay = `${days.join(', ')} e ${last}`;
+                                                }
+                                            } else {
+                                                generatedDateDay = `${sDay} a ${eDay}`;
+                                            }
+                                        }
+
+                                        const monthsPt = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+                                        const generatedDateMonth = monthsPt[startDateObj.getMonth()];
+
+                                        setEventForm({
+                                            ...eventForm,
+                                            start_date: start,
+                                            end_date: end || start,
+                                            date_day: generatedDateDay,
+                                            date_month: generatedDateMonth
+                                        });
+                                    }}
+                                />
+
+                                {/* Campos Visuais Legados (ReadOnly para conferência) */}
+                                <div className="grid grid-cols-2 gap-3 opacity-50 pointer-events-none">
+                                    <div className="space-y-1">
+                                        <p className="text-[9px] font-black text-white/30 uppercase ml-2">Mês Visual</p>
+                                        <input className="w-full bg-[#1A1108] border border-white/10 rounded-xl p-4 text-sm text-white font-bold" value={eventForm.date_month || ''} readOnly />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-[9px] font-black text-white/30 uppercase ml-2">Dia Visual</p>
+                                        <input className="w-full bg-[#1A1108] border border-white/10 rounded-xl p-4 text-sm text-white font-bold" value={eventForm.date_day || ''} readOnly />
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">

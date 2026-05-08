@@ -424,13 +424,33 @@ const AdminMasterView: React.FC<AdminMasterViewProps> = ({ user, onBack }) => {
 
       <div className="bg-[#1A1108] rounded-[32px] border border-white/5 shadow-sm p-6">
         <div className="flex items-center gap-3 mb-6">
-           <TrendingUp className="text-[#D4AF37]" size={20} />
-           <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60">Auditoria Operacional</h4>
+           <Layout className="text-[#D4AF37]" size={20} />
+           <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60">Construtor de Layout</h4>
         </div>
-        <div className="p-8 text-center bg-[#0F0A05] rounded-2xl border border-dashed border-white/10">
-          <BarChart3 className="mx-auto text-white/10 mb-2" size={32} />
-          <p className="text-[10px] font-black uppercase text-white/30 tracking-widest">Gráficos de Performance</p>
-          <p className="text-[8px] font-bold text-white/20 mt-1">Sincronizando com Analytics...</p>
+        <div className="p-6 text-center bg-[#0F0A05] rounded-2xl border border-white/5">
+          <p className="text-[10px] font-black uppercase text-[#D4AF37] tracking-widest mb-4">Ordem da Aba Eventos</p>
+          <div className="space-y-2 text-left mb-6">
+            <div className="p-3 bg-[#1A1108] border border-white/10 rounded-xl flex items-center gap-3 cursor-move active:scale-95 transition-all">
+                <span className="material-icons text-white/20 text-sm">drag_indicator</span>
+                <span className="text-xs font-bold text-white uppercase">1. Banners</span>
+            </div>
+            <div className="p-3 bg-[#1A1108] border border-white/10 rounded-xl flex items-center gap-3 cursor-move active:scale-95 transition-all">
+                <span className="material-icons text-white/20 text-sm">drag_indicator</span>
+                <span className="text-xs font-bold text-[#D4AF37] uppercase">2. Calendário Anual</span>
+            </div>
+            <div className="p-3 bg-[#1A1108] border border-white/10 rounded-xl flex items-center gap-3 cursor-move active:scale-95 transition-all">
+                <span className="material-icons text-white/20 text-sm">drag_indicator</span>
+                <span className="text-xs font-bold text-white uppercase">3. Destaques Oficiais</span>
+            </div>
+            <div className="p-3 bg-[#1A1108] border border-white/10 rounded-xl flex items-center gap-3 cursor-move active:scale-95 transition-all">
+                <span className="material-icons text-white/20 text-sm">drag_indicator</span>
+                <span className="text-xs font-bold text-white uppercase">4. Lista e Filtros</span>
+            </div>
+          </div>
+          <button className="w-full py-3 bg-[#D4AF37]/10 text-[#D4AF37] font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-[#D4AF37]/20 transition-colors">
+            Salvar Layout
+          </button>
+          <p className="text-[8px] font-bold text-white/20 mt-3">* Drag & Drop em desenvolvimento. Ordem atual fixa como padrão.</p>
         </div>
       </div>
     </div>
