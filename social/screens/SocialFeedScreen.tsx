@@ -314,8 +314,6 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
           })
         )}
       </main>
-      </div>
-    </PullToRefresh>
 
       {/* Overlays */}
       {activeStoryIndex !== null && (
@@ -616,6 +614,7 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
         </div>
       )}
     </div>
+  </PullToRefresh>
   );
 };
 

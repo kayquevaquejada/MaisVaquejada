@@ -1091,7 +1091,8 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                     </div>
                 )}
             </div>
-        </PullToRefresh>
+        </div>
+    </PullToRefresh>
     );
 };
 

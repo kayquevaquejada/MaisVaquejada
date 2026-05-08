@@ -921,6 +921,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                     </div>
                 </div>
             )}
+            </div>
         </PullToRefresh>
     );
 };
