@@ -186,8 +186,8 @@ const EventDetailView: React.FC<EventDetailViewProps> = ({ event, user, onBack }
         {/* Status Badge */}
         <div className="absolute top-6 right-6 z-30">
           <div className={`${status.color} px-4 py-2 rounded-full flex items-center gap-2 shadow-lg shadow-black/40`}>
-            <span className="material-icons text-sm text-white">{status.icon}</span>
-            <span className="text-[10px] font-black uppercase tracking-widest text-white">{status.label}</span>
+            <span className="material-icons text-[8px] text-white leading-none">{status.icon}</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-white leading-none">{status.label}</span>
           </div>
         </div>
       </div>
