@@ -20,6 +20,7 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
     const [permissionError, setPermissionError] = useState<string | null>(null);
     const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
     const [isTorchOn, setIsTorchOn] = useState(false);
+    const [hasRequestedPermission, setHasRequestedPermission] = useState(false);
     const { uploadFile, uploading: isUploading } = useMediaUpload();
 
     // Form stats
@@ -59,7 +60,7 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
             setPreviewAnim(false);
         }
         return () => stopCamera();
-    }, [step, mode, facingMode]);
+    }, [step, mode, facingMode, hasRequestedPermission]);
 
     const playShutterSound = () => {
         try {
@@ -80,6 +81,7 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
         } catch (e) { /* silent fallback */ }
     };
     const startCamera = async () => {
+        if (!hasRequestedPermission) return;
         try {
             setPermissionError(null);
             if (mediaStreamRef.current) {
@@ -100,7 +102,7 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
             }
         } catch (err) {
             console.error('Error accessing camera:', err);
-            setPermissionError('Câmera não disponível. Verifique as permissões.');
+            setPermissionError('Acesso à câmera negado ou não disponível.');
         }
     };
 
@@ -295,9 +297,36 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
 
     // Rendering methods (keeping the UI as is)
     const renderCamera = () => (
-        <div className="fixed inset-0 h-[100dvh] bg-black z-[200] overflow-hidden">
+        <div className="fixed inset-0 h-[100dvh] bg-black z-[200] overflow-hidden flex flex-col">
             {isFlashing && (
                 <div className="absolute inset-0 bg-white z-[300] transition-opacity duration-100 ease-out" style={{ opacity: isFlashing ? 0.8 : 0 }} />
+            )}
+
+            {!hasRequestedPermission && (
+                <div className="absolute inset-0 z-[400] bg-background-dark/95 backdrop-blur-xl flex flex-col items-center justify-center p-10 text-center animate-in fade-in duration-500">
+                    <div className="w-24 h-24 bg-[#ECA413]/10 rounded-full flex items-center justify-center mb-8">
+                        <span className="material-icons text-[#ECA413] text-5xl">videocam</span>
+                    </div>
+                    <h2 className="text-white text-2xl font-black uppercase tracking-tight mb-4">+VAQUEJADA deseja acessar sua câmera</h2>
+                    <p className="text-white/40 text-sm mb-10 leading-relaxed">
+                        Para capturar seus melhores momentos na Arena e compartilhar com a galera, precisamos da sua permissão.
+                    </p>
+                    <button 
+                        onClick={() => {
+                            setHasRequestedPermission(true);
+                            // startCamera() will be called by useEffect
+                        }}
+                        className="w-full bg-[#ECA413] text-black font-black py-5 rounded-2xl uppercase tracking-widest text-xs shadow-xl shadow-[#ECA413]/20 active:scale-95 transition-all mb-4"
+                    >
+                        Permitir Acesso
+                    </button>
+                    <button 
+                        onClick={onClose}
+                        className="text-white/40 font-black uppercase tracking-widest text-[10px] hover:text-white transition-colors"
+                    >
+                        Agora Não
+                    </button>
+                </div>
             )}
 
             <div className="absolute inset-0 w-full h-full overflow-hidden">
@@ -337,21 +366,7 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
             </div>
 
             <div className="absolute bottom-0 left-0 right-0 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-24 flex flex-col items-center z-50">
-                <div className="flex justify-center gap-8 items-center mb-10 px-8 py-3 bg-black/30 backdrop-blur-2xl rounded-full border border-white/10 shadow-lg">
-                    {(['FEED', 'STORY'] as Mode[]).map((m) => (
-                        <button
-                            key={m}
-                            onClick={() => {
-                                if (navigator.vibrate) navigator.vibrate(10);
-                                setMode(m);
-                            }}
-                            className={`text-[10px] font-black uppercase tracking-widest transition-all duration-300 relative ${mode === m ? 'text-white scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'text-white/40 hover:text-white/60'}`}
-                        >
-                            {m}
-                            {mode === m && <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-white shadow-[0_0_4px_white]"></div>}
-                        </button>
-                    ))}
-                </div>
+                {/* Mode Selector Removed as per request */}
 
                 <div className="flex justify-center items-center gap-14 w-full px-8">
                     <button
@@ -467,8 +482,8 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
                     )}
                 </div>
 
-                {/* Aspect Ratio Selector */}
-                {capturedMedia?.type === 'image' && (
+                {/* Aspect Ratio Selector - Only for FEED */}
+                {capturedMedia?.type === 'image' && mode === 'FEED' && (
                     <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-3 px-6 z-50">
                         {(['original', '1:1', '4:5', '16:9'] as const).map((ratio) => (
                             <button
@@ -505,18 +520,30 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
                     </div>
                 )}
                 
+                {mode === 'STORY' && publishError && (
+                    <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl flex items-start gap-3 mb-4 animate-in slide-in-from-bottom-2">
+                        <span className="material-icons text-red-500 text-sm mt-0.5">error_outline</span>
+                        <p className="text-red-200 text-[10px] flex-1 font-bold">{publishError}</p>
+                        <button onClick={() => setPublishError(null)} className="material-icons text-white/50 text-sm hover:text-white">close</button>
+                    </div>
+                )}
+
                 <div className="flex gap-4">
                     <button
-                        onClick={() => { setCapturedMedia(null); setStep('CAMERA'); setZoom(1); setOffset({x:0, y:0}); }}
+                        onClick={() => { setCapturedMedia(null); setStep('CAMERA'); setZoom(1); setOffset({x:0, y:0}); setPublishError(null); }}
                         className="flex-1 bg-white/5 text-white font-black py-4 rounded-2xl uppercase tracking-widest text-[10px] border border-white/10 active:scale-95 transition-all"
                     >
                         Refazer
                     </button>
                     <button
-                        onClick={() => setStep('PUBLISH')}
-                        className="flex-[2] bg-[#ECA413] text-black font-black py-4 rounded-2xl uppercase tracking-widest text-[10px] shadow-lg shadow-[#ECA413]/20 active:scale-95 transition-all"
+                        onClick={mode === 'STORY' ? handlePublish : () => setStep('PUBLISH')}
+                        disabled={isUploading}
+                        className={`flex-[2] ${mode === 'STORY' ? 'bg-gradient-to-r from-[#ECA413] to-[#FF4500]' : 'bg-[#ECA413]'} text-black font-black py-4 rounded-2xl uppercase tracking-widest text-[10px] shadow-lg shadow-[#ECA413]/20 active:scale-95 transition-all flex items-center justify-center gap-2`}
                     >
-                        Continuar
+                        {isUploading ? (
+                            <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                        ) : null}
+                        <span>{isUploading ? 'Publicando...' : mode === 'STORY' ? 'Publicar no Status' : 'Continuar'}</span>
                     </button>
                 </div>
             </div>
@@ -545,49 +572,51 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
                         className="flex-1 bg-transparent text-white text-sm outline-none resize-none pt-2 placeholder:text-white/20"
                     />
                 </div>
-                <div className="space-y-4">
-                    <div className="relative">
-                        <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-3">
-                            <span className="material-icons text-[#ECA413]">place</span>
-                            <input
-                                value={location}
-                                onChange={(e) => handleLocationSearch(e.target.value)}
-                                placeholder="Adicionar localização (opcional)"
-                                className="bg-transparent flex-1 text-xs text-white outline-none placeholder:text-white/20"
-                            />
-                            {!location && (
-                                <button 
-                                    onClick={handleGetLocation}
-                                    className={`material-icons text-white/40 hover:text-white active:scale-90 transition-transform ${isLocating ? 'animate-pulse text-[#ECA413]' : ''}`}
-                                >
-                                    my_location
-                                </button>
+                {mode === 'FEED' && (
+                    <div className="space-y-4">
+                        <div className="relative">
+                            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-3">
+                                <span className="material-icons text-[#ECA413]">place</span>
+                                <input
+                                    value={location}
+                                    onChange={(e) => handleLocationSearch(e.target.value)}
+                                    placeholder="Adicionar localização (opcional)"
+                                    className="bg-transparent flex-1 text-xs text-white outline-none placeholder:text-white/20"
+                                />
+                                {!location && (
+                                    <button 
+                                        onClick={handleGetLocation}
+                                        className={`material-icons text-white/40 hover:text-white active:scale-90 transition-transform ${isLocating ? 'animate-pulse text-[#ECA413]' : ''}`}
+                                    >
+                                        my_location
+                                    </button>
+                                )}
+                            </div>
+                            
+                            {locationResults.length > 0 && (
+                                <div className="absolute top-full left-0 right-0 mt-2 bg-neutral-900 border border-white/10 rounded-xl overflow-hidden z-[250] shadow-2xl max-h-48 overflow-y-auto">
+                                    {isSearchingLocation && (
+                                        <div className="p-3 text-center text-xs text-white/50">Buscando...</div>
+                                    )}
+                                    {locationResults.map((loc: any, idx: number) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => {
+                                                const shortName = loc.display_name.split(',')[0];
+                                                setLocation(shortName);
+                                                setLocationResults([]);
+                                            }}
+                                            className="w-full text-left p-4 border-b border-white/5 hover:bg-white/5 active:bg-white/10 flex flex-col gap-1 transition-colors"
+                                        >
+                                            <span className="text-white text-xs font-bold line-clamp-1">{loc.display_name.split(',')[0]}</span>
+                                            <span className="text-white/40 text-[10px] line-clamp-1">{loc.display_name}</span>
+                                        </button>
+                                    ))}
+                                </div>
                             )}
                         </div>
-                        
-                        {locationResults.length > 0 && (
-                            <div className="absolute top-full left-0 right-0 mt-2 bg-neutral-900 border border-white/10 rounded-xl overflow-hidden z-[250] shadow-2xl max-h-48 overflow-y-auto">
-                                {isSearchingLocation && (
-                                    <div className="p-3 text-center text-xs text-white/50">Buscando...</div>
-                                )}
-                                {locationResults.map((loc: any, idx: number) => (
-                                    <button
-                                        key={idx}
-                                        onClick={() => {
-                                            const shortName = loc.display_name.split(',')[0];
-                                            setLocation(shortName);
-                                            setLocationResults([]);
-                                        }}
-                                        className="w-full text-left p-4 border-b border-white/5 hover:bg-white/5 active:bg-white/10 flex flex-col gap-1 transition-colors"
-                                    >
-                                        <span className="text-white text-xs font-bold line-clamp-1">{loc.display_name.split(',')[0]}</span>
-                                        <span className="text-white/40 text-[10px] line-clamp-1">{loc.display_name}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
                     </div>
-                </div>
+                )}
             </div>
             <div className="p-6 bg-background-dark border-t border-white/5 space-y-4">
                 {publishError && (
