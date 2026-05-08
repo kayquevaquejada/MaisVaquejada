@@ -80,7 +80,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
         (onSetCurrentView as any)(View.MEDIA_CREATION, { mode });
       }} />;
     case View.EVENTS:
-      return <EventsView onLoginPrompt={() => onSetCurrentView(View.LOGIN)} />;
+      return <EventsView user={user} onLoginPrompt={() => onSetCurrentView(View.LOGIN)} />;
     case View.NEWS:
       return <NewsView user={user} />;
     case View.MERCADO:
@@ -350,9 +350,19 @@ const App: React.FC = () => {
 
         
         if (session?.user) {
+          const { value: lastView } = await Preferences.get({ key: 'arena_last_view' });
+          const { store, event } = await getCachedNavData();
+          
+          if (lastView && ![View.LOGIN, View.SIGNUP, View.COMPLETE_PROFILE].includes(lastView as any)) {
+            setCurrentView(lastView as View);
+            if (store) setSelectedStore(store);
+            if (event) setSelectedEvent(event);
+            setInitializing(false);
+          }
+          
           await fetchProfile(session.user.id, session.user);
         } else {
-          // MODO VISITANTE: Se não tem sessão, vai direto para Eventos em vez de Login
+          // MODO VISITANTE
           setCurrentView(View.EVENTS);
           setInitializing(false);
         }

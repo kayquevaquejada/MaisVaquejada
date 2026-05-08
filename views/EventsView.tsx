@@ -66,10 +66,15 @@ const STATES = [
 interface EventsViewProps {
   publicEventId?: string;
   onLoginPrompt?: () => void;
+  user: any;
 }
 
-const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt }) => {
+const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt, user }) => {
   const [events, setEvents] = useState<any[]>([]);
+  const [isReordering, setIsReordering] = useState(false);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [hasOrderChanges, setHasOrderChanges] = useState(false);
+
   const [selectedState, setSelectedState] = useState('');
   const [selectedCircuit, setSelectedCircuit] = useState('todos');
   const [isCircuitPanelOpen, setIsCircuitPanelOpen] = useState(false);
@@ -108,7 +113,11 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
 
   const fetchData = async () => {
     try {
-      const { data: eventsData } = await supabase.from('events').select('*').eq('is_paused', false).order('created_at', { ascending: false });
+      const { data: eventsData } = await supabase
+        .from('events')
+        .select('*')
+        .eq('is_paused', false)
+        .order('display_order', { ascending: true });
       if (eventsData) {
           const mapped = eventsData.map(ev => ({
               ...ev,
@@ -185,9 +194,51 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
   });
 
   const handleCardClick = (event: EventItem) => {
+    if (isReordering) return;
     window.dispatchEvent(new CustomEvent('arena_navigate', { 
       detail: { view: View.EVENT_DETAILS, event: event } 
     }));
+  };
+
+  const handleDragStart = (id: string) => {
+    if (!user?.isMaster) return;
+    setDraggedId(id);
+    setIsReordering(true);
+  };
+
+  const handleDragOver = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    if (!draggedId || draggedId === targetId) return;
+
+    const draggedIdx = events.findIndex(ev => ev.id === draggedId);
+    const targetIdx = events.findIndex(ev => ev.id === targetId);
+    
+    const newEvents = [...events];
+    const [removed] = newEvents.splice(draggedIdx, 1);
+    newEvents.splice(targetIdx, 0, removed);
+    
+    setEvents(newEvents);
+    setHasOrderChanges(true);
+  };
+
+  const saveNewOrder = async () => {
+    try {
+      const updates = events.map((ev, index) => ({
+        id: ev.id,
+        display_order: index
+      }));
+
+      for (const update of updates) {
+        await supabase.from('events').update({ display_order: update.display_order }).eq('id', update.id);
+      }
+      
+      setHasOrderChanges(false);
+      setIsReordering(false);
+      setDraggedId(null);
+      alert('Ordem salva com sucesso!');
+    } catch (err) {
+      alert('Erro ao salvar nova ordem');
+    }
   };
 
   return (
@@ -214,6 +265,18 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
             <span className="material-icons text-xl">{isSearchOpen ? 'search_off' : 'search'}</span>
           </button>
         </div>
+
+        {user?.isMaster && hasOrderChanges && (
+          <div className="mb-4 animate-in fade-in slide-in-from-top-4">
+            <button 
+              onClick={saveNewOrder}
+              className="w-full bg-[#ECA413] text-black font-black uppercase tracking-widest py-4 rounded-2xl shadow-xl shadow-[#ECA413]/20 flex items-center justify-center gap-2 active:scale-95 transition-all"
+            >
+              <span className="material-icons">save</span>
+              Salvar Nova Ordem dos Eventos
+            </button>
+          </div>
+        )}
 
         <GuestCTA />
 
@@ -267,12 +330,32 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
               <div key="list" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-0">
                 {filteredEvents.map((event) => {
                   const isFav = favorites.includes(event.id);
+                  const isDragging = draggedId === event.id;
+                  
                   return (
-                    <div key={event.id} onClick={() => handleCardClick(event)} className="group relative bg-[#1A1108] rounded-[32px] overflow-hidden shadow-2xl border border-white/5 cursor-pointer hover:-translate-y-1 transition-all">
+                    <div 
+                      key={event.id} 
+                      onClick={() => handleCardClick(event)} 
+                      draggable={user?.isMaster}
+                      onDragStart={() => handleDragStart(event.id)}
+                      onDragOver={(e) => handleDragOver(e, event.id)}
+                      onDragEnd={() => setDraggedId(null)}
+                      className={`group relative bg-[#1A1108] rounded-[32px] overflow-hidden shadow-2xl border transition-all duration-300 ${isDragging ? 'opacity-40 scale-95 border-[#ECA413]' : 'border-white/5 hover:-translate-y-1'}`}
+                    >
+                      {user?.isMaster && (
+                        <div className="absolute top-5 left-5 z-30 bg-black/60 backdrop-blur-md w-8 h-8 rounded-full flex items-center justify-center border border-white/20 cursor-move shadow-lg">
+                          <span className="material-icons text-white/50 text-sm">reorder</span>
+                        </div>
+                      )}
+                      
                       <div className="relative h-[280px] w-full overflow-hidden">
                         <img src={event.imageUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt={event.title} />
                         <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-[#1A1108]"></div>
-                        {event.is_highlight && <div className="absolute top-5 left-5 bg-[#D4AF37]/90 px-2.5 py-1 rounded-lg text-[9px] font-black text-background-dark shadow-lg">OFFICIAL</div>}
+                        {event.is_highlight && (
+                          <div className={`absolute top-5 ${user?.isMaster ? 'left-16' : 'left-5'} bg-[#D4AF37]/90 px-2.5 py-1 rounded-lg text-[9px] font-black text-background-dark shadow-lg transition-all`}>
+                            OFFICIAL
+                          </div>
+                        )}
                         <div className="absolute top-5 right-5 bg-black/60 rounded-2xl px-4 py-2 text-center border border-white/10">
                           <p className="text-[8px] font-black text-white/50 uppercase mb-1">{event.date.month || event.date_month}</p>
                           <p className="text-lg font-black text-white">{event.date.day || event.date_day}</p>

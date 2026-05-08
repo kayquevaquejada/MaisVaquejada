@@ -13,12 +13,12 @@ const STATES = [
 ];
 
 const CATEGORIES = {
-    'ANIMAIS': ['Cavalo', 'Boi', 'Bode', 'Vaca', 'Bezerro', 'Garrote', 'Touro', 'Jumento', 'Burro', 'Mula'],
-    'ALIMENTACAO': ['Ração', 'Feno', 'Silagem', 'Milho', 'Sal Mineral', 'Suplemento', 'Leite'],
-    'EQUIPAMENTOS': ['Sela', 'Arreio', 'Manta', 'Cabeçada', 'Acessórios', 'Ferramentas'],
-    'VEICULOS': ['Caminhão', 'Reboque', 'Trailer', 'Carreta', 'Máquinas'],
-    'SERVICOS': ['Frete', 'Veterinário', 'Ferrador', 'Doma', 'Treinamento'],
-    'OUTROS': ['Ingressos', 'Senhas', 'Camarotes', 'Outro']
+    'CAVALOS': ['Potro', 'Garanhão', 'Matriz', 'Égua', 'Doma', 'Baixado'],
+    'CAMINHÕES': ['Caminhão', 'Reboque', 'Trailer', 'Carreta', 'Peças'],
+    'ARREIOS': ['Sela', 'Arreio', 'Manta', 'Cabeçada', 'Peitoral', 'Látego'],
+    'ACESSÓRIOS': ['Botas', 'Chapéus', 'Cintos', 'Fivelas', 'Moda Country', 'Perfumaria'],
+    'ANIMAIS': ['Boi', 'Bode', 'Vaca', 'Bezerro', 'Garrote', 'Touro', 'Jumento', 'Burro', 'Mula'],
+    'OUTROS': ['Ração', 'Feno', 'Serviços', 'Frete', 'Ingressos', 'Senhas', 'Outro']
 };
 
 interface MarketViewProps {
@@ -275,31 +275,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
         if (activeFilterCat !== 'all') {
             result = result.filter(ad => {
                 const cat = (ad.category || '').toUpperCase();
-                const sub = (ad.subcategory || '').toUpperCase();
-                const title = (ad.title || '').toUpperCase();
-                
-                if (activeFilterCat === 'CAVALOS') {
-                    return cat === 'ANIMAIS' && (sub.includes('CAVALO') || title.includes('CAVALO') || title.includes('POTRO') || title.includes('ÉGUA'));
-                }
-                if (activeFilterCat === 'CAMINHÕES') {
-                    // Inclui veículos pesados e acessórios de transporte
-                    return cat === 'VEICULOS' || sub.includes('CAMINHÃO') || sub.includes('REBOQUE') || sub.includes('TRAILER');
-                }
-                if (activeFilterCat === 'ARREIOS') {
-                    return cat === 'EQUIPAMENTOS' && (sub.includes('ARREIO') || sub.includes('SELA') || sub.includes('MANTA') || sub.includes('CABEÇADA'));
-                }
-                if (activeFilterCat === 'ACESSÓRIOS') {
-                    return cat === 'EQUIPAMENTOS' && (sub.includes('ACESSÓRIO') || sub.includes('FERRAMENTA') || (!sub.includes('ARREIO') && !sub.includes('SELA')));
-                }
-                if (activeFilterCat === 'ANIMAIS') {
-                    // Outros animais, excluindo cavalos para manter a organização
-                    return cat === 'ANIMAIS' && !(sub.includes('CAVALO') || title.includes('CAVALO') || title.includes('POTRO') || title.includes('ÉGUA'));
-                }
-                if (activeFilterCat === 'OUTROS') {
-                    return cat === 'OUTROS' || cat === 'SERVICOS' || cat === 'ALIMENTACAO';
-                }
-                
-                return cat === activeFilterCat;
+                return cat === activeFilterCat.toUpperCase();
             });
         }
 

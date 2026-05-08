@@ -240,25 +240,34 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
           <h1 className="text-2xl font-black uppercase tracking-tighter text-[#ECA413] italic truncate">+VAQUEJADA</h1>
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          <button className="relative" onClick={() => setIsSearchOpen(true)}>
+          <button 
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/5 active:scale-90 transition-all" 
+            onClick={() => setIsSearchOpen(true)}
+          >
             <span className="material-icons text-2xl text-white">search</span>
           </button>
           
-          {/* New Add Button for FEED */}
           <button 
-            className="relative w-10 h-10 flex items-center justify-center rounded-full bg-white/5 active:scale-90 transition-transform" 
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 active:scale-90 transition-all" 
             onClick={() => onMediaCreation('FEED')}
           >
             <span className="material-icons text-2xl text-white">add</span>
           </button>
 
-          <button className="relative" onClick={() => { setIsNotificationsOpen(true); markAsRead(); }}>
+          <button 
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/5 active:scale-90 transition-all" 
+            onClick={() => { setIsNotificationsOpen(true); markAsRead(); }}
+          >
             <span className={`material-icons text-2xl ${isNotificationsOpen ? 'text-[#ECA413]' : 'text-white'}`}>favorite_border</span>
             {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-[#ECA413] border-2 border-background-dark rounded-full animate-pulse"></span>
+              <span className="absolute top-2 right-2 w-2 h-2 bg-[#ECA413] rounded-full animate-pulse"></span>
             )}
           </button>
-          <button className="relative" onClick={() => { setIsDMScreenOpen(true); fetchConversations(); }}>
+          
+          <button 
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/5 active:scale-90 transition-all" 
+            onClick={() => { setIsDMScreenOpen(true); fetchConversations(); }}
+          >
             <span className="material-icons text-2xl text-white">send</span>
           </button>
         </div>
