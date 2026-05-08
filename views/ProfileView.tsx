@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { createNotification } from '../lib/notifications';
 import { compressImage } from '../lib/imageUtils';
 import { SocialService } from '../social/services/SocialService';
+import { PullToRefresh } from '../components/PullToRefresh';
 
 interface ProfileViewProps {
     user: User | null;
@@ -210,134 +211,134 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
         }
     };
 
-    useEffect(() => {
-        const fetchProfile = async () => {
-            setLoading(true);
-            try {
-                let currentProfile: any = null;
-                let profileId = '';
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            let currentProfile: any = null;
+            let profileId = '';
 
-                if (isMyProfile && user) {
-                    profileId = user.id;
-                    const { data, error } = await supabase
-                        .from('profiles')
-                        .select('*')
-                        .eq('id', user.id)
-                        .single();
-                    
-                    if (data) currentProfile = data;
-                } else if (targetUsername) {
-                    const { data, error } = await supabase
-                        .from('profiles')
-                        .select('*')
-                        .eq('username', targetUsername)
-                        .single();
-                    if (data) {
-                        currentProfile = data;
-                        profileId = data.id;
-                    }
+            if (isMyProfile && user) {
+                profileId = user.id;
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', user.id)
+                    .single();
+                
+                if (data) currentProfile = data;
+            } else if (targetUsername) {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('username', targetUsername)
+                    .single();
+                if (data) {
+                    currentProfile = data;
+                    profileId = data.id;
                 }
-
-                if (profileId) {
-                    // Fetch real counts
-                    const [postsRes, followersRes, followingRes] = await Promise.all([
-                        supabase.from('posts').select('*', { count: 'exact', head: true }).eq('user_id', profileId),
-                        supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', profileId),
-                        supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', profileId)
-                    ]);
-
-                    setStats({
-                        posts: postsRes.count || 0,
-                        followers: followersRes.count || 0,
-                        following: followingRes.count || 0
-                    });
-
-                    // Fetch actual posts with counts and expiration filter
-                    const now = new Date().toISOString();
-                    const { data: postsData } = await supabase
-                        .from('posts')
-                        .select(`
-                            *,
-                            likes:post_likes(count),
-                            comments:post_comments(count)
-                        `)
-                        .eq('user_id', profileId)
-                        .or(`expires_at.is.null,expires_at.gt.${now}`)
-                        .order('created_at', { ascending: false });
-                    
-                    if (postsData) {
-                        setProfilePosts(postsData.map(p => ({
-                            id: p.id,
-                            img: p.media_url,
-                            likes: p.likes?.[0]?.count || 0,
-                            comments: p.comments?.[0]?.count || 0,
-                            caption: p.caption,
-                            expires_at: p.expires_at
-                        })));
-                    }
-
-                    // Fetch market items
-                    const { data: marketData } = await supabase
-                        .from('market_items')
-                        .select('*')
-                        .eq('user_id', profileId)
-                        .eq('status', 'active')
-                        .order('created_at', { ascending: false });
-                    
-                    if (marketData) {
-                        setMarketPosts(marketData.map(m => ({
-                            id: m.id,
-                            img: m.image_url || m.media_url || m.img,
-                            price: m.price || 'A combinar',
-                            title: m.title || m.name,
-                            status: m.status
-                        })));
-                    }
-
-                    // Check for owned store
-                    const { data: storeData } = await supabase
-                        .from('stores')
-                        .select('*')
-                        .eq('user_id', profileId)
-                        .eq('is_active', true)
-                        .maybeSingle();
-                    if (storeData) {
-                        setUserStore(storeData);
-                    }
-
-                    // Check for active stories (expires_at > now)
-                    const { data: storiesData } = await supabase
-                        .from('stories')
-                        .select('id')
-                        .eq('user_id', profileId)
-                        .gt('expires_at', new Date().toISOString())
-                        .limit(1);
-                    
-                    setHasActiveStory(!!storiesData && storiesData.length > 0);
-
-                    if (currentProfile) {
-                        setProfileData({
-                            ...currentProfile,
-                            location: `${currentProfile.city_name || currentProfile.city_id || 'Arena'}, ${currentProfile.state_name || currentProfile.state_id || 'VAQUERAMA'}`,
-                            isVerified: currentProfile.is_verified || currentProfile.role === 'ADMIN_MASTER'
-                        });
-                    }
-                }
-            } catch (err) {
-                console.error("Error fetching profile:", err);
-                setProfileData(null);
-            } finally {
-                setLoading(false);
             }
-        };
 
+            if (profileId) {
+                // Fetch real counts
+                const [postsRes, followersRes, followingRes] = await Promise.all([
+                    supabase.from('posts').select('*', { count: 'exact', head: true }).eq('user_id', profileId),
+                    supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', profileId),
+                    supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', profileId)
+                ]);
+
+                setStats({
+                    posts: postsRes.count || 0,
+                    followers: followersRes.count || 0,
+                    following: followingRes.count || 0
+                });
+
+                // Fetch actual posts with counts and expiration filter
+                const now = new Date().toISOString();
+                const { data: postsData } = await supabase
+                    .from('posts')
+                    .select(`
+                        *,
+                        likes:post_likes(count),
+                        comments:post_comments(count)
+                    `)
+                    .eq('user_id', profileId)
+                    .or(`expires_at.is.null,expires_at.gt.${now}`)
+                    .order('created_at', { ascending: false });
+                
+                if (postsData) {
+                    setProfilePosts(postsData.map(p => ({
+                        id: p.id,
+                        img: p.media_url,
+                        likes: p.likes?.[0]?.count || 0,
+                        comments: p.comments?.[0]?.count || 0,
+                        caption: p.caption,
+                        expires_at: p.expires_at
+                    })));
+                }
+
+                // Fetch market items
+                const { data: marketData } = await supabase
+                    .from('market_items')
+                    .select('*')
+                    .eq('user_id', profileId)
+                    .eq('status', 'active')
+                    .order('created_at', { ascending: false });
+                
+                if (marketData) {
+                    setMarketPosts(marketData.map(m => ({
+                        id: m.id,
+                        img: m.image_url || m.media_url || m.img,
+                        price: m.price || 'A combinar',
+                        title: m.title || m.name,
+                        status: m.status
+                    })));
+                }
+
+                // Check for owned store
+                const { data: storeData } = await supabase
+                    .from('stores')
+                    .select('*')
+                    .eq('user_id', profileId)
+                    .eq('is_active', true)
+                    .maybeSingle();
+                if (storeData) {
+                    setUserStore(storeData);
+                }
+
+                // Check for active stories (expires_at > now)
+                const { data: storiesData } = await supabase
+                    .from('stories')
+                    .select('id')
+                    .eq('user_id', profileId)
+                    .gt('expires_at', new Date().toISOString())
+                    .limit(1);
+                
+                setHasActiveStory(!!storiesData && storiesData.length > 0);
+
+                if (currentProfile) {
+                    setProfileData({
+                        ...currentProfile,
+                        location: `${currentProfile.city_name || currentProfile.city_id || 'Arena'}, ${currentProfile.state_name || currentProfile.state_id || 'VAQUERAMA'}`,
+                        isVerified: currentProfile.is_verified || currentProfile.role === 'ADMIN_MASTER'
+                    });
+                }
+            }
+        } catch (err) {
+            console.error("Error fetching profile:", err);
+            setProfileData(null);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
         // Safety timeout: Never stay loading more than 3 seconds
         const safetyTimer = setTimeout(() => {
             setLoading(false);
         }, 3000);
 
         if (user || targetUsername) {
-            fetchProfile();
+            fetchData();
         } else {
             setLoading(false);
         }
@@ -413,7 +414,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
     };
 
     return (
-        <div className="min-h-full bg-background-dark text-white font-sans pb-24 font-display">
+        <PullToRefresh onRefresh={fetchData} className="bg-background-dark">
+            <div className="min-h-full bg-background-dark text-white font-sans pb-24 font-display">
             {/* Header / Actions */}
             <div className="px-6 pt-[env(safe-area-inset-top,12px)] pb-4 flex justify-between items-center sticky top-0 bg-background-dark/90 backdrop-blur-md z-10 border-b border-white/5" style={{paddingTop: 'max(env(safe-area-inset-top, 0px), 44px)'}}>
                 <button
@@ -919,7 +921,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                     </div>
                 </div>
             )}
-        </div>
+        </PullToRefresh>
     );
 };
 

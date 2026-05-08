@@ -18,6 +18,7 @@ import { supabase } from '../../lib/supabase';
 import { SocialService } from '../services/SocialService';
 import { useCall } from '../../context/CallContext';
 import GuestCTA from '../../components/GuestCTA';
+import { PullToRefresh } from '../../components/PullToRefresh';
 
 interface SocialFeedScreenProps {
   user: any;
@@ -230,7 +231,8 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
   const activePartner = conversations.find(c => c.other_user_id === activeChatPartnetId) || searchResults.find(r => r.id === activeChatPartnetId);
 
   return (
-    <div className="bg-background-dark min-h-full font-display relative overflow-y-auto">
+    <PullToRefresh onRefresh={refresh} className="bg-background-dark h-full">
+      <div className="bg-background-dark min-h-full font-display relative">
       {/* Header */}
       <header className="flex justify-between items-center px-4 py-3 sticky top-0 z-50 bg-background-dark/95 backdrop-blur-md border-b border-white/5">
         <div className="flex flex-col">
@@ -312,6 +314,8 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
           })
         )}
       </main>
+      </div>
+    </PullToRefresh>
 
       {/* Overlays */}
       {activeStoryIndex !== null && (

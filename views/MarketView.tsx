@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import AdsCarousel from '../components/AdsCarousel';
 import { compressImage } from '../lib/imageUtils';
 import GuestCTA from '../components/GuestCTA';
+import { PullToRefresh } from '../components/PullToRefresh';
 
 const STATES = [
     'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
@@ -126,9 +127,12 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
         }
     };
 
+    const handleRefresh = async () => {
+        await Promise.all([fetchAds(), fetchStores()]);
+    };
+
     useEffect(() => {
-        fetchAds();
-        fetchStores();
+        handleRefresh();
         const channel = supabase.channel('market_items_rt')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'market_items' }, fetchAds)
             .subscribe();
@@ -864,7 +868,8 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
     const highlights = publishedAds.length > 0 ? [...publishedAds].sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 4) : [];
 
     return (
-        <div className="min-h-full pb-24 relative bg-[#0F0A05]">
+        <PullToRefresh onRefresh={handleRefresh} className="bg-[#0F0A05]">
+            <div className="min-h-full pb-24 relative bg-[#0F0A05]">
             {/* Header Sticky Premium */}
             <div className="sticky top-0 z-40 bg-[#0F0A05]/90 backdrop-blur-xl border-b border-white/5 pt-12 pb-4 shadow-2xl">
                 <div className="px-6 flex justify-between items-center mb-4">
@@ -1086,7 +1091,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                     </div>
                 )}
             </div>
-        </div>
+        </PullToRefresh>
     );
 };
 

@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import SponsorMarquee from '../components/SponsorMarquee';
 import AdsCarousel from '../components/AdsCarousel';
 import GuestCTA from '../components/GuestCTA';
+import { PullToRefresh } from '../components/PullToRefresh';
 
 const TABS = ['RESULTADOS', 'NOTÍCIAS'];
 
@@ -57,26 +58,20 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
   const [hasLive, setHasLive] = React.useState(false);
 
   // Busca transmissões ativas
-  React.useEffect(() => {
-    const fetchTransmissions = async () => {
-      const { data } = await supabase
-        .from('transmissions')
-        .select('*')
-        .eq('active', true)
-        .order('is_live', { ascending: false })
-        .order('created_at', { ascending: false });
-      if (data) {
-        setTransmissions(data);
-        setHasLive(data.some(t => t.is_live));
-      }
-    };
-    fetchTransmissions();
-    // Recarrega a cada 60 segundos para capturar novas lives
-    const interval = setInterval(fetchTransmissions, 60000);
-    return () => clearInterval(interval);
-  }, []);
+  const fetchTransmissions = async () => {
+    const { data } = await supabase
+      .from('transmissions')
+      .select('*')
+      .eq('active', true)
+      .order('is_live', { ascending: false })
+      .order('created_at', { ascending: false });
+    if (data) {
+      setTransmissions(data);
+      setHasLive(data.some(t => t.is_live));
+    }
+  };
 
-  React.useEffect(() => {
+  const fetchNewsAndResults = async () => {
     const fetchNews = async () => {
       const { data } = await supabase
         .from('news')
@@ -93,8 +88,21 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
         .order('publicado_em', { ascending: false });
       if (data) setResults(data);
     };
-    fetchNews();
-    fetchResults();
+    await Promise.all([fetchNews(), fetchResults()]);
+  };
+
+  const handleRefresh = async () => {
+    await Promise.all([fetchTransmissions(), fetchNewsAndResults()]);
+  };
+
+  React.useEffect(() => {
+    fetchTransmissions();
+    const interval = setInterval(fetchTransmissions, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  React.useEffect(() => {
+    fetchNewsAndResults();
   }, []);
 
   const filteredNews = React.useMemo(() => {
@@ -267,7 +275,8 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
 
   // ---- LISTA PRINCIPAL ----
   return (
-    <div className="pb-24">
+    <PullToRefresh onRefresh={handleRefresh} className="bg-background-dark">
+      <div className="pb-24">
 
       {/* ===== BOTÃO TV +VAQUEJADA — FIXO E EM DESTAQUE ===== */}
       <div className="sticky top-0 z-40 px-6 pt-4 pb-3 bg-background-dark/95 backdrop-blur-md border-b border-white/5">
@@ -607,7 +616,8 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </PullToRefresh>
   );
 };
 

@@ -7,6 +7,7 @@ import CircuitPanel from '../components/CircuitPanel';
 import GuestCTA from '../components/GuestCTA';
 import { VaquejadaCalendar } from '../components/VaquejadaCalendar';
 import { CalendarEventsSheet } from '../components/CalendarEventsSheet';
+import { PullToRefresh } from '../components/PullToRefresh';
 
 const MOCK_CIRCUITS: Circuito[] = [
   { id: 'todos', nome: 'Todos os circuitos', slug: 'todos', ativo: true, destaque: true, ordem: 0 },
@@ -105,37 +106,38 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
     localStorage.setItem('arena_favorites', JSON.stringify(favorites));
   }, [favorites]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const { data: eventsData } = await supabase.from('events').select('*').eq('is_paused', false).order('created_at', { ascending: false });
-        if (eventsData) {
-            const mapped = eventsData.map(ev => ({
-                ...ev,
-                imageUrl: ev.image_url,
-                date: { month: ev.date_month, day: ev.date_day }
-            }));
-            setEvents(mapped.length > 0 ? mapped : INITIAL_EVENTS);
+  const fetchData = async () => {
+    try {
+      const { data: eventsData } = await supabase.from('events').select('*').eq('is_paused', false).order('created_at', { ascending: false });
+      if (eventsData) {
+          const mapped = eventsData.map(ev => ({
+              ...ev,
+              imageUrl: ev.image_url,
+              date: { month: ev.date_month, day: ev.date_day }
+          }));
+          setEvents(mapped.length > 0 ? mapped : INITIAL_EVENTS);
 
-            const { data: likesData } = await supabase.from('event_likes').select('event_id');
-            const counts: Record<string, number> = {};
-            likesData?.forEach(lk => {
-                counts[lk.event_id] = (counts[lk.event_id] || 0) + 1;
-            });
-            setLikesCount(counts);
-        } else {
-            setEvents(INITIAL_EVENTS);
-        }
-
-        // Fetch Layout Order
-        const { data: settingsData } = await supabase.from('app_settings').select('value').eq('key', 'events_layout_order').maybeSingle();
-        if (settingsData && settingsData.value && Array.isArray(settingsData.value)) {
-            setLayoutOrder(settingsData.value);
-        }
-      } catch (err) {
-        setEvents(INITIAL_EVENTS);
+          const { data: likesData } = await supabase.from('event_likes').select('event_id');
+          const counts: Record<string, number> = {};
+          likesData?.forEach(lk => {
+              counts[lk.event_id] = (counts[lk.event_id] || 0) + 1;
+          });
+          setLikesCount(counts);
+      } else {
+          setEvents(INITIAL_EVENTS);
       }
-    };
+
+      // Fetch Layout Order
+      const { data: settingsData } = await supabase.from('app_settings').select('value').eq('key', 'events_layout_order').maybeSingle();
+      if (settingsData && settingsData.value && Array.isArray(settingsData.value)) {
+          setLayoutOrder(settingsData.value);
+      }
+    } catch (err) {
+      setEvents(INITIAL_EVENTS);
+    }
+  };
+
+  useEffect(() => {
     fetchData();
   }, []);
 
@@ -189,7 +191,8 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
   };
 
   return (
-    <div className="px-6 py-6 pb-24 min-h-full bg-background-dark">
+    <PullToRefresh onRefresh={fetchData} className="bg-background-dark">
+      <div className="px-6 py-6 pb-24 min-h-full bg-background-dark">
       <header className="mb-6 -mx-6 px-6">
         <div className="flex justify-between items-center mb-6">
           {!isSearchOpen ? (
@@ -319,7 +322,8 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt })
           onEventClick={handleCardClick} 
         />
       )}
-    </div>
+      </div>
+    </PullToRefresh>
   );
 };
 
