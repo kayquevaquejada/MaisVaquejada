@@ -72,9 +72,9 @@ export const PostCard: React.FC<PostCardProps> = ({
         {(currentUserId === post.userId || isAdmin) && (
           <button
             onClick={() => onOptions(post)}
-            className="material-icons text-white/40 text-xl hover:text-white transition-colors"
+            className="w-10 h-10 flex items-center justify-center -mr-2 hover:bg-white/5 rounded-full transition-colors active:scale-90"
           >
-            more_vert
+            <span className="material-icons text-white/40 text-[24px]">more_vert</span>
           </button>
         )}
       </div>
