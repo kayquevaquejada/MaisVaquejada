@@ -19,12 +19,20 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Filtro para o Deep Link do Login Google -->
+            <!-- Filtro para o Deep Link do Login Google (Padrão) -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="com.maisvaquejada.app" />
+            </intent-filter>
+
+            <!-- Filtro para o Deep Link legado/iOS compat -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="maisvaquejada" />
             </intent-filter>
         </activity>
 

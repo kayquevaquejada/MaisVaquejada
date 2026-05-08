@@ -306,15 +306,26 @@ const App: React.FC = () => {
         
 
         // DETECÇÃO UNIVERSAL DE CALLBACK (Apple/Google)
-        const hasAuthParams = window.location.hash.includes('access_token') || 
-                            window.location.search.includes('code=') ||
-                            window.location.pathname.startsWith('/auth/callback');
+        const launchUrl = await CapApp.getLaunchUrl();
+        const currentUrl = window.location.href;
+        
+        const hasAuthParams = currentUrl.includes('access_token') || 
+                            currentUrl.includes('code=') ||
+                            currentUrl.pathname?.startsWith('/auth/callback') ||
+                            launchUrl?.url.includes('auth/callback');
 
-        if (hasAuthParams) {
-          setCurrentView(View.AUTH_CALLBACK);
-          setInitializing(false);
-          isInitializedRef.current = true;
-          return;
+        if (hasAuthParams || launchUrl?.url) {
+          const finalUrl = launchUrl?.url || currentUrl;
+          if (finalUrl.includes('auth/callback') || finalUrl.includes('code=')) {
+            console.log('[App] Startup: Deep Link detectado na inicialização:', finalUrl);
+            setCurrentView(View.AUTH_CALLBACK);
+            setInitializing(false);
+            isInitializedRef.current = true;
+            
+            // Simular o evento de appUrlOpen para reaproveitar a lógica
+            window.dispatchEvent(new CustomEvent('arena_handle_deeplink', { detail: { url: finalUrl } }));
+            return;
+          }
         }
 
         const cached = await getCachedProfile();
@@ -374,49 +385,42 @@ const App: React.FC = () => {
       }
     });
 
-    const urlOpenListener = CapApp.addListener('appUrlOpen', async ({ url }) => {
-      console.log('[App] Deep Link capturado:', url.includes('auth/callback') ? 'Callback de Autenticação' : 'Outro link');
+    const handleDeepLink = async (url: string) => {
+      console.log('[App] Processando Deep Link:', url);
       
-      if (url.includes('auth/callback')) {
-        // IMEDIATAMENTE mudar para a view de callback para mostrar o loading
+      if (url.includes('auth/callback') || url.includes('access_token=') || url.includes('code=')) {
         setCurrentView(View.AUTH_CALLBACK);
         setInitializing(false);
         
-        // Pequena pausa para garantir que o Browser feche e o storage esteja pronto
         await Browser.close();
-        await new Promise(r => setTimeout(r, 500));
+        await new Promise(r => setTimeout(r, 800));
 
-        // O Supabase pode retornar params no fragmento (hash) ou query string
-        // Usamos uma abordagem mais robusta para extrair tokens/codes
-        const rawUrl = url.replace('#', '?');
-        const urlObj = new URL(rawUrl);
-        const code = urlObj.searchParams.get('code');
+        let code = null;
+        try {
+          const rawUrl = url.replace('#', '?');
+          const urlObj = new URL(rawUrl);
+          code = urlObj.searchParams.get('code');
+        } catch (e) {
+          console.error('[App] Erro ao processar URL do Deep Link:', e);
+        }
 
         if (code) {
           console.log('[App] Deep Link: Processando código PKCE...');
           const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) console.error('[App] Erro na troca de código:', error.message);
           
-          if (error) {
-            console.error('Erro na troca de código:', error.message);
-            // Mesmo com erro, pode ser que o session já exista (race condition com onAuthStateChange)
-          }
-          
-          const currentSession = data?.session || (await supabase.auth.getSession()).data.session;
+          const currentSession = (await supabase.auth.getSession()).data.session;
           if (currentSession?.user) {
-            console.log('[App] Login via Deep Link bem sucedido:', currentSession.user.email);
             await fetchProfile(currentSession.user.id, currentSession.user);
           } else {
-            console.warn('[App] Falha ao obter sessão após troca de código');
             setCurrentView(View.LOGIN);
           }
         } else {
-          // Fallback para quando não há código direto, mas a URL é de callback
-          console.log('[App] Sem código na URL, tentando recuperar sessão...');
+          console.log('[App] Tentando recuperar sessão via getSession...');
           const { data: sessionData } = await supabase.auth.getSession();
           if (sessionData.session?.user) {
             await fetchProfile(sessionData.session.user.id, sessionData.session.user);
           } else {
-            // Aguarda um pouco mais se for implicit flow
             setTimeout(async () => {
                 const { data: retryData } = await supabase.auth.getSession();
                 if (retryData.session?.user) {
@@ -424,17 +428,25 @@ const App: React.FC = () => {
                 } else {
                     setCurrentView(View.LOGIN);
                 }
-            }, 1500);
+            }, 2000);
           }
         }
       }
-    });
+    };
+
+    const urlOpenListener = CapApp.addListener('appUrlOpen', ({ url }) => handleDeepLink(url));
+    
+    const customLinkListener = (e: any) => {
+      if (e.detail?.url) handleDeepLink(e.detail.url);
+    };
+    window.addEventListener('arena_handle_deeplink', customLinkListener);
 
     return () => {
       isMountedRef.current = false;
       subscription.unsubscribe();
       stateListener.then(l => l.remove());
       urlOpenListener.then(l => l.remove());
+      window.removeEventListener('arena_handle_deeplink', customLinkListener);
     };
 
   }, []);

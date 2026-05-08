@@ -99,9 +99,15 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
     setError(null);
     try {
       const isNative = Capacitor.isNativePlatform();
-      const redirectTo = isNative 
-        ? 'maisvaquejada://auth/callback' 
-        : window.location.origin + '/auth/callback';
+      const platform = Capacitor.getPlatform();
+      
+      let redirectTo = window.location.origin + '/auth/callback';
+      if (isNative) {
+        // No Android usamos o appId, no iOS usamos o esquema personalizado definido no Info.plist
+        redirectTo = platform === 'android' 
+          ? 'com.maisvaquejada.app://auth/callback' 
+          : 'maisvaquejada://auth/callback';
+      }
 
       if (isNative && Capacitor.getPlatform() === 'ios') {
         const { data, error } = await supabase.auth.signInWithOAuth({
