@@ -23,13 +23,32 @@ const EventDetailView: React.FC<EventDetailViewProps> = ({ event, user, onBack }
   // Status map
   const statusConfig = {
     em_breve: { label: 'Em Breve', color: 'bg-blue-500', icon: 'schedule' },
-    confirmado: { label: 'Confirmado', color: 'bg-green-500', icon: 'verified' },
-    acontecendo: { label: 'Acontecendo', color: 'bg-red-500', icon: 'sensors' },
-    encerrado: { label: 'Encerrado', color: 'bg-gray-500', icon: 'done_all' }
+    confirmado: { label: 'Confirmado', color: 'bg-green-600', icon: 'verified' },
+    acontecendo: { label: 'Acontecendo', color: 'bg-red-600', icon: 'sensors' },
+    encerrado: { label: 'Encerrado', color: 'bg-gray-600', icon: 'done_all' }
   };
 
-  const currentStatus = event?.status || 'confirmado';
-  const status = statusConfig[currentStatus as keyof typeof statusConfig] || statusConfig.confirmado;
+  const dynamicStatus = useMemo(() => {
+    if (!event) return 'confirmado';
+
+    // Se tiver datas formais (novos eventos)
+    if (event.start_date) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const start = new Date(event.start_date + 'T00:00:00');
+      const end = event.end_date ? new Date(event.end_date + 'T23:59:59') : new Date(event.start_date + 'T23:59:59');
+
+      if (today >= start && today <= end) return 'acontecendo';
+      if (today > end) return 'encerrado';
+      return 'confirmado';
+    }
+
+    // Fallback para status manual se não houver datas formais
+    return event.status || 'confirmado';
+  }, [event]);
+
+  const status = statusConfig[dynamicStatus as keyof typeof statusConfig] || statusConfig.confirmado;
 
   useEffect(() => {
     if (event?.id) {
