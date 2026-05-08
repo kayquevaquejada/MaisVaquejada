@@ -39,16 +39,32 @@ export const VaquejadaCalendar: React.FC<VaquejadaCalendarProps> = ({ events, on
   // Função para verificar se existe evento num determinado dia
   const getEventsForDate = (date: Date): EventItem[] => {
     return events.filter(ev => {
-      if (!ev.start_date) return false;
+      // Prioridade 1: Datas estruturadas (novos eventos)
+      if (ev.start_date) {
+        const evStart = new Date(ev.start_date + 'T00:00:00');
+        const evEnd = ev.end_date ? new Date(ev.end_date + 'T23:59:59') : evStart;
+        
+        const checkDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const sDate = new Date(evStart.getFullYear(), evStart.getMonth(), evStart.getDate());
+        const eDate = new Date(evEnd.getFullYear(), evEnd.getMonth(), evEnd.getDate());
+        
+        if (checkDate >= sDate && checkDate <= eDate) return true;
+      }
       
-      const evStart = new Date(ev.start_date + 'T00:00:00');
-      const evEnd = ev.end_date ? new Date(ev.end_date + 'T23:59:59') : evStart;
-      
-      const checkDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-      const sDate = new Date(evStart.getFullYear(), evStart.getMonth(), evStart.getDate());
-      const eDate = new Date(evEnd.getFullYear(), evEnd.getMonth(), evEnd.getDate());
-      
-      return checkDate >= sDate && checkDate <= eDate;
+      // Prioridade 2: Fallback para datas legadas (texto)
+      if (!ev.start_date && ev.date_month && ev.date_day) {
+        const monthIndex = MONTHS.findIndex(m => m.toLowerCase() === ev.date_month?.toLowerCase().trim());
+        if (monthIndex === date.getMonth()) {
+          const dayNum = date.getDate().toString();
+          const paddedDayNum = dayNum.padStart(2, '0');
+          const dayRegex = new RegExp(`(^|\\D)${dayNum}(\\D|$)`);
+          const paddedDayRegex = new RegExp(`(^|\\D)${paddedDayNum}(\\D|$)`);
+          
+          if (dayRegex.test(ev.date_day) || paddedDayRegex.test(ev.date_day)) return true;
+        }
+      }
+
+      return false;
     });
   };
 

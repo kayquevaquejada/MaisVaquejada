@@ -278,19 +278,30 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                     return cat === 'ANIMAIS' && (sub.includes('CAVALO') || title.includes('CAVALO') || title.includes('POTRO') || title.includes('ÉGUA'));
                 }
                 if (activeFilterCat === 'CAMINHÕES') {
-                    return cat === 'VEICULOS' && (sub.includes('CAMINHÃO') || title.includes('CAMINHÃO') || title.includes('CAMINHAO'));
+                    // Inclui veículos pesados e acessórios de transporte
+                    return cat === 'VEICULOS' || sub.includes('CAMINHÃO') || sub.includes('REBOQUE') || sub.includes('TRAILER');
                 }
                 if (activeFilterCat === 'ARREIOS') {
-                    return cat === 'EQUIPAMENTOS' && (sub.includes('ARREIO') || sub.includes('SELA') || title.includes('ARREIO') || title.includes('SELA'));
+                    return cat === 'EQUIPAMENTOS' && (sub.includes('ARREIO') || sub.includes('SELA') || sub.includes('MANTA') || sub.includes('CABEÇADA'));
                 }
                 if (activeFilterCat === 'ACESSÓRIOS') {
-                    return cat === 'EQUIPAMENTOS' && (sub.includes('ACESSÓRIO') || title.includes('ACESSÓRIO'));
+                    return cat === 'EQUIPAMENTOS' && (sub.includes('ACESSÓRIO') || sub.includes('FERRAMENTA') || (!sub.includes('ARREIO') && !sub.includes('SELA')));
                 }
-                if (activeFilterCat === 'ANIMAIS') return cat === 'ANIMAIS';
-                if (activeFilterCat === 'OUTROS') return cat === 'OUTROS' || cat === 'SERVICOS';
+                if (activeFilterCat === 'ANIMAIS') {
+                    // Outros animais, excluindo cavalos para manter a organização
+                    return cat === 'ANIMAIS' && !(sub.includes('CAVALO') || title.includes('CAVALO') || title.includes('POTRO') || title.includes('ÉGUA'));
+                }
+                if (activeFilterCat === 'OUTROS') {
+                    return cat === 'OUTROS' || cat === 'SERVICOS' || cat === 'ALIMENTACAO';
+                }
                 
                 return cat === activeFilterCat;
             });
+        }
+
+        // Filter by store if selected
+        if (selectedStore) {
+            result = result.filter(ad => ad.loja_id === selectedStore.id || ad.store_id === selectedStore.id);
         }
 
         // 2. Filter by search term
