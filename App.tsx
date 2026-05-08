@@ -49,6 +49,7 @@ interface ViewRendererProps {
   onFetchProfile: (userId: string, authUser?: any) => Promise<void>;
   onSetCurrentView: (view: View) => void;
   onLogout: () => void;
+  mediaCreationMode?: 'FEED' | 'STORY';
 }
 
 const ViewRenderer: React.FC<ViewRendererProps> = ({
@@ -61,6 +62,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
   onFetchProfile,
   onSetCurrentView,
   onLogout,
+  mediaCreationMode,
 }) => {
   switch (currentView) {
     case View.LOGIN:
@@ -70,7 +72,13 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
     case View.COMPLETE_PROFILE:
       return <CompleteProfileView user={user} onComplete={() => user && onFetchProfile(user.id)} onLogout={onLogout} />;
     case View.SOCIAL:
-      return <SocialFeedView user={user} onMediaCreation={() => onSetCurrentView(View.MEDIA_CREATION)} />;
+      return <SocialFeedView user={user} onMediaCreation={(mode) => {
+        if (!user) {
+            window.dispatchEvent(new CustomEvent('arena_show_login'));
+            return;
+        }
+        (onSetCurrentView as any)(View.MEDIA_CREATION, { mode });
+      }} />;
     case View.EVENTS:
       return <EventsView onLoginPrompt={() => onSetCurrentView(View.LOGIN)} />;
     case View.NEWS:
@@ -80,7 +88,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
     case View.PROFILE:
       return <ProfileView user={user} targetUsername={profileUsername} onLogout={onLogout} onAdminView={() => onSetCurrentView(View.ADMIN)} onSettingsView={() => onSetCurrentView(View.SETTINGS)} onProfileUpdate={() => user && onFetchProfile(user.id)} />;
     case View.MEDIA_CREATION:
-      return <MediaCreationView user={user} onClose={() => onSetCurrentView(View.SOCIAL)} onSuccess={() => onSetCurrentView(View.SOCIAL)} />;
+      return <MediaCreationView user={user} onClose={() => onSetCurrentView(View.SOCIAL)} onSuccess={() => onSetCurrentView(View.SOCIAL)} initialMode={mediaCreationMode} />;
     case View.SETTINGS:
       return <SettingsView user={user} onBack={() => onSetCurrentView(View.PROFILE)} onLogout={onLogout} onAdminView={() => onSetCurrentView(View.ADMIN)} onProfileUpdate={() => user && onFetchProfile(user.id)} />;
     case View.ADMIN:
@@ -133,6 +141,7 @@ const App: React.FC = () => {
   const [selectedStore, setSelectedStore] = useState<any>(null);
   const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [mediaCreationMode, setMediaCreationMode] = useState<'FEED' | 'STORY'>('FEED');
   const [initializing, setInitializing] = useState(true);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [fatalError, setFatalError] = useState<string | null>(null);
@@ -457,6 +466,7 @@ const App: React.FC = () => {
       const username = e.detail?.username ?? null;
       const eventData = e.detail?.event ?? null;
       const resultId = e.detail?.resultId ?? null;
+      const mode = e.detail?.mode ?? 'FEED';
 
       const publicViews = [
         View.EVENTS, 
@@ -490,6 +500,7 @@ const App: React.FC = () => {
       if (eventData !== undefined) setSelectedEvent(eventData);
       if (e.detail?.store !== undefined) setSelectedStore(e.detail.store);
       if (resultId !== undefined) setSelectedResultId(resultId);
+      if (mode !== undefined) setMediaCreationMode(mode);
 
       // Persistir última view para restauração no próximo boot
       if (user && ![View.LOGIN, View.SIGNUP, View.COMPLETE_PROFILE, View.LEGAL_CONSENT].includes(view)) {
@@ -610,6 +621,7 @@ if (initializing) {
                 onFetchProfile={fetchProfile}
                 onSetCurrentView={setCurrentView}
                 onLogout={handleLogout}
+                mediaCreationMode={mediaCreationMode}
               />
             </div>
           </div>

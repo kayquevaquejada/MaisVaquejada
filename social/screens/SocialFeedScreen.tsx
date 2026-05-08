@@ -22,7 +22,7 @@ import { PullToRefresh } from '../../components/PullToRefresh';
 
 interface SocialFeedScreenProps {
   user: any;
-  onMediaCreation: () => void;
+  onMediaCreation: (mode: 'FEED' | 'STORY') => void;
 }
 
 const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreation }) => {
@@ -242,6 +242,15 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
           <button className="relative" onClick={() => setIsSearchOpen(true)}>
             <span className="material-icons text-2xl text-white">search</span>
           </button>
+          
+          {/* New Add Button for FEED */}
+          <button 
+            className="relative w-10 h-10 flex items-center justify-center rounded-full bg-white/5 active:scale-90 transition-transform" 
+            onClick={() => onMediaCreation('FEED')}
+          >
+            <span className="material-icons text-2xl text-white">add</span>
+          </button>
+
           <button className="relative" onClick={() => { setIsNotificationsOpen(true); markAsRead(); }}>
             <span className={`material-icons text-2xl ${isNotificationsOpen ? 'text-[#ECA413]' : 'text-white'}`}>favorite_border</span>
             {unreadCount > 0 && (
@@ -258,7 +267,7 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
       <StoryBar 
         stories={mixedStories} 
         user={user} 
-        onMePress={onMediaCreation} 
+        onMePress={() => onMediaCreation('STORY')} 
         onStoryPress={setActiveStoryIndex} 
         onProfilePress={navigateToProfile}
       />

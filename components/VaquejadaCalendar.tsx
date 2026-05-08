@@ -38,25 +38,40 @@ export const VaquejadaCalendar: React.FC<VaquejadaCalendarProps> = ({ events, on
 
   // Função para verificar se existe evento num determinado dia
   const getEventsForDate = (date: Date): EventItem[] => {
+    const MONTH_ABBRS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+
     return events.filter(ev => {
       // Prioridade 1: Datas estruturadas (novos eventos)
       if (ev.start_date) {
-        const evStart = new Date(ev.start_date + 'T00:00:00');
-        const evEnd = ev.end_date ? new Date(ev.end_date + 'T23:59:59') : evStart;
-        
-        const checkDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-        const sDate = new Date(evStart.getFullYear(), evStart.getMonth(), evStart.getDate());
-        const eDate = new Date(evEnd.getFullYear(), evEnd.getMonth(), evEnd.getDate());
-        
-        if (checkDate >= sDate && checkDate <= eDate) return true;
+        try {
+          const evStart = new Date(ev.start_date + 'T00:00:00');
+          const evEnd = ev.end_date ? new Date(ev.end_date + 'T23:59:59') : evStart;
+          
+          const checkDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+          const sDate = new Date(evStart.getFullYear(), evStart.getMonth(), evStart.getDate());
+          const eDate = new Date(evEnd.getFullYear(), evEnd.getMonth(), evEnd.getDate());
+          
+          if (checkDate >= sDate && checkDate <= eDate) return true;
+        } catch (e) {
+          console.warn('Erro ao processar data estruturada:', ev.start_date);
+        }
       }
       
       // Prioridade 2: Fallback para datas legadas (texto)
-      if (!ev.start_date && ev.date_month && ev.date_day) {
-        const monthIndex = MONTHS.findIndex(m => m.toLowerCase() === ev.date_month?.toLowerCase().trim());
+      if (ev.date_month && ev.date_day) {
+        const monthInput = ev.date_month.toLowerCase().trim();
+        const monthIndex = MONTHS.findIndex((m, idx) => 
+          m.toLowerCase() === monthInput || 
+          m.toLowerCase().startsWith(monthInput) ||
+          MONTH_ABBRS[idx] === monthInput ||
+          monthInput.startsWith(MONTH_ABBRS[idx])
+        );
+
         if (monthIndex === date.getMonth()) {
           const dayNum = date.getDate().toString();
           const paddedDayNum = dayNum.padStart(2, '0');
+          
+          // Regex mais robusta para encontrar o dia isolado ou em listas (1, 2, 3 ou 01, 02)
           const dayRegex = new RegExp(`(^|\\D)${dayNum}(\\D|$)`);
           const paddedDayRegex = new RegExp(`(^|\\D)${paddedDayNum}(\\D|$)`);
           

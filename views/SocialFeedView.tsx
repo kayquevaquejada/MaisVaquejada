@@ -3,7 +3,7 @@ import SocialFeedScreen from '../social/screens/SocialFeedScreen';
 
 interface SocialFeedViewProps {
   user: any;
-  onMediaCreation: () => void;
+  onMediaCreation: (mode: 'FEED' | 'STORY') => void;
 }
 
 /**

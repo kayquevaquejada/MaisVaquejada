@@ -7,14 +7,15 @@ interface MediaCreationViewProps {
     user: User | null;
     onClose: () => void;
     onSuccess: () => void;
+    initialMode?: Mode;
 }
 
 type Step = 'CAMERA' | 'PREVIEW' | 'PUBLISH';
 type Mode = 'FEED' | 'STORY';
 
-const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, onSuccess }) => {
+const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, onSuccess, initialMode }) => {
     const [step, setStep] = useState<Step>('CAMERA');
-    const [mode, setMode] = useState<Mode>('FEED');
+    const [mode, setMode] = useState<Mode>(initialMode || 'FEED');
     const [capturedMedia, setCapturedMedia] = useState<{ blob: Blob; url: string; type: 'image' | 'video' } | null>(null);
     const [permissionError, setPermissionError] = useState<string | null>(null);
     const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
