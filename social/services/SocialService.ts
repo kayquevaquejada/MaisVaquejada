@@ -33,7 +33,7 @@ export const SocialService = {
         caption: p.caption || '',
         hashtags: (p.caption || '').match(/#[a-z0-9]+/gi) || [],
         timeAgo: this.timeAgo(p.created_at),
-        isLikedByMe: false
+        isLiked: false
       }));
     }
 
@@ -68,7 +68,7 @@ export const SocialService = {
       hashtags: [],
       timeAgo: getTimeAgo(p.created_at),
       isFeature: false,
-      isLikedByMe: myLikedSet.has(p.id)
+      isLiked: myLikedSet.has(p.id)
     }));
   },
 
