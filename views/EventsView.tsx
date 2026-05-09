@@ -74,6 +74,8 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt, u
   const [isReordering, setIsReordering] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [hasOrderChanges, setHasOrderChanges] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const longPressTimer = React.useRef<any>(null);
 
   const [selectedState, setSelectedState] = useState('');
   const [selectedCircuit, setSelectedCircuit] = useState('todos');
@@ -89,7 +91,7 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt, u
   const [likesCount, setLikesCount] = useState<Record<string, number>>({});
   
   // Calendar States
-  const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | null>(null);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | null>(new Date());
   const [eventsOnSelectedDate, setEventsOnSelectedDate] = useState<any[]>([]);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
@@ -112,14 +114,23 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt, u
   }, [favorites]);
 
   const fetchData = async () => {
+    setLoading(true);
+    const timeoutId = setTimeout(() => {
+        if (loading) setLoading(false);
+    }, 8000);
+
     try {
-      const { data: eventsData } = await supabase
+      const { data: eventsData, error: eventsError } = await supabase
         .from('events')
         .select('*')
         .eq('is_paused', false)
         .order('display_order', { ascending: true });
+
+      if (eventsError) throw eventsError;
+
+      let mapped: any[] = [];
       if (eventsData) {
-          const mapped = eventsData.map(ev => ({
+          mapped = eventsData.map(ev => ({
               ...ev,
               imageUrl: ev.image_url,
               date: { month: ev.date_month, day: ev.date_day }
@@ -134,6 +145,24 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt, u
           setLikesCount(counts);
       } else {
           setEvents(INITIAL_EVENTS);
+          mapped = INITIAL_EVENTS;
+      }
+
+      // Populate events for selected date (default: today)
+      if (selectedCalendarDate) {
+        // Função auxiliar temporária para filtrar (seria melhor extrair de VaquejadaCalendar)
+        const day = selectedCalendarDate;
+        const dayEvents = mapped.filter(ev => {
+            if (ev.start_date) {
+                const evStart = new Date(ev.start_date + 'T00:00:00');
+                const evEnd = ev.end_date ? new Date(ev.end_date + 'T23:59:59') : evStart;
+                const checkDate = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+                return checkDate >= new Date(evStart.getFullYear(), evStart.getMonth(), evStart.getDate()) && 
+                       checkDate <= new Date(evEnd.getFullYear(), evEnd.getMonth(), evEnd.getDate());
+            }
+            return false;
+        });
+        setEventsOnSelectedDate(dayEvents);
       }
 
       // Fetch Layout Order
@@ -142,7 +171,11 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt, u
           setLayoutOrder(settingsData.value);
       }
     } catch (err) {
+      console.error('Error fetching events:', err);
       setEvents(INITIAL_EVENTS);
+    } finally {
+      clearTimeout(timeoutId);
+      setLoading(false);
     }
   };
 
@@ -206,19 +239,53 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt, u
     setIsReordering(true);
   };
 
-  const handleDragOver = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
+  const handleDragOver = (e: React.DragEvent | React.TouchEvent, targetId: string) => {
+    if ('preventDefault' in e) e.preventDefault();
     if (!draggedId || draggedId === targetId) return;
 
     const draggedIdx = events.findIndex(ev => ev.id === draggedId);
     const targetIdx = events.findIndex(ev => ev.id === targetId);
     
+    if (draggedIdx === -1 || targetIdx === -1) return;
+
     const newEvents = [...events];
     const [removed] = newEvents.splice(draggedIdx, 1);
     newEvents.splice(targetIdx, 0, removed);
     
     setEvents(newEvents);
     setHasOrderChanges(true);
+  };
+
+  const handleTouchStart = (id: string) => {
+    if (!user?.isMaster) return;
+    longPressTimer.current = setTimeout(() => {
+        setDraggedId(id);
+        setIsReordering(true);
+        if (navigator.vibrate) navigator.vibrate(50);
+    }, 600);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isReordering) {
+        clearTimeout(longPressTimer.current);
+        return;
+    }
+    
+    e.preventDefault();
+    const touch = e.touches[0];
+    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+    const card = target?.closest('[data-event-id]');
+    if (card) {
+        const targetId = card.getAttribute('data-event-id');
+        if (targetId && targetId !== draggedId) {
+            handleDragOver(e, targetId);
+        }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    clearTimeout(longPressTimer.current);
+    // Don't reset isReordering here so they can see the "Save" button
   };
 
   const saveNewOrder = async () => {
@@ -307,15 +374,60 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt, u
 
           if (blockId === 'calendar') {
             return (
-              <div key="calendar" className="relative z-10">
+              <div key="calendar" className="relative z-10 space-y-6">
                 <VaquejadaCalendar 
                   events={events} 
+                  selectedDate={selectedCalendarDate}
                   onSelectDate={(date, evs) => {
                     setSelectedCalendarDate(date);
                     setEventsOnSelectedDate(evs);
-                    setIsSheetOpen(true);
+                    // Não abrimos mais o sheet automaticamente se houver agenda na tela
+                    // Mas podemos deixar aberto se o usuário preferir. 
+                    // Por agora, vamos garantir que a agenda abaixo atualize.
                   }}
                 />
+
+                {/* AGENDA DO DIA SELECIONADO */}
+                <div className="bg-white/5 rounded-[32px] p-6 border border-white/10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="material-icons text-[#D4AF37]">event_note</span>
+                      <h2 className="text-lg font-black text-white uppercase tracking-tighter italic">
+                        {selectedCalendarDate?.toDateString() === new Date().toDateString() ? 'Agenda de Hoje' : 'Programação do Dia'}
+                      </h2>
+                    </div>
+                    {selectedCalendarDate && (
+                      <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">
+                        {selectedCalendarDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '')}
+                      </span>
+                    )}
+                  </div>
+
+                  {eventsOnSelectedDate.length > 0 ? (
+                    <div className="space-y-3">
+                      {eventsOnSelectedDate.map(ev => (
+                        <div 
+                          key={`agenda-${ev.id}`}
+                          onClick={() => handleCardClick(ev)}
+                          className="flex items-center gap-4 bg-white/5 p-3 rounded-2xl border border-white/5 active:scale-[0.98] transition-transform"
+                        >
+                          <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0">
+                            <img src={ev.imageUrl || ev.image_url} className="w-full h-full object-cover" alt="" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-white font-black text-sm uppercase truncate">{ev.title}</h4>
+                            <p className="text-white/40 text-[10px] font-bold truncate">{ev.park} • {ev.location}</p>
+                          </div>
+                          <span className="material-icons text-[#D4AF37] text-sm">chevron_right</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-8 text-center border border-dashed border-white/10 rounded-2xl">
+                      <p className="text-white/20 text-[10px] font-black uppercase tracking-widest">Nenhum evento para esta data</p>
+                    </div>
+                  )}
+                </div>
               </div>
             );
           }
@@ -335,16 +447,20 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt, u
                   return (
                     <div 
                       key={event.id} 
+                      data-event-id={event.id}
                       onClick={() => handleCardClick(event)} 
                       draggable={user?.isMaster}
                       onDragStart={() => handleDragStart(event.id)}
                       onDragOver={(e) => handleDragOver(e, event.id)}
                       onDragEnd={() => setDraggedId(null)}
-                      className={`group relative bg-[#1A1108] rounded-[32px] overflow-hidden shadow-2xl border transition-all duration-300 ${isDragging ? 'opacity-40 scale-95 border-[#ECA413]' : 'border-white/5 hover:-translate-y-1'}`}
+                      onTouchStart={() => handleTouchStart(event.id)}
+                      onTouchMove={handleTouchMove}
+                      onTouchEnd={handleTouchEnd}
+                      className={`group relative bg-[#1A1108] rounded-[32px] overflow-hidden shadow-2xl border transition-all duration-300 ${isDragging ? 'opacity-40 scale-95 border-[#ECA413] z-50' : 'border-white/5 hover:-translate-y-1'}`}
                     >
                       {user?.isMaster && (
-                        <div className="absolute top-5 left-5 z-30 bg-black/60 backdrop-blur-md w-8 h-8 rounded-full flex items-center justify-center border border-white/20 cursor-move shadow-lg">
-                          <span className="material-icons text-white/50 text-sm">reorder</span>
+                        <div className={`absolute top-5 left-5 z-30 w-8 h-8 rounded-full flex items-center justify-center border shadow-lg transition-all ${isReordering ? 'bg-[#ECA413] border-[#ECA413] text-black animate-pulse' : 'bg-black/60 backdrop-blur-md border-white/20 text-white/50'}`}>
+                          <span className="material-icons text-sm">{isReordering ? 'touch_app' : 'reorder'}</span>
                         </div>
                       )}
                       

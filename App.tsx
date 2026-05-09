@@ -420,9 +420,15 @@ const App: React.FC = () => {
 
         let code = null;
         try {
-          const rawUrl = url.replace('#', '?');
-          const urlObj = new URL(rawUrl);
-          code = urlObj.searchParams.get('code');
+          // Parsing robusto usando Regex para deep links
+          const codeMatch = url.match(/[?&]code=([^&#]+)/);
+          code = codeMatch ? codeMatch[1] : null;
+          
+          if (!code) {
+            const rawUrl = url.replace('#', '?');
+            const urlObj = new URL(rawUrl);
+            code = urlObj.searchParams.get('code');
+          }
         } catch (e) {
           console.error('[App] Erro ao processar URL do Deep Link:', e);
         }

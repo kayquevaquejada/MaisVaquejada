@@ -3,13 +3,14 @@ import { EventItem } from '../types';
 
 interface VaquejadaCalendarProps {
   events: EventItem[];
+  selectedDate?: Date | null;
   onSelectDate: (date: Date, eventsOnDate: EventItem[]) => void;
 }
 
 const MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const DAYS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
-export const VaquejadaCalendar: React.FC<VaquejadaCalendarProps> = ({ events, onSelectDate }) => {
+export const VaquejadaCalendar: React.FC<VaquejadaCalendarProps> = ({ events, selectedDate, onSelectDate }) => {
   const today = new Date();
   const [currentDate, setCurrentDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
 
@@ -127,35 +128,44 @@ export const VaquejadaCalendar: React.FC<VaquejadaCalendarProps> = ({ events, on
           const dayEvents = getEventsForDate(day);
           const hasEvents = dayEvents.length > 0;
           const isToday = day.toDateString() === today.toDateString();
+          const isSelected = selectedDate?.toDateString() === day.toDateString();
           const isHighlight = dayEvents.some(e => e.is_highlight);
 
           return (
             <button
               key={`day-${idx}`}
-              onClick={() => hasEvents && onSelectDate(day, dayEvents)}
-              disabled={!hasEvents}
+              onClick={() => {
+                console.log('CALENDAR_DEBUG: Clicked day', day.toDateString(), 'Events:', dayEvents.length);
+                onSelectDate(day, dayEvents);
+              }}
+              disabled={!hasEvents && !isToday}
               className={`
                 h-10 w-full rounded-xl flex flex-col items-center justify-center relative transition-all duration-300
-                ${hasEvents ? 'cursor-pointer hover:scale-105 active:scale-95' : 'opacity-30 cursor-default'}
-                ${isToday && !hasEvents ? 'border border-[#D4AF37]/50 text-[#D4AF37]' : ''}
-                ${hasEvents ? 'bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-white' : 'text-white/50'}
+                ${hasEvents || isToday ? 'cursor-pointer hover:scale-105 active:scale-95' : 'opacity-20 cursor-default'}
+                ${isSelected ? 'bg-[#D4AF37] text-black shadow-[0_0_15px_rgba(212,175,55,0.5)] z-20 scale-110' : 
+                  isToday ? 'border border-[#D4AF37] bg-[#D4AF37]/5 text-[#D4AF37]' : 
+                  hasEvents ? 'bg-[#D4AF37]/10 border border-[#D4AF37]/20 text-white' : 'text-white/50'}
               `}
             >
-              <span className={`text-sm font-bold ${hasEvents ? 'text-white' : ''}`}>
+              <span className={`text-sm font-black ${isSelected ? 'text-black' : (hasEvents || isToday) ? 'text-white' : ''}`}>
                 {day.getDate()}
               </span>
               
               {/* Pontinhos para indicar eventos */}
-              {hasEvents && (
+              {hasEvents && !isSelected && (
                 <div className="absolute bottom-1 flex gap-0.5">
                   {dayEvents.slice(0,3).map((e, i) => (
                     <div 
                       key={i} 
-                      className={`w-1.5 h-1.5 rounded-full ${e.is_highlight || isHighlight ? 'bg-[#D4AF37] shadow-[0_0_5px_#D4AF37]' : 'bg-white/70'}`}
+                      className={`w-1 h-1 rounded-full ${e.is_highlight || isHighlight ? 'bg-[#D4AF37]' : 'bg-white/50'}`}
                     />
                   ))}
-                  {dayEvents.length > 3 && <div className="w-1.5 h-1.5 rounded-full bg-white/40" />}
                 </div>
+              )}
+
+              {/* Indicador de "Hoje" se não estiver selecionado */}
+              {isToday && !isSelected && (
+                <div className="absolute -top-1 -right-1 w-2 h-2 bg-[#D4AF37] rounded-full border border-black animate-pulse" />
               )}
             </button>
           );
@@ -164,3 +174,4 @@ export const VaquejadaCalendar: React.FC<VaquejadaCalendarProps> = ({ events, on
     </div>
   );
 };
+

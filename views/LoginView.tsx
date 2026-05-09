@@ -73,14 +73,32 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
         }
         console.log('SignInWithApple: Login concluído com sucesso');
       } else {
-        console.log('SignInWithApple: Iniciando fluxo WEB');
+        console.log('SignInWithApple: Iniciando fluxo WEB/Android Native');
+        
+        let redirectTo = window.location.origin + '/auth/callback';
+        if (isNative) {
+            redirectTo = platform === 'android' 
+              ? 'com.maisvaquejada.app://auth/callback' 
+              : 'maisvaquejada://auth/callback';
+        }
+
         const { error: oauthError } = await supabase.auth.signInWithOAuth({
           provider: 'apple',
           options: {
-            redirectTo: window.location.origin
+            redirectTo: redirectTo,
+            skipBrowserRedirect: isNative
           }
         });
+        
         if (oauthError) throw oauthError;
+
+        if (isNative) {
+           const { data } = await supabase.auth.signInWithOAuth({
+              provider: 'apple',
+              options: { redirectTo, skipBrowserRedirect: true }
+           });
+           if (data?.url) await Browser.open({ url: data.url });
+        }
       }
     } catch (err: any) {
       if (err?.message?.toLowerCase().includes('cancel') || err?.message?.toLowerCase().includes('user limit')) {
@@ -109,7 +127,8 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
           : 'maisvaquejada://auth/callback';
       }
 
-      if (isNative && Capacitor.getPlatform() === 'ios') {
+      if (isNative) {
+        console.log('Google Login: Iniciando fluxo NATIVO', platform);
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
@@ -122,6 +141,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
           await Browser.open({ url: data.url });
         }
       } else {
+        console.log('Google Login: Iniciando fluxo WEB');
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {

@@ -38,10 +38,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
     const [showConfirm, setShowConfirm] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [viewingAd, setViewingAd] = useState<any>(null);
-    const [favorites, setFavorites] = useState<string[]>(() => {
-        const saved = localStorage.getItem('arena_market_favorites');
-        return saved ? JSON.parse(saved) : [];
-    });
+    const [favorites, setFavorites] = useState<string[]>([]);
     const [fullscreenGallery, setFullscreenGallery] = useState<{photos: string[], index: number} | null>(null);
     const [touchStart, setTouchStart] = useState<number | null>(null);
     const [currentPhotoIdx, setCurrentPhotoIdx] = useState(0);
@@ -89,12 +86,35 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
         }
     }, [adData.uf]);
 
+    // Fetch User Favorites from Database
     useEffect(() => {
-        localStorage.setItem('arena_market_favorites', JSON.stringify(favorites));
-    }, [favorites]);
+        if (!user?.id) return;
+
+        const fetchFavorites = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('market_likes')
+                    .select('item_id')
+                    .eq('user_id', user.id);
+                
+                if (!error && data) {
+                    setFavorites(data.map(f => f.item_id));
+                }
+            } catch (err) {
+                console.error('Error fetching favorites:', err);
+            }
+        };
+
+        fetchFavorites();
+    }, [user?.id]);
 
     const fetchAds = async () => {
         setLoadingAds(true);
+        // Timeout to prevent infinite skeleton on Android
+        const timeoutId = setTimeout(() => {
+            if (loadingAds) setLoadingAds(false);
+        }, 10000);
+
         try {
             const { data, error } = await supabase
                 .from('market_items')
@@ -106,6 +126,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
         } catch (err) {
             console.error('Error fetching ads:', err);
         } finally {
+            clearTimeout(timeoutId);
             setLoadingAds(false);
         }
     };
@@ -169,8 +190,28 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
         }
     };
 
-    const toggleFavorite = (title: string) => {
-        setFavorites(prev => prev.includes(title) ? prev.filter(t => t !== title) : [...prev, title]);
+    const toggleFavorite = async (itemId: string) => {
+        if (!user) {
+            window.dispatchEvent(new CustomEvent('arena_show_login'));
+            return;
+        }
+
+        const isLiked = favorites.includes(itemId);
+        
+        // Optimistic UI
+        setFavorites(prev => isLiked ? prev.filter(id => id !== itemId) : [...prev, itemId]);
+
+        try {
+            if (isLiked) {
+                await supabase.from('market_likes').delete().eq('user_id', user.id).eq('item_id', itemId);
+            } else {
+                await supabase.from('market_likes').insert({ user_id: user.id, item_id: itemId });
+            }
+        } catch (err) {
+            console.error('Error toggling favorite:', err);
+            // Rollback on error
+            setFavorites(prev => isLiked ? [...prev, itemId] : prev.filter(id => id !== itemId));
+        }
     };
 
     const navigateToProfile = (username: string) => {
@@ -517,8 +558,8 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                 <div className="absolute bottom-0 left-0 right-0 p-4 pb-8 bg-gradient-to-t from-[#0F0A05] via-[#0F0A05]/95 to-transparent flex justify-between items-end z-40 pointer-events-none">
                     {/* Botão Favorito - Esquerda */}
                     <div className="w-[30%] flex justify-start pointer-events-auto">
-                        <button onClick={() => toggleFavorite(viewingAd.title)} className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all backdrop-blur-md border ${favorites.includes(viewingAd.title) ? 'bg-[#1A1108] border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.2)] text-red-500' : 'bg-[#1A1108]/80 border-white/10 text-white/40 hover:text-white'}`}>
-                            <span className="material-icons text-2xl">{favorites.includes(viewingAd.title) ? 'favorite' : 'favorite_border'}</span>
+                        <button onClick={() => toggleFavorite(viewingAd.id)} className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all backdrop-blur-md border ${favorites.includes(viewingAd.id) ? 'bg-[#1A1108] border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.2)] text-red-500' : 'bg-[#1A1108]/80 border-white/10 text-white/40 hover:text-white'}`}>
+                            <span className="material-icons text-2xl">{favorites.includes(viewingAd.id) ? 'favorite' : 'favorite_border'}</span>
                         </button>
                     </div>
 
