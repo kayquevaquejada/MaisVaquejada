@@ -64,91 +64,66 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
   onLogout,
   mediaCreationMode,
 }) => {
-  const isPersistentView = [View.SOCIAL, View.EVENTS, View.NEWS, View.MERCADO, View.PROFILE].includes(currentView);
-
-  return (
-    <div className="w-full h-full relative overflow-hidden">
-      {/* PERSISTENT TAB VIEWS (Always mounted to keep scroll/state) */}
-      <div className={`${currentView === View.SOCIAL ? 'flex' : 'hidden'} flex-col w-full h-full overflow-y-auto scroll-smooth hide-scrollbar`}>
-        <SocialFeedView user={user} onMediaCreation={(mode) => {
-          if (!user) {
-              window.dispatchEvent(new CustomEvent('arena_show_login'));
-              return;
-          }
-          (onSetCurrentView as any)(View.MEDIA_CREATION, { mode });
-        }} />
-      </div>
-
-      <div className={`${currentView === View.EVENTS ? 'flex' : 'hidden'} flex-col w-full h-full overflow-y-auto scroll-smooth hide-scrollbar`}>
-        <EventsView user={user} onLoginPrompt={() => onSetCurrentView(View.LOGIN)} />
-      </div>
-
-      <div className={`${currentView === View.NEWS ? 'flex' : 'hidden'} flex-col w-full h-full overflow-y-auto scroll-smooth hide-scrollbar`}>
-        <NewsView user={user} />
-      </div>
-
-      <div className={`${currentView === View.MERCADO ? 'flex' : 'hidden'} flex-col w-full h-full overflow-y-auto scroll-smooth hide-scrollbar`}>
-        <MarketplaceView user={user} onViewChange={onSetCurrentView} selectedStore={selectedStore} />
-      </div>
-
-      <div className={`${currentView === View.PROFILE ? 'flex' : 'hidden'} flex-col w-full h-full overflow-y-auto scroll-smooth hide-scrollbar`}>
-        <ProfileView 
-          user={user} 
-          targetUsername={profileUsername} 
-          onLogout={onLogout} 
-          onAdminView={() => onSetCurrentView(View.ADMIN)} 
-          onSettingsView={() => onSetCurrentView(View.SETTINGS)} 
-          onProfileUpdate={() => user && onFetchProfile(user.id)} 
-        />
-      </div>
-
-      {/* DYNAMIC VIEWS (Standard mount/unmount) */}
-      {!isPersistentView && (
-        <div className="animate-in fade-in duration-300 h-full w-full overflow-y-auto scroll-smooth hide-scrollbar">
-          {(() => {
-            switch (currentView) {
-              case View.LOGIN:
-                return <LoginView onLogin={(u) => onFetchProfile(u.id, u)} onSignUp={() => onSetCurrentView(View.SIGNUP)} onForgotPassword={() => onSetCurrentView(View.FORGOT_PASSWORD)} onRecoveryAssisted={() => onSetCurrentView(View.RECOVERY_ASSISTED)} onTerms={() => onSetCurrentView(View.TERMS)} />;
-              case View.SIGNUP:
-                return <SignUpView onBack={() => onSetCurrentView(View.LOGIN)} onSuccess={(u) => onFetchProfile(u.id, u)} />;
-              case View.COMPLETE_PROFILE:
-                return <CompleteProfileView user={user} onComplete={() => user && onFetchProfile(user.id)} onLogout={onLogout} />;
-              case View.MEDIA_CREATION:
-                return <MediaCreationView user={user} onClose={() => onSetCurrentView(View.SOCIAL)} onSuccess={() => onSetCurrentView(View.SOCIAL)} initialMode={mediaCreationMode} />;
-              case View.SETTINGS:
-                return <SettingsView user={user} onBack={() => onSetCurrentView(View.PROFILE)} onLogout={onLogout} onAdminView={() => onSetCurrentView(View.ADMIN)} onProfileUpdate={() => user && onFetchProfile(user.id)} />;
-              case View.ADMIN:
-                return <AdminView user={user} />;
-              case View.ADMIN_USERS:
-                return <AdminUsersView user={user} />;
-              case View.INTERNAL_ADS:
-                return <InternalAdManager user={user} onBack={() => onSetCurrentView(View.ADMIN)} />;
-              case View.AD_CREATION:
-                return <MarketplaceView user={user} forceShowWizard={true} onWizardClose={() => onSetCurrentView(View.MERCADO)} onViewChange={onSetCurrentView} selectedStore={selectedStore} />;
-              case View.TERMS:
-                return <EULAView onBack={() => onSetCurrentView(View.LOGIN)} />;
-              case View.FORGOT_PASSWORD:
-                return <ForgotPasswordView onBack={() => onSetCurrentView(View.LOGIN)} />;
-              case View.BLOCKED_ACCOUNT:
-                return <BlockedAccountView onLogout={onLogout} />;
-              case View.RECOVERY_ASSISTED:
-                return <RecoveryAssistedView onBack={() => onSetCurrentView(View.LOGIN)} />;
-              case View.EVENT_DETAILS:
-                return <EventDetailView event={selectedEvent} user={user} onBack={() => onSetCurrentView(View.EVENTS)} />;
-              case View.LEGAL_CONSENT:
-                return <LegalConsentView user={user} onAccept={() => onFetchProfile(user?.id || '')} />;
-              case View.STORE_DETAILS:
-                return <StoreDetailView store={selectedStore} user={user} onBack={() => onSetCurrentView(View.MERCADO)} />;
-              case View.RESULT_DETAIL:
-                return <ResultDetailView resultId={selectedResultId || ''} onBack={() => onSetCurrentView(selectedEvent ? View.EVENT_DETAILS : View.NEWS)} />;
-              case View.AUTH_CALLBACK:
-                return <AuthCallback onComplete={(userId, authUser) => onFetchProfile(userId, authUser)} onFail={() => onSetCurrentView(View.LOGIN)} />;
-              default:
-                return null;
-            }
-          })()}
-        </div>
-      )}
+  switch (currentView) {
+    case View.LOGIN:
+      return <LoginView onLogin={(u) => onFetchProfile(u.id, u)} onSignUp={() => onSetCurrentView(View.SIGNUP)} onForgotPassword={() => onSetCurrentView(View.FORGOT_PASSWORD)} onRecoveryAssisted={() => onSetCurrentView(View.RECOVERY_ASSISTED)} onTerms={() => onSetCurrentView(View.TERMS)} />;
+    case View.SIGNUP:
+      return <SignUpView onBack={() => onSetCurrentView(View.LOGIN)} onSuccess={(u) => onFetchProfile(u.id, u)} />;
+    case View.COMPLETE_PROFILE:
+      return <CompleteProfileView user={user} onComplete={() => user && onFetchProfile(user.id)} onLogout={onLogout} />;
+    case View.SOCIAL:
+      return <SocialFeedView user={user} onMediaCreation={(mode) => {
+        if (!user) {
+            window.dispatchEvent(new CustomEvent('arena_show_login'));
+            return;
+        }
+        (onSetCurrentView as any)(View.MEDIA_CREATION, { mode });
+      }} />;
+    case View.EVENTS:
+      return <EventsView user={user} onLoginPrompt={() => onSetCurrentView(View.LOGIN)} />;
+    case View.NEWS:
+      return <NewsView user={user} />;
+    case View.MERCADO:
+      return <MarketplaceView user={user} onViewChange={onSetCurrentView} selectedStore={selectedStore} />;
+    case View.PROFILE:
+      return <ProfileView user={user} targetUsername={profileUsername} onLogout={onLogout} onAdminView={() => onSetCurrentView(View.ADMIN)} onSettingsView={() => onSetCurrentView(View.SETTINGS)} onProfileUpdate={() => user && onFetchProfile(user.id)} />;
+    case View.MEDIA_CREATION:
+      return <MediaCreationView user={user} onClose={() => onSetCurrentView(View.SOCIAL)} onSuccess={() => onSetCurrentView(View.SOCIAL)} initialMode={mediaCreationMode} />;
+    case View.SETTINGS:
+      return <SettingsView user={user} onBack={() => onSetCurrentView(View.PROFILE)} onLogout={onLogout} onAdminView={() => onSetCurrentView(View.ADMIN)} onProfileUpdate={() => user && onFetchProfile(user.id)} />;
+    case View.ADMIN:
+      return <AdminView user={user} />;
+    case View.ADMIN_USERS:
+      return <AdminUsersView user={user} />;
+    case View.INTERNAL_ADS:
+      return <InternalAdManager user={user} onBack={() => onSetCurrentView(View.ADMIN)} />;
+    case View.AD_CREATION:
+      return <MarketplaceView user={user} forceShowWizard={true} onWizardClose={() => onSetCurrentView(View.MERCADO)} onViewChange={onSetCurrentView} selectedStore={selectedStore} />;
+    case View.TERMS:
+      return <EULAView onBack={() => onSetCurrentView(View.LOGIN)} />;
+    case View.FORGOT_PASSWORD:
+      return <ForgotPasswordView onBack={() => onSetCurrentView(View.LOGIN)} />;
+    case View.BLOCKED_ACCOUNT:
+      return <BlockedAccountView onLogout={onLogout} />;
+    case View.RECOVERY_ASSISTED:
+      return <RecoveryAssistedView onBack={() => onSetCurrentView(View.LOGIN)} />;
+    case View.EVENT_DETAILS:
+      return <EventDetailView event={selectedEvent} user={user} onBack={() => onSetCurrentView(View.EVENTS)} />;
+    case View.LEGAL_CONSENT:
+      return <LegalConsentView user={user} onAccept={() => onFetchProfile(user?.id || '')} />;
+    case View.STORE_DETAILS:
+      return <StoreDetailView store={selectedStore} user={user} onBack={() => onSetCurrentView(View.MERCADO)} />;
+    case View.RESULT_DETAIL:
+      return <ResultDetailView resultId={selectedResultId || ''} onBack={() => onSetCurrentView(selectedEvent ? View.EVENT_DETAILS : View.NEWS)} />;
+    case View.AUTH_CALLBACK:
+      return <AuthCallback onComplete={(userId, authUser) => onFetchProfile(userId, authUser)} onFail={() => onSetCurrentView(View.LOGIN)} />;
+    default:
+      if (user) {
+        if (!user.profile_completed) return <CompleteProfileView user={user} onComplete={() => onFetchProfile(user.id)} onLogout={onLogout} />;
+        return <EventsView />;
+      }
+      return <LoginView onLogin={(u) => onFetchProfile(u.id, u)} onSignUp={() => onSetCurrentView(View.SIGNUP)} onForgotPassword={() => onSetCurrentView(View.FORGOT_PASSWORD)} onRecoveryAssisted={() => onSetCurrentView(View.RECOVERY_ASSISTED)} onTerms={() => onSetCurrentView(View.TERMS)} />;
+  }
     </div>
   );
 };
@@ -290,7 +265,11 @@ const App: React.FC = () => {
         } else if (!hasValidConsent) {
           setCurrentView(View.LEGAL_CONSENT);
         } else {
-          setCurrentView(View.EVENTS);
+          // Só muda para EVENTS se estivermos vindo de uma tela de "entrada" ou carregamento
+          const transitionViews = [View.LOGIN, View.SIGNUP, View.AUTH_CALLBACK, View.COMPLETE_PROFILE, View.LEGAL_CONSENT];
+          if (transitionViews.includes(currentViewRef.current)) {
+            setCurrentView(View.EVENTS);
+          }
         }
       } else if (authUser) {
         console.log('[App] Perfil não existe, criando temporário...');
@@ -646,8 +625,8 @@ if (initializing) {
       <CallProvider userId={user?.id}>
         <div className="min-h-screen flex flex-col bg-background-dark overflow-hidden">
           <UpdateManager />
-          <div className="flex-1 relative overflow-hidden">
-            <div className="max-w-7xl mx-auto w-full h-full">
+          <div className="flex-1 overflow-y-auto relative scroll-smooth hide-scrollbar">
+            <div key={`${currentView}-${navKey}`} className="max-w-7xl mx-auto w-full h-full">
               <ViewRenderer
                 currentView={currentView}
                 selectedEvent={selectedEvent}
