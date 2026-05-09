@@ -124,8 +124,6 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
       }
       return <LoginView onLogin={(u) => onFetchProfile(u.id, u)} onSignUp={() => onSetCurrentView(View.SIGNUP)} onForgotPassword={() => onSetCurrentView(View.FORGOT_PASSWORD)} onRecoveryAssisted={() => onSetCurrentView(View.RECOVERY_ASSISTED)} onTerms={() => onSetCurrentView(View.TERMS)} />;
   }
-    </div>
-  );
 };
 
 // Capturador de Erros Global para Web
