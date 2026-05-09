@@ -459,22 +459,19 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
                         <video src={capturedMedia.url} controls autoPlay loop className="w-full h-full object-contain shadow-2xl" />
                     ) : (
                         <div 
-                            className="relative shadow-2xl overflow-hidden transition-all duration-300 ease-out"
+                            className="relative shadow-2xl overflow-hidden transition-all duration-300 ease-out flex items-center justify-center"
                             style={{ 
-                                width: aspectRatio === 'original' ? '100%' : '100%',
+                                width: '100%',
                                 aspectRatio: aspectRatio === '1:1' ? '1/1' : aspectRatio === '4:5' ? '4/5' : aspectRatio === '16:9' ? '16/9' : 'auto',
-                                maxHeight: '80vh',
+                                maxHeight: '75vh',
                                 backgroundColor: '#000'
                             }}
                         >
                             <img 
                                 src={capturedMedia?.url} 
-                                className="absolute pointer-events-none transition-transform duration-100 ease-out max-w-none"
+                                className={`${aspectRatio === 'original' ? 'relative max-h-[75vh] w-auto h-auto' : 'absolute w-full h-full object-cover'} pointer-events-none transition-transform duration-100 ease-out max-w-none`}
                                 style={{ 
                                     transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
-                                    width: aspectRatio === 'original' ? '100%' : '100%',
-                                    height: aspectRatio === 'original' ? 'auto' : '100%',
-                                    objectFit: aspectRatio === 'original' ? 'contain' : 'cover'
                                 }} 
                                 alt="Captured" 
                             />
