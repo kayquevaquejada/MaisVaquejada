@@ -15,17 +15,27 @@ const BidModal: React.FC<BidModalProps> = ({ auction, user, auctionUser, onClose
     const { placeBid } = useAuction();
     const [amount, setAmount] = useState(auction.current_bid ? auction.current_bid + auction.minimum_increment : auction.starting_bid);
     const [submitting, setSubmitting] = useState(false);
+    const [lastClickTime, setLastClickTime] = useState(0);
     const [error, setError] = useState<string | null>(null);
 
     const handleConfirm = async () => {
-        if (!user) return;
-        if (!auctionUser?.can_bid) {
+        if (!user || submitting) return;
+        
+        // Anti-spam: check if last click was less than 2 seconds ago
+        const now = Date.now();
+        if (now - lastClickTime < 2000) {
+            setError('Aguarde um momento antes de dar outro lance.');
+            return;
+        }
+
+        if (!auctionUser?.can_bid && auctionUser?.auction_role !== 'admin' && auctionUser?.auction_role !== 'seller_approved') {
             setError('Sua conta não está verificada para dar lances.');
             return;
         }
 
         setSubmitting(true);
         setError(null);
+        setLastClickTime(now);
 
         const result = await placeBid(auction.id, user.id, amount, auction.current_bid);
 

@@ -58,51 +58,14 @@ export const useAuction = () => {
 
     const placeBid = async (auctionId: string, userId: string, amount: number, previousAmount: number) => {
         try {
-            // Transaction-like logic check on server side would be better, but for MVP:
-            const { data: latestAuction } = await supabase
-                .from('auctions')
-                .select('current_bid, status, end_at')
-                .eq('id', auctionId)
-                .single();
+            const { data, error } = await supabase.functions.invoke('process-bid', {
+                body: { auctionId, amount }
+            });
 
-            if (!latestAuction || latestAuction.status !== 'active') {
-                throw new Error('Leilão não está ativo.');
-            }
+            if (error) throw error;
+            if (data.error) throw new Error(data.error);
 
-            if (new Date(latestAuction.end_at) < new Date()) {
-                throw new Error('Leilão já encerrado.');
-            }
-
-            if (amount <= latestAuction.current_bid) {
-                throw new Error('O lance deve ser maior que o atual.');
-            }
-
-            const { data: bid, error: bidError } = await supabase
-                .from('auction_bids')
-                .insert([{
-                    auction_id: auctionId,
-                    bidder_id: userId,
-                    amount,
-                    previous_amount: previousAmount,
-                    status: 'valid'
-                }])
-                .select()
-                .single();
-
-            if (bidError) throw bidError;
-
-            // Update auction current bid
-            const { error: updateError } = await supabase
-                .from('auctions')
-                .update({ 
-                    current_bid: amount, 
-                    current_winner_id: userId 
-                })
-                .eq('id', auctionId);
-
-            if (updateError) throw updateError;
-
-            return { success: true, bid };
+            return { success: true, bid: data.bid };
         } catch (err: any) {
             return { success: false, error: err.message };
         }
