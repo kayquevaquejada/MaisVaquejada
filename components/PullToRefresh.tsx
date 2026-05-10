@@ -16,6 +16,9 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
   const PULL_THRESHOLD = 80;
   const MAX_PULL = 120;
 
+  const pullDistanceRef = useRef(0);
+  const isRefreshingRef = useRef(false);
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -29,39 +32,47 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (!isPulling.current || isRefreshing) return;
+      if (!isPulling.current || isRefreshingRef.current) return;
 
       const currentY = e.touches[0].pageY;
       const diff = currentY - startY.current;
 
-      if (diff > 0) {
-        // Prevent default scroll when pulling down at the top
-        if (el.scrollTop <= 0) {
-          if (e.cancelable) e.preventDefault();
-          const pull = Math.min(diff * 0.5, MAX_PULL);
-          setPullDistance(pull);
-        }
-      } else {
+      if (diff > 0 && el.scrollTop <= 0) {
+        // Prevent default scroll only when pulling down at the top
+        if (e.cancelable) e.preventDefault();
+        
+        const pull = Math.min(diff * 0.4, MAX_PULL); // Reduced friction slightly
+        pullDistanceRef.current = pull;
+        setPullDistance(pull);
+      } else if (diff < 0) {
+        // Pulling up, cancel pull-to-refresh
         isPulling.current = false;
+        pullDistanceRef.current = 0;
         setPullDistance(0);
       }
     };
 
     const handleTouchEnd = async () => {
-      if (!isPulling.current || isRefreshing) return;
+      if (!isPulling.current || isRefreshingRef.current) return;
       isPulling.current = false;
 
-      if (pullDistance >= PULL_THRESHOLD) {
+      if (pullDistanceRef.current >= PULL_THRESHOLD) {
         setIsRefreshing(true);
+        isRefreshingRef.current = true;
         setPullDistance(PULL_THRESHOLD);
+        pullDistanceRef.current = PULL_THRESHOLD;
+        
         try {
           await onRefresh();
         } finally {
           setIsRefreshing(false);
+          isRefreshingRef.current = false;
           setPullDistance(0);
+          pullDistanceRef.current = 0;
         }
       } else {
         setPullDistance(0);
+        pullDistanceRef.current = 0;
       }
     };
 
@@ -74,7 +85,7 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
       el.removeEventListener('touchmove', handleTouchMove);
       el.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [pullDistance, isRefreshing, onRefresh]);
+  }, [onRefresh]);
 
   return (
     <div 

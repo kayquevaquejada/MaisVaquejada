@@ -569,7 +569,23 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                     {/* Botão Chat - Direita */}
                     <div className="flex-1 flex justify-end pointer-events-auto">
                         <button
-                            onClick={() => window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'SOCIAL', openDM: seller.username } }))}
+                            onClick={() => {
+                                if (!user) {
+                                    window.dispatchEvent(new CustomEvent('arena_show_login'));
+                                    return;
+                                }
+                                if (user.id === viewingAd.user_id) {
+                                    alert('Este anúncio é seu!');
+                                    return;
+                                }
+                                // Set pending DM for SocialFeedScreen to pick up
+                                sessionStorage.setItem('arena_pending_dm', JSON.stringify({
+                                    id: viewingAd.user_id,
+                                    username: seller.username,
+                                    avatar_url: seller.avatar_url
+                                }));
+                                window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'SOCIAL' } }));
+                            }}
                             className="w-full max-w-[200px] h-14 bg-gradient-to-r from-[#D4AF37] to-[#AA8A2E] text-[#0F0A05] rounded-2xl flex items-center justify-center gap-2 font-black uppercase tracking-widest shadow-[0_0_20px_rgba(212,175,55,0.3)] active:scale-95 transition-transform border border-white/20 relative overflow-hidden group"
                         >
                             <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
