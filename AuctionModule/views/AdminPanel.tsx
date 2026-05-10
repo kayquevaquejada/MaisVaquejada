@@ -9,16 +9,25 @@ interface AdminPanelProps {
     onBack: () => void;
 }
 
+type AdminSubView = 'OVERVIEW' | 'SELLERS' | 'ANIMALS' | 'AUCTIONS';
+
 const AdminPanel: React.FC<AdminPanelProps> = ({ user, auctionUser, onBack }) => {
+    const [subView, setSubView] = useState<AdminSubView>('OVERVIEW');
+    const [loading, setLoading] = useState(false);
     const [stats, setStats] = useState({
         pendingSellers: 0,
         pendingAnimals: 0,
         activeAuctions: 0
     });
 
+    const [pendingSellers, setPendingSellers] = useState<any[]>([]);
+    const [pendingAnimals, setPendingAnimals] = useState<any[]>([]);
+
     useEffect(() => {
         fetchStats();
-    }, []);
+        if (subView === 'SELLERS') fetchPendingSellers();
+        if (subView === 'ANIMALS') fetchPendingAnimals();
+    }, [subView]);
 
     const fetchStats = async () => {
         const { count: sCount } = await supabase.from('auction_seller_applications').select('*', { count: 'exact', head: true }).eq('status', 'submitted');
@@ -32,28 +41,80 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, auctionUser, onBack }) =>
         });
     };
 
-    return (
-        <div className="min-h-screen bg-[#0F0A05] p-6">
-            <div className="flex items-center gap-4 mb-8 pt-6">
-                <button onClick={onBack} className="material-icons text-white/40">arrow_back</button>
-                <h1 className="text-xl font-black uppercase tracking-tighter text-[#ECA413]">Gestão de Leilões</h1>
-            </div>
+    const fetchPendingSellers = async () => {
+        setLoading(true);
+        const { data } = await supabase
+            .from('auction_seller_applications')
+            .select('*')
+            .eq('status', 'submitted')
+            .order('created_at', { ascending: false });
+        setPendingSellers(data || []);
+        setLoading(false);
+    };
 
+    const fetchPendingAnimals = async () => {
+        setLoading(true);
+        const { data } = await supabase
+            .from('auction_animals')
+            .select('*')
+            .eq('status', 'pending_review')
+            .order('created_at', { ascending: false });
+        setPendingAnimals(data || []);
+        setLoading(false);
+    };
+
+    const handleApproveSeller = async (applicationId: string, applicantUserId: string) => {
+        if (!confirm('Aprovar este vendedor?')) return;
+        setLoading(true);
+        try {
+            await supabase.from('auction_seller_applications').update({ status: 'approved', reviewed_by: user.id, reviewed_at: new Date().toISOString() }).eq('id', applicationId);
+            await supabase.from('auction_users').update({ auction_role: 'seller_approved', can_sell: true }).eq('user_id', applicantUserId);
+            fetchPendingSellers();
+            fetchStats();
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleApproveAnimal = async (animalId: string) => {
+        if (!confirm('Aprovar este animal para leilão?')) return;
+        setLoading(true);
+        try {
+            await supabase.from('auction_animals').update({ status: 'approved' }).eq('id', animalId);
+            fetchPendingAnimals();
+            fetchStats();
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const renderOverview = () => (
+        <>
             <div className="grid grid-cols-1 gap-4 mb-8">
-                <div className="bg-white/5 p-6 rounded-3xl border border-white/5 flex items-center justify-between">
-                    <div>
+                <button 
+                    onClick={() => setSubView('SELLERS')}
+                    className="bg-white/5 p-6 rounded-3xl border border-white/5 flex items-center justify-between active:scale-[0.98] transition-all"
+                >
+                    <div className="text-left">
                         <p className="text-white/20 text-[10px] uppercase font-black mb-1">Vendedores Pendentes</p>
                         <p className="text-white text-2xl font-black tracking-tighter">{stats.pendingSellers}</p>
                     </div>
                     <span className="material-icons text-[#ECA413]">people</span>
-                </div>
-                <div className="bg-white/5 p-6 rounded-3xl border border-white/5 flex items-center justify-between">
-                    <div>
+                </button>
+                <button 
+                    onClick={() => setSubView('ANIMALS')}
+                    className="bg-white/5 p-6 rounded-3xl border border-white/5 flex items-center justify-between active:scale-[0.98] transition-all"
+                >
+                    <div className="text-left">
                         <p className="text-white/20 text-[10px] uppercase font-black mb-1">Animais p/ Análise</p>
                         <p className="text-white text-2xl font-black tracking-tighter">{stats.pendingAnimals}</p>
                     </div>
                     <span className="material-icons text-[#ECA413]">pets</span>
-                </div>
+                </button>
                 <div className="bg-white/5 p-6 rounded-3xl border border-white/5 flex items-center justify-between">
                     <div>
                         <p className="text-white/20 text-[10px] uppercase font-black mb-1">Leilões Ativos</p>
@@ -68,6 +129,95 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, auctionUser, onBack }) =>
                 <h2 className="text-white/40 font-black uppercase text-sm tracking-widest mb-2">Painel Administrativo</h2>
                 <p className="text-white/20 text-[10px] uppercase max-w-[200px] mx-auto leading-relaxed">Use este painel para aprovar vendedores, animais e gerenciar leilões em tempo real.</p>
             </div>
+        </>
+    );
+
+    const renderSellers = () => (
+        <div className="space-y-6 animate-in fade-in duration-500">
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-white font-black uppercase text-sm tracking-widest">Solicitações de Vendedores</h2>
+                <button onClick={() => setSubView('OVERVIEW')} className="text-[#ECA413] text-[10px] font-black uppercase">Voltar</button>
+            </div>
+            
+            {loading ? (
+                <div className="py-10 flex justify-center"><div className="w-8 h-8 border-4 border-[#ECA413]/20 border-t-[#ECA413] rounded-full animate-spin" /></div>
+            ) : pendingSellers.length === 0 ? (
+                <div className="py-20 text-center text-white/20 uppercase font-black text-xs">Nenhuma solicitação pendente</div>
+            ) : (
+                pendingSellers.map(seller => (
+                    <div key={seller.id} className="bg-white/5 p-6 rounded-3xl border border-white/5 space-y-4">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <p className="text-white font-black uppercase tracking-tighter text-lg">{seller.full_name}</p>
+                                <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest">{seller.farm_name || 'Individual'} • {seller.city}/{seller.state}</p>
+                            </div>
+                            <span className="bg-[#ECA413]/10 text-[#ECA413] text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-widest">Novo</span>
+                        </div>
+                        <div className="bg-black/20 p-4 rounded-2xl border border-white/5">
+                            <p className="text-white/60 text-[10px] leading-relaxed italic">"{seller.experience_description || 'Sem descrição fornecida.'}"</p>
+                        </div>
+                        <div className="flex gap-2 pt-2">
+                            <button 
+                                onClick={() => handleApproveSeller(seller.id, seller.user_id)}
+                                className="flex-1 h-12 bg-[#ECA413] text-black rounded-xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all"
+                            >
+                                Aprovar Vendedor
+                            </button>
+                            <button className="flex-1 h-12 bg-white/5 text-white/40 rounded-xl font-black uppercase text-[10px] tracking-widest border border-white/5">Rejeitar</button>
+                        </div>
+                    </div>
+                ))
+            )}
+        </div>
+    );
+
+    const renderAnimals = () => (
+        <div className="space-y-6 animate-in fade-in duration-500">
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-white font-black uppercase text-sm tracking-widest">Animais para Análise</h2>
+                <button onClick={() => setSubView('OVERVIEW')} className="text-[#ECA413] text-[10px] font-black uppercase">Voltar</button>
+            </div>
+            
+            {loading ? (
+                <div className="py-10 flex justify-center"><div className="w-8 h-8 border-4 border-[#ECA413]/20 border-t-[#ECA413] rounded-full animate-spin" /></div>
+            ) : pendingAnimals.length === 0 ? (
+                <div className="py-20 text-center text-white/20 uppercase font-black text-xs">Nenhum animal pendente</div>
+            ) : (
+                pendingAnimals.map(animal => (
+                    <div key={animal.id} className="bg-white/5 p-6 rounded-3xl border border-white/5 space-y-4">
+                        <div className="flex gap-4">
+                            <img src={animal.main_image_url} className="w-20 h-20 rounded-2xl object-cover border border-white/10" alt="" />
+                            <div>
+                                <p className="text-white font-black uppercase tracking-tighter text-lg">{animal.name}</p>
+                                <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest">{animal.breed} • {animal.sex === 'male' ? 'Macho' : 'Fêmea'}</p>
+                                <p className="text-white/20 text-[8px] uppercase font-bold mt-1">{animal.city}/{animal.state}</p>
+                            </div>
+                        </div>
+                        <div className="flex gap-2 pt-2">
+                            <button 
+                                onClick={() => handleApproveAnimal(animal.id)}
+                                className="flex-1 h-12 bg-[#ECA413] text-black rounded-xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all"
+                            >
+                                Aprovar Animal
+                            </button>
+                            <button className="flex-1 h-12 bg-white/5 text-white/40 rounded-xl font-black uppercase text-[10px] tracking-widest border border-white/5">Ver Detalhes</button>
+                        </div>
+                    </div>
+                ))
+            )}
+        </div>
+    );
+
+    return (
+        <div className="min-h-screen bg-[#0F0A05] p-6 pb-20">
+            <div className="flex items-center gap-4 mb-8 pt-6">
+                <button onClick={onBack} className="material-icons text-white/40">arrow_back</button>
+                <h1 className="text-xl font-black uppercase tracking-tighter text-[#ECA413]">Gestão de Leilões</h1>
+            </div>
+
+            {subView === 'OVERVIEW' && renderOverview()}
+            {subView === 'SELLERS' && renderSellers()}
+            {subView === 'ANIMALS' && renderAnimals()}
         </div>
     );
 };
