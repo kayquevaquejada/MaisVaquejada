@@ -5,6 +5,7 @@ import AdminAdsManager from '../components/AdminAdsManager';
 import AdminMasterView from '../components/AdminMasterView';
 import { DateRangePicker } from '../components/DateRangePicker';
 import { compressImage } from '../lib/imageUtils';
+import AuctionAdminPanel from '../AuctionModule/views/AdminPanel';
 
 
 // Extrai o ID do vídeo YouTube de uma URL
@@ -27,7 +28,7 @@ interface AdminViewProps {
     user: any;
 }
 
-type AdminTab = 'MAIN' | 'USERS' | 'MERCADO' | 'SOCIAL' | 'EVENTOS' | 'NOTICIAS' | 'RESULTADOS' | 'ADS' | 'MASTER';
+type AdminTab = 'MAIN' | 'USERS' | 'MERCADO' | 'SOCIAL' | 'EVENTOS' | 'NOTICIAS' | 'RESULTADOS' | 'ADS' | 'MASTER' | 'LEILAO';
 
 
 const AdminView: React.FC<AdminViewProps> = ({ user }) => {
@@ -246,7 +247,16 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         if (activeTab === 'RESULTADOS') {
             fetchResults();
         }
+        if (activeTab === 'LEILAO') {
+            fetchAuctionUserData();
+        }
     }, [isMaster, hasEventos, subviewEvents, hasNoticias, subviewNews, hasMercado, subviewMercado, hasSocial, subviewSocial, activeTab, subviewResults, user?.role]);
+
+    const [auctionUser, setAuctionUser] = useState<any>(null);
+    const fetchAuctionUserData = async () => {
+        const { data } = await supabase.from('auction_users').select('*').eq('user_id', user.id).maybeSingle();
+        if (data) setAuctionUser(data);
+    };
 
     const fetchTotalUsers = async () => {
         const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
@@ -2531,8 +2541,9 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                             </div>
                         </div>
 
-                {(hasMercado || hasSocial || hasEventos || hasNoticias) && <SectionTitle title="Módulos Interligados" />}
-
+                {(hasMercado || hasSocial || hasEventos || hasNoticias || true) && <SectionTitle title="Módulos Interligados" />}
+                
+                <MenuItem icon="gavel" label="Gestão de Leilões" onClick={() => setActiveTab('LEILAO')} />
                 
                 {hasMercado && <MenuItem icon="storefront" label="Mercado Oficial" onClick={() => { setSubviewMercado('HOME'); setActiveTab('MERCADO'); }} />}
                 
@@ -2554,6 +2565,13 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                 <div className="fixed inset-0 bg-[#1A1108]/60 backdrop-blur-sm flex items-center justify-center z-[300]">
                     <div className="w-10 h-10 border-4 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
                 </div>
+            )}
+            {activeTab === 'LEILAO' && (
+                <AuctionAdminPanel 
+                    user={user} 
+                    auctionUser={auctionUser} 
+                    onBack={() => setActiveTab('MAIN')} 
+                />
             )}
         </div>
     );
