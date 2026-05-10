@@ -34,6 +34,8 @@ const SellerApplication: React.FC<SellerApplicationProps> = ({ user, onBack, onS
             PrivacyScreen.disable();
         };
     }, [currentStep]);
+
+    const [formData, setFormData] = useState({
         fullName: user.name || '',
         documentNumber: '',
         phone: user.phone || '',
