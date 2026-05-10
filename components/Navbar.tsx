@@ -126,7 +126,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, user, appSettings }) => {
           </div>
 
           {/* Botão Leilão (Superior - Aparece quando expandido) */}
-          {(!appSettings?.auction_module_hidden?.enabled || (user?.role === 'ADMIN' || user?.role === 'ADMIN_MASTER' || user?.isMaster)) && (
+          {!appSettings?.auction_module_hidden?.enabled && (
             <button
               onClick={() => handleNav(View.LEILAO)}
               className={`absolute left-1/2 -translate-x-1/2 flex flex-col items-center justify-center transition-all duration-500 delay-200 ${
