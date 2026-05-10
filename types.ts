@@ -21,7 +21,8 @@ export enum View {
   LEGAL_CONSENT = 'LEGAL_CONSENT',
   STORE_DETAILS = 'STORE_DETAILS',
   RESULT_DETAIL = 'RESULT_DETAIL',
-  AUTH_CALLBACK = 'AUTH_CALLBACK'
+  AUTH_CALLBACK = 'AUTH_CALLBACK',
+  LEILAO = 'LEILAO'
 }
 
 export type ResultStatus = 'rascunho' | 'publicado' | 'arquivado';

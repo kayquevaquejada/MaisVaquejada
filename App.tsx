@@ -115,6 +115,15 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
       return <StoreDetailView store={selectedStore} user={user} onBack={() => onSetCurrentView(View.MERCADO)} />;
     case View.RESULT_DETAIL:
       return <ResultDetailView resultId={selectedResultId || ''} onBack={() => onSetCurrentView(selectedEvent ? View.EVENT_DETAILS : View.NEWS)} />;
+    case View.LEILAO:
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-[#0F0A05] p-10 text-center">
+            <span className="material-icons text-[#ECA413] text-7xl mb-6 animate-bounce">gavel</span>
+            <h1 className="text-white text-2xl font-black uppercase tracking-widest mb-4">Módulo de Leilões</h1>
+            <p className="text-white/40 text-sm max-w-xs uppercase font-bold tracking-tighter">Este recurso está sendo preparado para você. Em breve, as melhores ofertas da arena estarão aqui.</p>
+            <button onClick={() => onSetCurrentView(View.EVENTS)} className="mt-10 px-8 py-3 bg-[#ECA413] text-black rounded-full font-black uppercase text-[10px] tracking-widest">Voltar ao Início</button>
+        </div>
+      );
     case View.AUTH_CALLBACK:
       return <AuthCallback onComplete={(userId, authUser) => onFetchProfile(userId, authUser)} onFail={() => onSetCurrentView(View.LOGIN)} />;
     default:

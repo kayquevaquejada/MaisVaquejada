@@ -124,6 +124,23 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, user }) => {
             </button>
           </div>
 
+          {/* Botão Leilão (Superior - Aparece quando expandido) */}
+          <button
+            onClick={() => handleNav(View.LEILAO)}
+            className={`absolute left-1/2 -translate-x-1/2 flex flex-col items-center justify-center transition-all duration-500 delay-200 ${
+              isExpanded 
+                ? 'opacity-100 -top-20 scale-100 pointer-events-auto' 
+                : 'opacity-0 top-0 scale-50 pointer-events-none'
+            }`}
+          >
+            <div className="w-[64px] h-[64px] rounded-full bg-[#0F0A05]/95 backdrop-blur-2xl border border-[#ECA413]/30 shadow-[0_15px_40px_rgba(0,0,0,0.8)] flex flex-col items-center justify-center group active:scale-90 transition-all hover:border-[#ECA413]">
+              <span className={`material-icons text-2xl transition-all duration-300 ${currentView === View.LEILAO ? 'text-[#ECA413] scale-110' : 'text-white/40 group-hover:text-[#ECA413]'}`}>gavel</span>
+              <span className="text-[7px] font-black text-white/20 uppercase tracking-widest mt-0.5 group-hover:text-white/60">Leilão</span>
+            </div>
+            {/* Linha conectora opcional ou brilho */}
+            <div className={`w-0.5 h-4 bg-gradient-to-t from-[#ECA413]/20 to-transparent transition-opacity duration-500 ${isExpanded ? 'opacity-100' : 'opacity-0'}`}></div>
+          </button>
+
           {(currentView !== View.LOGIN && currentView !== View.SIGNUP && currentView !== View.AUTH_CALLBACK) && (
             <button
               onClick={handleCenterClick}
