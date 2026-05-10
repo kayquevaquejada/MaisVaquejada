@@ -1,6 +1,6 @@
 export type AuctionRole = 'guest' | 'user' | 'verified_user' | 'seller_pending' | 'seller_approved' | 'haras_verified' | 'admin';
 
-export type AuctionAccessStatus = 'not_requested' | 'pending_review' | 'approved' | 'rejected' | 'suspended';
+export type AuctionAccessStatus = 'not_requested' | 'pending_review' | 'approved' | 'rejected' | 'suspended' | 'needs_adjustment';
 
 export type AuctionStatus = 'draft' | 'pending_review' | 'approved' | 'scheduled' | 'active' | 'paused' | 'closed' | 'cancelled' | 'under_dispute';
 
@@ -17,6 +17,33 @@ export interface AuctionUser {
     is_suspended: boolean;
     phone_verified: boolean;
     document_verified: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface SellerApplication {
+    id: string;
+    user_id: string;
+    full_name: string;
+    document_number: string;
+    phone: string;
+    email: string;
+    city: string;
+    state: string;
+    farm_name?: string;
+    instagram?: string;
+    experience_description?: string;
+    document_front_url: string;
+    document_back_url: string;
+    selfie_url: string;
+    document_file_type_front: string;
+    document_file_type_back: string;
+    selfie_file_type: string;
+    status: 'submitted' | 'approved' | 'rejected' | 'needs_adjustment';
+    kyc_status: 'pending' | 'approved' | 'rejected' | 'needs_adjustment';
+    kyc_rejection_reason?: string;
+    kyc_reviewed_by?: string;
+    kyc_reviewed_at?: string;
     created_at: string;
     updated_at: string;
 }
@@ -88,3 +115,4 @@ export interface Bid {
         avatar_url: string;
     };
 }
+

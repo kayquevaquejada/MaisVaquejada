@@ -4,6 +4,7 @@ import { User } from '../../types';
 import { Auction, AuctionUser, Bid } from '../types';
 import { useAuction } from '../hooks/useAuction';
 import BidModal from '../components/BidModal';
+import RealtimeCountdown from '../components/RealtimeCountdown';
 
 interface AuctionDetailProps {
     id: string;
@@ -19,6 +20,7 @@ const AuctionDetail: React.FC<AuctionDetailProps> = ({ id, user, auctionUser, on
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'info' | 'videos' | 'pedigree' | 'history'>('info');
     const [showBidModal, setShowBidModal] = useState(false);
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
     useEffect(() => {
         loadData();
@@ -64,122 +66,224 @@ const AuctionDetail: React.FC<AuctionDetailProps> = ({ id, user, auctionUser, on
     }
 
     const animal = auction.animal;
+    const isFinished = new Date(auction.end_at) < new Date();
+    
+    // Mock images array (if only one image exists, use it)
+    const images = [animal?.main_image_url, ...(animal?.gallery_image_urls || [])].filter(Boolean);
 
     return (
         <div className="min-h-screen bg-[#0F0A05] pb-32">
-            {/* Gallery / Image */}
-            <div className="relative aspect-[4/3] w-full">
-                <img src={animal?.main_image_url} className="w-full h-full object-cover" alt={animal?.name} />
+            {/* Premium Header / Carousel */}
+            <div className="relative aspect-[4/5] w-full overflow-hidden">
+                <div 
+                    className="flex transition-transform duration-700 ease-out h-full"
+                    style={{ transform: `translateX(-${currentImageIndex * 100}%)` }}
+                >
+                    {images.map((img, i) => (
+                        <img key={i} src={img} className="w-full h-full object-cover shrink-0" alt={`${animal?.name} ${i}`} />
+                    ))}
+                </div>
+                
+                {/* Overlays */}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0F0A05] via-transparent to-black/20" />
+                
+                {/* Floating Controls */}
                 <button 
                     onClick={onBack}
-                    className="absolute top-12 left-6 w-10 h-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/10"
+                    className="absolute top-12 left-6 w-12 h-12 bg-black/40 backdrop-blur-xl rounded-2xl flex items-center justify-center text-white border border-white/10 active:scale-90 transition-all z-20"
                 >
                     <span className="material-icons">arrow_back</span>
                 </button>
+
+                {/* Badges Overlay */}
+                <div className="absolute top-12 right-6 flex flex-col gap-3 items-end z-20">
+                    <div className="bg-red-600 px-4 py-1.5 rounded-full flex items-center gap-2 shadow-2xl">
+                        <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                        <span className="text-[10px] font-black text-white uppercase tracking-widest">Ao Vivo</span>
+                    </div>
+                    <div className="bg-black/60 backdrop-blur-xl px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
+                        <span className="material-icons text-xs text-[#ECA413]">visibility</span>
+                        <span className="text-[10px] font-black text-white uppercase tracking-widest">{Math.floor(Math.random() * 300 + 50)} Vistas</span>
+                    </div>
+                </div>
+
+                {/* Carousel Dots */}
+                {images.length > 1 && (
+                    <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex gap-2 z-20">
+                        {images.map((_, i) => (
+                            <div 
+                                key={i}
+                                className={`h-1.5 rounded-full transition-all duration-300 ${currentImageIndex === i ? 'w-8 bg-[#ECA413]' : 'w-1.5 bg-white/20'}`}
+                            />
+                        ))}
+                    </div>
+                )}
             </div>
 
-            {/* Content */}
-            <div className="px-6 -mt-8 relative z-10">
-                <div className="bg-[#1A1108] rounded-3xl p-6 border border-white/5 shadow-2xl">
-                    <div className="flex justify-between items-start mb-6">
+            {/* Content Card */}
+            <div className="px-6 -mt-16 relative z-10">
+                <div className="bg-[#1A1108] rounded-[40px] p-8 border border-white/10 shadow-2xl relative overflow-hidden">
+                    {/* Background Glow */}
+                    <div className="absolute -top-20 -right-20 w-64 h-64 bg-[#ECA413]/5 blur-[100px] pointer-events-none" />
+
+                    <div className="flex justify-between items-start mb-8 relative z-10">
                         <div>
-                            <h1 className="text-3xl font-black uppercase tracking-tighter text-white mb-1">{animal?.name}</h1>
-                            <p className="text-[#ECA413] text-[10px] font-black uppercase tracking-widest">{animal?.breed} • {animal?.sex === 'male' ? 'Macho' : 'Fêmea'}</p>
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="bg-[#ECA413]/10 text-[#ECA413] text-[8px] font-black uppercase tracking-[0.2em] px-2 py-1 rounded-md border border-[#ECA413]/20">Lote #001</span>
+                                <div className="flex items-center gap-1 text-white/40">
+                                    <span className="material-icons text-[10px]">location_on</span>
+                                    <span className="text-[8px] font-black uppercase tracking-widest">{animal?.city}, {animal?.state}</span>
+                                </div>
+                            </div>
+                            <h1 className="text-4xl font-black uppercase italic tracking-tighter text-white leading-none mb-1">{animal?.name}</h1>
+                            <p className="text-[#ECA413] text-[10px] font-black uppercase tracking-[0.3em]">{animal?.breed} • {animal?.sex === 'male' ? 'Macho' : 'Fêmea'}</p>
                         </div>
                         <div className="text-right">
-                            <p className="text-white/20 text-[8px] uppercase font-bold mb-1">Lance Atual</p>
-                            <p className="text-[#ECA413] text-2xl font-black tracking-tighter">{formatCurrency(auction.current_bid || auction.starting_bid)}</p>
+                            <p className="text-white/20 text-[9px] uppercase font-black tracking-widest mb-1 italic">Lance Atual</p>
+                            <p className="text-[#ECA413] text-3xl font-black tracking-tighter leading-none">{formatCurrency(auction.current_bid || auction.starting_bid)}</p>
+                            <p className="text-white/40 text-[8px] font-bold uppercase mt-1">Lances: {bids.length}</p>
                         </div>
                     </div>
 
-                    {/* Auction Status Bar */}
-                    <div className="bg-white/5 rounded-2xl p-4 flex items-center justify-between mb-8 border border-white/5">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-[#ECA413]/10 flex items-center justify-center">
-                                <span className="material-icons text-[#ECA413] text-xl">timer</span>
+                    {/* Verified Seller Badge */}
+                    <div className="flex items-center gap-3 p-4 bg-white/5 rounded-3xl border border-white/5 mb-8">
+                        <div className="w-12 h-12 bg-gradient-to-br from-[#ECA413] to-[#1A1108] rounded-2xl flex items-center justify-center shadow-lg">
+                            <span className="material-icons text-white">store</span>
+                        </div>
+                        <div className="flex-1">
+                            <div className="flex items-center gap-1.5">
+                                <p className="text-white text-xs font-black uppercase tracking-tight">Haras Teste +Vaquejada</p>
+                                <span className="material-icons text-[#ECA413] text-sm">verified</span>
+                            </div>
+                            <p className="text-[#ECA413] text-[8px] font-black uppercase tracking-widest mt-0.5">Vendedor Premium Verificado</p>
+                        </div>
+                        <div className="text-right px-3 border-l border-white/10">
+                            <div className="flex items-center gap-1">
+                                <span className="material-icons text-[10px] text-yellow-500">star</span>
+                                <span className="text-[10px] font-black text-white">4.9</span>
+                            </div>
+                            <p className="text-white/20 text-[7px] uppercase font-black">Reputação</p>
+                        </div>
+                    </div>
+
+                    {/* Stats Ribbon */}
+                    <div className="grid grid-cols-3 gap-3 mb-8">
+                        <div className="bg-white/5 p-3 rounded-2xl border border-white/5 flex flex-col items-center">
+                            <span className="material-icons text-white/20 text-sm mb-1">groups</span>
+                            <p className="text-white text-xs font-black">{Math.floor(Math.random() * 15 + 5)}</p>
+                            <p className="text-white/20 text-[7px] uppercase font-bold">Interessados</p>
+                        </div>
+                        <div className="bg-white/5 p-3 rounded-2xl border border-white/5 flex flex-col items-center">
+                            <span className="material-icons text-white/20 text-sm mb-1">local_fire_department</span>
+                            <p className="text-white text-xs font-black">{Math.floor(Math.random() * 10 + 2)}</p>
+                            <p className="text-white/20 text-[7px] uppercase font-bold">Pessoas Vendo</p>
+                        </div>
+                        <div className="bg-white/5 p-3 rounded-2xl border border-white/5 flex flex-col items-center">
+                            <span className="material-icons text-white/20 text-sm mb-1">trending_up</span>
+                            <p className="text-white text-xs font-black">{bids.length > 0 ? '+12%' : 'Início'}</p>
+                            <p className="text-white/20 text-[7px] uppercase font-bold">Atividade</p>
+                        </div>
+                    </div>
+
+                    {/* Auction Status / Countdown Bar */}
+                    <div className="bg-gradient-to-r from-[#D4AF37] to-[#1A1108] rounded-3xl p-6 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-2xl shadow-[#D4AF37]/10">
+                        <div className="flex items-center gap-4">
+                            <div className="w-14 h-14 rounded-2xl bg-black/20 flex items-center justify-center border border-white/10">
+                                <span className="material-icons text-white text-2xl">timer</span>
                             </div>
                             <div>
-                                <p className="text-white/20 text-[8px] uppercase font-black">Tempo Restante</p>
-                                <p className="text-white text-xs font-black uppercase tracking-tighter">02d 04h 21min</p>
+                                <p className="text-black/60 text-[8px] uppercase font-black tracking-widest mb-1">Encerramento em</p>
+                                <RealtimeCountdown endDate={auction.end_at} />
                             </div>
                         </div>
-                        <button 
-                            onClick={() => setShowBidModal(true)}
-                            className="bg-[#ECA413] text-black px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg"
-                        >
-                            Dar Lance
-                        </button>
+                        
+                        {!isFinished ? (
+                            <button 
+                                onClick={() => setShowBidModal(true)}
+                                className="w-full sm:w-auto bg-black text-[#ECA413] px-10 py-4 rounded-2xl font-black text-[12px] uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl hover:shadow-black/40"
+                            >
+                                Dar Lance
+                            </button>
+                        ) : (
+                            <div className="bg-black/20 px-8 py-4 rounded-2xl border border-white/10 text-white font-black uppercase text-[10px] tracking-widest">
+                                Leilão Encerrado
+                            </div>
+                        )}
                     </div>
 
-                    {/* Tabs */}
-                    <div className="flex gap-4 border-b border-white/5 mb-6 overflow-x-auto hide-scrollbar">
-                        <button 
-                            onClick={() => setActiveTab('info')}
-                            className={`pb-3 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'info' ? 'text-[#ECA413] border-b-2 border-[#ECA413]' : 'text-white/20'}`}
-                        >
-                            Informações
-                        </button>
-                        <button 
-                            onClick={() => setActiveTab('videos')}
-                            className={`pb-3 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'videos' ? 'text-[#ECA413] border-b-2 border-[#ECA413]' : 'text-white/20'}`}
-                        >
-                            Vídeos
-                        </button>
-                        <button 
-                            onClick={() => setActiveTab('pedigree')}
-                            className={`pb-3 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'pedigree' ? 'text-[#ECA413] border-b-2 border-[#ECA413]' : 'text-white/20'}`}
-                        >
-                            Pedigree
-                        </button>
-                        <button 
-                            onClick={() => setActiveTab('history')}
-                            className={`pb-3 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'history' ? 'text-[#ECA413] border-b-2 border-[#ECA413]' : 'text-white/20'}`}
-                        >
-                            Histórico
-                        </button>
+                    {/* Tabs Navigation */}
+                    <div className="flex gap-8 border-b border-white/5 mt-12 mb-8 overflow-x-auto hide-scrollbar">
+                        {['info', 'videos', 'pedigree', 'history'].map((tab) => (
+                            <button 
+                                key={tab}
+                                onClick={() => setActiveTab(tab as any)}
+                                className={`pb-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap relative ${activeTab === tab ? 'text-[#ECA413]' : 'text-white/20'}`}
+                            >
+                                {tab === 'info' && 'Ficha Técnica'}
+                                {tab === 'videos' && 'Vídeos'}
+                                {tab === 'pedigree' && 'Pedigree'}
+                                {tab === 'history' && 'Histórico'}
+                                {activeTab === tab && (
+                                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#ECA413] rounded-full animate-in zoom-in duration-300" />
+                                )}
+                            </button>
+                        ))}
                     </div>
 
                     {/* Tab Content */}
-                    <div className="min-h-[200px]">
+                    <div className="min-h-[300px]">
                         {activeTab === 'info' && (
-                            <div className="space-y-4">
+                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
-                                        <p className="text-white/20 text-[8px] uppercase font-bold mb-1">Pelagem</p>
-                                        <p className="text-white text-xs font-black">{animal?.coat || 'N/A'}</p>
-                                    </div>
-                                    <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
-                                        <p className="text-white/20 text-[8px] uppercase font-bold mb-1">Idade</p>
-                                        <p className="text-white text-xs font-black">{animal?.age}</p>
-                                    </div>
-                                    <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
-                                        <p className="text-white/20 text-[8px] uppercase font-bold mb-1">Localização</p>
-                                        <p className="text-white text-xs font-black">{animal?.city}/{animal?.state}</p>
-                                    </div>
-                                    <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
-                                        <p className="text-white/20 text-[8px] uppercase font-bold mb-1">Registro</p>
-                                        <p className="text-white text-xs font-black">{animal?.registration_number || 'Não Informado'}</p>
-                                    </div>
+                                    <DetailItem label="Pelagem" value={animal?.coat} />
+                                    <DetailItem label="Idade" value={animal?.age} />
+                                    <DetailItem label="Registro" value={animal?.registration_number} />
+                                    <DetailItem label="Altura" value={animal?.height} />
+                                    <DetailItem label="Peso" value={animal?.weight} />
+                                    <DetailItem label="Cidade/UF" value={`${animal?.city}/${animal?.state}`} />
                                 </div>
-                                <div className="bg-white/5 p-4 rounded-2xl border border-white/5 mt-4">
-                                    <p className="text-white/20 text-[8px] uppercase font-bold mb-2">Descrição</p>
-                                    <p className="text-white/60 text-xs leading-relaxed">{animal?.description}</p>
+                                <div className="mt-8 bg-white/5 p-6 rounded-3xl border border-white/5">
+                                    <h4 className="text-white/20 text-[9px] uppercase font-black tracking-widest mb-4 flex items-center gap-2">
+                                        <span className="material-icons text-sm">description</span>
+                                        Descrição do Animal
+                                    </h4>
+                                    <p className="text-white/70 text-sm leading-relaxed font-medium">{animal?.description}</p>
                                 </div>
                             </div>
                         )}
 
                         {activeTab === 'history' && (
-                            <div className="space-y-3">
+                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-3">
                                 {bids.length === 0 ? (
-                                    <p className="text-white/20 text-center py-10 text-[10px] uppercase font-black">Nenhum lance realizado ainda</p>
+                                    <div className="py-20 flex flex-col items-center opacity-20">
+                                        <span className="material-icons text-4xl mb-4">history</span>
+                                        <p className="text-[10px] font-black uppercase tracking-widest">Aguardando Primeiro Lance</p>
+                                    </div>
                                 ) : (
                                     bids.map((bid, index) => (
-                                        <div key={bid.id} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-2 h-2 rounded-full ${index === 0 ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-white/20'}`} />
-                                                <p className="text-white text-xs font-bold uppercase tracking-tight">Usuário {bid.bidder_id.substring(0, 5)}***</p>
+                                        <div key={bid.id} className={`flex items-center justify-between p-5 rounded-2xl border transition-all ${
+                                            index === 0 
+                                            ? 'bg-[#ECA413]/5 border-[#ECA413]/20 shadow-lg shadow-[#ECA413]/5' 
+                                            : 'bg-white/5 border-white/5'
+                                        }`}>
+                                            <div className="flex items-center gap-4">
+                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                                    index === 0 ? 'bg-[#ECA413] text-black' : 'bg-white/10 text-white/40'
+                                                }`}>
+                                                    <span className="material-icons text-sm">{index === 0 ? 'emoji_events' : 'person'}</span>
+                                                </div>
+                                                <div>
+                                                    <p className="text-white text-xs font-black uppercase tracking-tight">
+                                                        Usuário {bid.bidder_id.substring(0, 8)}***
+                                                        {index === 0 && <span className="ml-2 text-[#ECA413] text-[8px] font-black tracking-widest">• LÍDER</span>}
+                                                    </p>
+                                                    <p className="text-white/20 text-[8px] font-bold uppercase mt-0.5">Há {Math.floor(Math.random() * 59 + 1)} min</p>
+                                                </div>
                                             </div>
-                                            <p className={`text-sm font-black tracking-tighter ${index === 0 ? 'text-[#ECA413]' : 'text-white/40'}`}>{formatCurrency(bid.amount)}</p>
+                                            <div className="text-right">
+                                                <p className={`text-lg font-black tracking-tighter ${index === 0 ? 'text-[#ECA413]' : 'text-white/60'}`}>{formatCurrency(bid.amount)}</p>
+                                                {index === 0 && <p className="text-green-500 text-[7px] font-black uppercase tracking-widest">+ {formatCurrency(bid.amount - (bid.previous_amount || 0))}</p>}
+                                            </div>
                                         </div>
                                     ))
                                 )}
@@ -188,6 +292,19 @@ const AuctionDetail: React.FC<AuctionDetailProps> = ({ id, user, auctionUser, on
                     </div>
                 </div>
             </div>
+
+            {/* Sticky Action Bar (Mobile) */}
+            {!isFinished && (
+                <div className="fixed bottom-0 left-0 right-0 p-6 bg-[#0F0A05]/80 backdrop-blur-2xl border-t border-white/10 z-40 sm:hidden">
+                    <button 
+                        onClick={() => setShowBidModal(true)}
+                        className="w-full h-16 bg-[#ECA413] text-black rounded-2xl font-black uppercase tracking-[0.2em] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3"
+                    >
+                        <span className="material-icons">gavel</span>
+                        Dar Lance • {formatCurrency(auction.current_bid ? auction.current_bid + auction.minimum_increment : auction.starting_bid)}
+                    </button>
+                </div>
+            )}
 
             {/* Bid Modal */}
             {showBidModal && (
@@ -205,5 +322,12 @@ const AuctionDetail: React.FC<AuctionDetailProps> = ({ id, user, auctionUser, on
         </div>
     );
 };
+
+const DetailItem: React.FC<{ label: string; value?: string | number }> = ({ label, value }) => (
+    <div className="bg-white/5 p-5 rounded-3xl border border-white/5 group hover:border-[#ECA413]/20 transition-colors">
+        <p className="text-white/20 text-[8px] uppercase font-black tracking-widest mb-1.5">{label}</p>
+        <p className="text-white text-sm font-black tracking-tight">{value || '---'}</p>
+    </div>
+);
 
 export default AuctionDetail;

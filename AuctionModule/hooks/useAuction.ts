@@ -24,6 +24,36 @@ export const useAuction = () => {
         }
     };
 
+    const fetchMyAnimals = async (sellerId: string) => {
+        try {
+            const { data, error } = await supabase
+                .from('auction_animals')
+                .select('*')
+                .eq('seller_id', sellerId)
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            return data as AuctionAnimal[];
+        } catch (err) {
+            console.error('Error fetching my animals:', err);
+            return [];
+        }
+    };
+
+    const fetchMyAuctions = async (sellerId: string) => {
+        try {
+            const { data, error } = await supabase
+                .from('auctions')
+                .select('*, animal:auction_animals(*)')
+                .eq('seller_id', sellerId)
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            return data as Auction[];
+        } catch (err) {
+            console.error('Error fetching my auctions:', err);
+            return [];
+        }
+    };
+
     const getAuctionDetails = async (id: string) => {
         try {
             const { data, error } = await supabase
@@ -56,7 +86,7 @@ export const useAuction = () => {
         }
     };
 
-    const placeBid = async (auctionId: string, userId: string, amount: number, previousAmount: number) => {
+    const placeBid = async (auctionId: string, amount: number) => {
         try {
             const { data, error } = await supabase.functions.invoke('process-bid', {
                 body: { auctionId, amount }
@@ -71,6 +101,39 @@ export const useAuction = () => {
         }
     };
 
+    const createAnimal = async (animal: Partial<AuctionAnimal>) => {
+        try {
+            const { data, error } = await supabase
+                .from('auction_animals')
+                .insert([animal])
+                .select()
+                .single();
+
+            if (error) throw error;
+            return { success: true, data };
+        } catch (err: any) {
+            return { success: false, error: err.message };
+        }
+    };
+
+    const createAuction = async (auction: Partial<Auction>) => {
+        try {
+            const { data, error } = await supabase
+                .from('auctions')
+                .insert([{
+                    ...auction,
+                    status: 'pending_review'
+                }])
+                .select()
+                .single();
+
+            if (error) throw error;
+            return { success: true, data };
+        } catch (err: any) {
+            return { success: false, error: err.message };
+        }
+    };
+
     useEffect(() => {
         fetchActiveAuctions();
     }, []);
@@ -79,8 +142,12 @@ export const useAuction = () => {
         auctions,
         loading,
         fetchActiveAuctions,
+        fetchMyAnimals,
+        fetchMyAuctions,
         getAuctionDetails,
         getAuctionBids,
-        placeBid
+        placeBid,
+        createAnimal,
+        createAuction
     };
 };
