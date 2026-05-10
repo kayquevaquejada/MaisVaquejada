@@ -2434,6 +2434,13 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
     if (activeTab === 'RESULTADOS') return renderResultadosView();
     if (activeTab === 'MASTER') return <AdminMasterView user={user} onBack={() => setActiveTab('MAIN')} />;
     if (activeTab === 'ADS') return <AdminAdsManager user={user} onBack={() => setActiveTab('MAIN')} />;
+    if (activeTab === 'LEILAO') return (
+        <AuctionAdminPanel 
+            user={user} 
+            auctionUser={auctionUser} 
+            onBack={() => setActiveTab('MAIN')} 
+        />
+    );
 
 
     return (
@@ -2565,13 +2572,6 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                 <div className="fixed inset-0 bg-[#1A1108]/60 backdrop-blur-sm flex items-center justify-center z-[300]">
                     <div className="w-10 h-10 border-4 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
                 </div>
-            )}
-            {activeTab === 'LEILAO' && (
-                <AuctionAdminPanel 
-                    user={user} 
-                    auctionUser={auctionUser} 
-                    onBack={() => setActiveTab('MAIN')} 
-                />
             )}
         </div>
     );

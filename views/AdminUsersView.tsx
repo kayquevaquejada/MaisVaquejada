@@ -170,6 +170,42 @@ const AdminUsersView: React.FC<AdminUsersViewProps> = ({ user }) => {
     return matchesSearch && matchesRole && matchesStatus && matchesState;
   });
 
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newUserData, setNewUserData] = useState({
+    email: '',
+    password: '',
+    username: '',
+    full_name: '',
+    phone: ''
+  });
+  const [creating, setCreating] = useState(false);
+
+  const handleCreateUser = async () => {
+    if (!newUserData.email || !newUserData.password || !newUserData.username) {
+        alert('E-mail, senha e @username são obrigatórios');
+        return;
+    }
+    
+    setCreating(true);
+    try {
+        const { data, error } = await supabase.functions.invoke('create-verified-user', {
+            body: newUserData
+        });
+        
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        
+        alert('Usuário criado com sucesso!');
+        setIsCreateModalOpen(false);
+        setNewUserData({ email: '', password: '', username: '', full_name: '', phone: '' });
+        fetchUsers();
+    } catch (err: any) {
+        alert('Erro ao criar usuário: ' + err.message);
+    } finally {
+        setCreating(false);
+    }
+  };
+
   return (
     <div className="min-h-full bg-[#0F0A05] text-white flex flex-col p-6 animate-in fade-in duration-500">
       <header className="mb-8">
@@ -178,9 +214,18 @@ const AdminUsersView: React.FC<AdminUsersViewProps> = ({ user }) => {
                 <h1 className="text-3xl font-black italic tracking-tighter uppercase">Gestão de <span className="text-[#ECA413]">Usuários</span></h1>
                 <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mt-1">Controle Total da Base +Vaquejada</p>
             </div>
-            <button onClick={fetchUsers} className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all">
-                <span className={`material-icons text-white/40 ${loading ? 'animate-spin' : ''}`}>refresh</span>
-            </button>
+            <div className="flex gap-2">
+                <button 
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="h-10 px-4 rounded-xl bg-[#ECA413] text-black text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-[#ECA413]/20 active:scale-95 transition-all"
+                >
+                    <span className="material-icons text-sm">person_add</span>
+                    CRIAR CONTA
+                </button>
+                <button onClick={fetchUsers} className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all">
+                    <span className={`material-icons text-white/40 ${loading ? 'animate-spin' : ''}`}>refresh</span>
+                </button>
+            </div>
         </div>
 
         {/* Filters Panel */}
@@ -311,7 +356,7 @@ const AdminUsersView: React.FC<AdminUsersViewProps> = ({ user }) => {
                             <span className="material-icons text-xs">verified</span>
                             {u.is_verified ? 'VERIFICADO' : 'VERIFICAR'}
                         </button>
-
+                        
                         <button 
                             onClick={() => handleToggleVaquejadaPerm(u.id, !u.can_add_vaquejada)}
                             className={`py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 border ${
@@ -371,6 +416,87 @@ const AdminUsersView: React.FC<AdminUsersViewProps> = ({ user }) => {
             </div>
         ))}
       </div>
+
+      {/* Create User Modal */}
+      {isCreateModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
+              <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" onClick={() => setIsCreateModalOpen(false)}></div>
+              <div className="relative bg-[#1A1108] border border-[#ECA413]/20 rounded-[40px] p-8 max-w-md w-full shadow-[0_0_100px_rgba(236,164,19,0.1)]">
+                  <h3 className="text-xl font-black italic text-white uppercase tracking-tighter mb-6">Criar Conta Verificada</h3>
+                  
+                  <div className="space-y-4">
+                      <div>
+                          <label className="text-[10px] font-black text-white/40 uppercase tracking-widest ml-2 mb-1 block">Nome Completo</label>
+                          <input 
+                            type="text" 
+                            value={newUserData.full_name} 
+                            onChange={e => setNewUserData({...newUserData, full_name: e.target.value})}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-sm font-bold text-white outline-none focus:border-[#ECA413]"
+                            placeholder="Ex: Haras Mari da Luz"
+                          />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                          <div>
+                              <label className="text-[10px] font-black text-white/40 uppercase tracking-widest ml-2 mb-1 block">@Username</label>
+                              <input 
+                                type="text" 
+                                value={newUserData.username} 
+                                onChange={e => setNewUserData({...newUserData, username: e.target.value})}
+                                className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-sm font-bold text-white outline-none focus:border-[#ECA413]"
+                                placeholder="harasmaridaluz"
+                              />
+                          </div>
+                          <div>
+                              <label className="text-[10px] font-black text-white/40 uppercase tracking-widest ml-2 mb-1 block">WhatsApp</label>
+                              <input 
+                                type="text" 
+                                value={newUserData.phone} 
+                                onChange={e => setNewUserData({...newUserData, phone: e.target.value})}
+                                className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-sm font-bold text-white outline-none focus:border-[#ECA413]"
+                                placeholder="(00) 00000-0000"
+                              />
+                          </div>
+                      </div>
+                      <div>
+                          <label className="text-[10px] font-black text-white/40 uppercase tracking-widest ml-2 mb-1 block">E-mail</label>
+                          <input 
+                            type="email" 
+                            value={newUserData.email} 
+                            onChange={e => setNewUserData({...newUserData, email: e.target.value})}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-sm font-bold text-white outline-none focus:border-[#ECA413]"
+                            placeholder="parceiro@exemplo.com"
+                          />
+                      </div>
+                      <div>
+                          <label className="text-[10px] font-black text-white/40 uppercase tracking-widest ml-2 mb-1 block">Senha Temporária</label>
+                          <input 
+                            type="text" 
+                            value={newUserData.password} 
+                            onChange={e => setNewUserData({...newUserData, password: e.target.value})}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-sm font-bold text-white outline-none focus:border-[#ECA413]"
+                            placeholder="Defina uma senha"
+                          />
+                      </div>
+                  </div>
+
+                  <div className="mt-8 flex gap-3">
+                      <button 
+                        onClick={() => setIsCreateModalOpen(false)}
+                        className="flex-1 text-white/40 text-[10px] font-black uppercase tracking-widest py-4"
+                      >
+                          Cancelar
+                      </button>
+                      <button 
+                        onClick={handleCreateUser}
+                        disabled={creating}
+                        className="flex-[2] bg-[#ECA413] text-black py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-[#ECA413]/20 disabled:opacity-50"
+                      >
+                          {creating ? 'Criando...' : 'Confirmar Criação'}
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
 
       {/* Recovery Code Modal */}
       {isRecoveryModalOpen && (
