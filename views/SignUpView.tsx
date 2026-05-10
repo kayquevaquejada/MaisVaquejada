@@ -159,18 +159,40 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
     setError(null);
     try {
       const isNative = Capacitor.isNativePlatform();
-      const redirectTo = isNative 
-        ? 'maisvaquejada://auth/callback' 
-        : window.location.origin + '/auth/callback';
+      const platform = Capacitor.getPlatform();
+      
+      let redirectTo = window.location.origin + '/auth/callback';
+      if (isNative) {
+        redirectTo = platform === 'android' 
+          ? 'com.maisvaquejada.app://auth/callback' 
+          : 'maisvaquejada://auth/callback';
+      }
 
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: redirectTo
+      if (isNative) {
+        console.log('Google Sign-Up: Iniciando fluxo NATIVO', platform);
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: redirectTo,
+            skipBrowserRedirect: true
+          }
+        });
+        if (error) throw error;
+        if (data?.url) {
+          await Browser.open({ url: data.url });
         }
-      });
-      if (error) throw error;
+      } else {
+        console.log('Google Sign-Up: Iniciando fluxo WEB');
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: redirectTo
+          }
+        });
+        if (error) throw error;
+      }
     } catch (err: any) {
+      console.error('Erro no Google Sign-Up', err);
       setError(err.message || 'Erro ao criar conta com Google.');
     } finally {
       setGoogleLoading(false);
@@ -186,6 +208,7 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
       const platform = Capacitor.getPlatform();
       
       if (isNative && platform === 'ios') {
+        console.log('Apple Sign-Up: Iniciando fluxo NATIVO iOS');
         const result = await SignInWithApple.authorize({
           clientId: 'com.maisvaquejada.app',
           scopes: 'email name',
@@ -200,16 +223,34 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
         });
         if (authError) throw authError;
       } else {
+        console.log('Apple Sign-Up: Iniciando fluxo WEB/Android');
+        let redirectTo = window.location.origin + '/auth/callback';
+        if (isNative) {
+            redirectTo = platform === 'android' 
+              ? 'com.maisvaquejada.app://auth/callback' 
+              : 'maisvaquejada://auth/callback';
+        }
+
         const { error: oauthError } = await supabase.auth.signInWithOAuth({
           provider: 'apple',
           options: {
-            redirectTo: window.location.origin + '/auth/callback'
+            redirectTo: redirectTo,
+            skipBrowserRedirect: isNative
           }
         });
         if (oauthError) throw oauthError;
+
+        if (isNative) {
+            const { data } = await supabase.auth.signInWithOAuth({
+               provider: 'apple',
+               options: { redirectTo, skipBrowserRedirect: true }
+            });
+            if (data?.url) await Browser.open({ url: data.url });
+        }
       }
     } catch (err: any) {
       if (err?.message?.toLowerCase().includes('cancel')) return;
+      console.error('Erro no Apple Sign-Up', err);
       setError(err.message || 'Erro ao criar conta com Apple.');
     } finally {
       setAppleLoading(false);
