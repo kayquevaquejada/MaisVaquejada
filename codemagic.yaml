@@ -18,7 +18,8 @@ workflows:
       vars:
         VITE_SUPABASE_URL: "https://oisrjnhsrhnhwhcmyutq.supabase.co"
         VITE_SUPABASE_ANON_KEY: "sb_publishable_NlV5EDvJLhrVX0j7T4rNcg_kdo0vB-P"
-        BUILD_NUMBER: "46"
+        BUILD_NUMBER: "50"
+        MARKETING_VERSION: "1.1"
 
     scripts:
       - name: Install dependencies
@@ -42,7 +43,7 @@ workflows:
         script: |
           cd ios/App
 
-          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.0" App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $MARKETING_VERSION" App/Info.plist
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" App/Info.plist
 
           echo "iOS Version:"
