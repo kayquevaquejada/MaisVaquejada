@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { User } from '../../types';
 import { AuctionUser } from '../types';
+import { createNotification } from '../../lib/notifications';
 
 interface AdminPanelProps {
     user: User;
@@ -19,15 +20,33 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, auctionUser, onBack }) =>
         pendingAnimals: 0,
         activeAuctions: 0
     });
+    const [isModuleHidden, setIsModuleHidden] = useState(false);
 
     const [pendingSellers, setPendingSellers] = useState<any[]>([]);
     const [pendingAnimals, setPendingAnimals] = useState<any[]>([]);
-
     useEffect(() => {
         fetchStats();
+        fetchHiddenStatus();
         if (subView === 'SELLERS') fetchPendingSellers();
         if (subView === 'ANIMALS') fetchPendingAnimals();
     }, [subView]);
+
+    const fetchHiddenStatus = async () => {
+        const { data } = await supabase.from('app_settings').select('value').eq('key', 'auction_module_hidden').single();
+        if (data?.value) setIsModuleHidden(!!data.value.enabled);
+    };
+
+    const toggleModuleVisibility = async () => {
+        const newValue = !isModuleHidden;
+        const { error } = await supabase.from('app_settings')
+            .update({ value: { enabled: newValue } })
+            .eq('key', 'auction_module_hidden');
+        
+        if (!error) {
+            setIsModuleHidden(newValue);
+            alert(`Módulo ${newValue ? 'OCULTADO' : 'VISÍVEL'} para usuários.`);
+        }
+    };
 
     const fetchStats = async () => {
         const { count: sCount } = await supabase.from('auction_seller_applications').select('*', { count: 'exact', head: true }).eq('status', 'submitted');
@@ -68,7 +87,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, auctionUser, onBack }) =>
         setLoading(true);
         try {
             await supabase.from('auction_seller_applications').update({ status: 'approved', reviewed_by: user.id, reviewed_at: new Date().toISOString() }).eq('id', applicationId);
-            await supabase.from('auction_users').update({ auction_role: 'seller_approved', can_sell: true }).eq('user_id', applicantUserId);
+            
+            // Upsert user role to approved
+            await supabase.from('auction_users').upsert({ 
+                user_id: applicantUserId, 
+                auction_role: 'seller_approved', 
+                can_sell: true,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id' });
+
+            // Create notification for the user
+            await createNotification({
+                user_id: applicantUserId,
+                actor_id: user.id,
+                type: 'system',
+                message: 'Sua solicitação para ser vendedor em leilões foi aprovada! Agora você já pode cadastrar seus animais.',
+                metadata: { action: 'seller_approved' }
+            });
+
             fetchPendingSellers();
             fetchStats();
         } catch (err) {
@@ -82,7 +118,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, auctionUser, onBack }) =>
         if (!confirm('Aprovar este animal para leilão?')) return;
         setLoading(true);
         try {
-            await supabase.from('auction_animals').update({ status: 'approved' }).eq('id', animalId);
+            const { data: animal } = await supabase.from('auction_animals').update({ status: 'approved' }).eq('id', animalId).select('seller_id, name').single();
+            
+            if (animal) {
+                // Create notification for the seller
+                await createNotification({
+                    user_id: animal.seller_id,
+                    actor_id: user.id,
+                    type: 'system',
+                    message: `Seu animal "${animal.name}" foi aprovado para leilão e logo estará disponível para lances.`,
+                    metadata: { action: 'animal_approved', animal_id: animalId }
+                });
+            }
+
             fetchPendingAnimals();
             fetchStats();
         } catch (err) {
@@ -94,6 +142,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, auctionUser, onBack }) =>
 
     const renderOverview = () => (
         <>
+            <div className="bg-white/5 p-4 rounded-2xl border border-white/5 mb-6 flex items-center justify-between">
+                <div>
+                    <p className="text-white/40 text-[9px] font-black uppercase tracking-widest">Modo Desenvolvimento</p>
+                    <p className="text-white/20 text-[8px] uppercase">Ocultar módulo para usuários comuns</p>
+                </div>
+                <button 
+                    onClick={toggleModuleVisibility}
+                    className={`w-14 h-8 rounded-full relative transition-all duration-300 ${isModuleHidden ? 'bg-[#ECA413]' : 'bg-white/10'}`}
+                >
+                    <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-lg transition-all duration-300 ${isModuleHidden ? 'left-7' : 'left-1'}`} />
+                </button>
+            </div>
+
             <div className="grid grid-cols-1 gap-4 mb-8">
                 <button 
                     onClick={() => setSubView('SELLERS')}

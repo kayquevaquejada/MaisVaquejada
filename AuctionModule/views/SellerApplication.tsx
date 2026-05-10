@@ -45,11 +45,14 @@ const SellerApplication: React.FC<SellerApplicationProps> = ({ user, onBack, onS
 
             if (error) throw error;
 
-            // Update user role to pending
+            // Upsert user role to pending
             await supabase
                 .from('auction_users')
-                .update({ auction_role: 'seller_pending' })
-                .eq('user_id', user.id);
+                .upsert({ 
+                    user_id: user.id, 
+                    auction_role: 'seller_pending',
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'user_id' });
 
             onSuccess();
         } catch (err) {

@@ -149,7 +149,37 @@ const App: React.FC = () => {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [fatalError, setFatalError] = useState<string | null>(null);
   const [debugSplash, setDebugSplash] = useState<boolean>(false);
+  const [appSettings, setAppSettings] = useState<Record<string, any>>({});
   const isFetchingProfile = useRef(false);
+
+  useEffect(() => {
+    fetchSettings();
+
+    // Realtime subscription for settings
+    const channel = supabase
+      .channel('app_settings_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, () => {
+        fetchSettings();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const { data } = await supabase.from('app_settings').select('key, value');
+      if (data) {
+        const settings: Record<string, any> = {};
+        data.forEach(s => settings[s.key] = s.value);
+        setAppSettings(settings);
+      }
+    } catch (e) {
+      console.warn('Erro ao carregar configurações:', e);
+    }
+  };
   const currentViewRef = useRef(currentView);
   const isMountedRef = useRef(true);
   const hasValidConsentRef = useRef(false);
@@ -648,7 +678,7 @@ if (initializing) {
               />
             </div>
           </div>
-          {showNavbar && <Navbar currentView={currentView} user={user} />}
+          {showNavbar && <Navbar currentView={currentView} user={user} appSettings={appSettings} />}
           <CallBar />
           <CallScreen />
           {user && user.profile_completed && <PushOnboardingModal userId={user.id} />}
