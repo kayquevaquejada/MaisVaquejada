@@ -23,38 +23,65 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
     const el = containerRef.current;
     if (!el) return;
 
+    let touchStartY = 0;
+    let touchStartX = 0;
+    let pulling = false;
+    let horizontalScroll = false;
+
     const handleTouchStart = (e: TouchEvent) => {
-      // Só inicia o pull se estiver no topo do scroll
+      touchStartY = e.touches[0].pageY;
+      touchStartX = e.touches[0].pageX;
+      horizontalScroll = false;
+      
       if (el.scrollTop <= 0) {
-        startY.current = e.touches[0].pageY;
-        isPulling.current = true;
+        pulling = true;
+      } else {
+        pulling = false;
       }
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (!isPulling.current || isRefreshingRef.current) return;
+      if (!pulling || isRefreshingRef.current || horizontalScroll) return;
 
       const currentY = e.touches[0].pageY;
-      const diff = currentY - startY.current;
+      const currentX = e.touches[0].pageX;
+      const diffY = currentY - touchStartY;
+      const diffX = currentX - touchStartX;
 
-      if (diff > 0 && el.scrollTop <= 0) {
-        // Prevent default scroll only when pulling down at the top
+      // Detect horizontal scroll attempt
+      if (!horizontalScroll && Math.abs(diffX) > Math.abs(diffY)) {
+        horizontalScroll = true;
+        pulling = false;
+        setPullDistance(0);
+        pullDistanceRef.current = 0;
+        return;
+      }
+
+      if (diffY > 5 && el.scrollTop <= 0) {
+        // We are at the top and pulling down with a small threshold
         if (e.cancelable) e.preventDefault();
         
-        const pull = Math.min(diff * 0.4, MAX_PULL); // Reduced friction slightly
-        pullDistanceRef.current = pull;
+        const pull = Math.min((diffY - 5) * 0.4, MAX_PULL);
         setPullDistance(pull);
-      } else if (diff < 0) {
-        // Pulling up, cancel pull-to-refresh
-        isPulling.current = false;
-        pullDistanceRef.current = 0;
-        setPullDistance(0);
+        pullDistanceRef.current = pull;
+      } else if (diffY < 0) {
+        // Scrolling up, stop PTR logic
+        pulling = false;
+        if (pullDistanceRef.current > 0) {
+          setPullDistance(0);
+          pullDistanceRef.current = 0;
+        }
       }
     };
 
     const handleTouchEnd = async () => {
-      if (!isPulling.current || isRefreshingRef.current) return;
-      isPulling.current = false;
+      if (!pulling || isRefreshingRef.current || horizontalScroll) {
+        pulling = false;
+        setPullDistance(0);
+        pullDistanceRef.current = 0;
+        return;
+      }
+      pulling = false;
 
       if (pullDistanceRef.current >= PULL_THRESHOLD) {
         setIsRefreshing(true);
@@ -78,7 +105,7 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
 
     el.addEventListener('touchstart', handleTouchStart, { passive: true });
     el.addEventListener('touchmove', handleTouchMove, { passive: false });
-    el.addEventListener('touchend', handleTouchEnd);
+    el.addEventListener('touchend', handleTouchEnd, { passive: true });
 
     return () => {
       el.removeEventListener('touchstart', handleTouchStart);
@@ -91,13 +118,18 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
     <div 
       ref={containerRef} 
       className={`relative overflow-y-auto h-full w-full hide-scrollbar ${className}`}
+      style={{ 
+        overscrollBehaviorY: 'none',
+        WebkitOverflowScrolling: 'touch'
+      }}
     >
       {/* Pull Indicator */}
       <div 
         className="absolute left-0 right-0 flex justify-center pointer-events-none z-50 transition-transform duration-200"
         style={{ 
           transform: `translateY(${pullDistance - 40}px)`,
-          opacity: pullDistance > 10 ? 1 : 0
+          opacity: pullDistance > 10 ? 1 : 0,
+          willChange: 'transform'
         }}
       >
         <div className="bg-[#1A1108] border border-[#ECA413]/30 w-10 h-10 rounded-full flex items-center justify-center shadow-2xl">
@@ -113,7 +145,10 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
       {/* Content */}
       <div 
         className="transition-transform duration-200"
-        style={{ transform: `translateY(${pullDistance}px)` }}
+        style={{ 
+          transform: `translateY(${pullDistance}px)`,
+          willChange: 'transform'
+        }}
       >
         {children}
       </div>
