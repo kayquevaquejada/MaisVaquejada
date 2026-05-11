@@ -5,6 +5,8 @@ import { useAuction } from '../hooks/useAuction';
 import AuctionBanner from '../components/AuctionBanner';
 import AuctionFilterChips from '../components/AuctionFilterChips';
 import RealtimeCountdown from '../components/RealtimeCountdown';
+import { PullToRefresh } from '../../components/PullToRefresh';
+import { supabase } from '../../lib/supabase';
 
 interface AuctionHomeProps {
     user: User | null;
@@ -13,6 +15,7 @@ interface AuctionHomeProps {
     onApplySeller: () => void;
     onSellerDashboard: () => void;
     onAdminPanel: () => void;
+    onRefreshUser: () => Promise<void>;
     onBack: () => void;
 }
 
@@ -23,10 +26,38 @@ const AuctionHome: React.FC<AuctionHomeProps> = ({
     onApplySeller, 
     onSellerDashboard, 
     onAdminPanel,
+    onRefreshUser,
     onBack 
 }) => {
-    const { auctions, loading } = useAuction();
+    const { auctions, loading, fetchActiveAuctions } = useAuction();
     const [activeFilter, setActiveFilter] = useState('live');
+
+    React.useEffect(() => {
+        // Force refresh user status on mount to ensure latest permissions
+        onRefreshUser();
+        
+        const channel = supabase
+            .channel('public:auctions_list')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'auctions' },
+                () => {
+                    fetchActiveAuctions(false);
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, []);
+
+    const handleRefresh = async () => {
+        await Promise.all([
+            fetchActiveAuctions(),
+            onRefreshUser()
+        ]);
+    };
 
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -75,9 +106,13 @@ const AuctionHome: React.FC<AuctionHomeProps> = ({
         );
     }
 
-    const canSell = auctionUser?.auction_role === 'seller_approved' || auctionUser?.auction_role === 'haras_verified' || auctionUser?.auction_role === 'admin';
+    const canSell = auctionUser?.can_sell === true || 
+                    auctionUser?.auction_role === 'seller_approved' || 
+                    auctionUser?.auction_role === 'haras_verified' || 
+                    auctionUser?.auction_role === 'admin' ||
+                    user.role === 'ADMIN' || user.role === 'ADMIN_MASTER' || user.isMaster;
     const isPendingSeller = auctionUser?.auction_role === 'seller_pending';
-    const isAdmin = user.role === 'ADMIN' || auctionUser?.auction_role === 'admin' || user.isMaster;
+    const isAdmin = user.role === 'ADMIN' || user.role === 'ADMIN_MASTER' || user.isMaster || auctionUser?.auction_role === 'admin';
 
     const filteredAuctions = auctions.filter(a => {
         if (activeFilter === 'live') return a.status === 'active';
@@ -87,7 +122,8 @@ const AuctionHome: React.FC<AuctionHomeProps> = ({
     const featuredAuction = auctions.find(a => a.status === 'active');
 
     return (
-        <div className="min-h-screen bg-[#0F0A05] pb-32">
+        <PullToRefresh onRefresh={handleRefresh} className="bg-[#0F0A05]">
+            <div className="min-h-full pb-40 relative bg-[#0F0A05]">
             <header className="px-6 pt-12 pb-8 flex items-center justify-between sticky top-0 bg-[#0F0A05]/80 backdrop-blur-xl z-50">
                 <div>
                     <h1 className="text-2xl font-black italic uppercase tracking-tighter text-[#ECA413] leading-none">
@@ -238,7 +274,10 @@ const AuctionHome: React.FC<AuctionHomeProps> = ({
                     <p className="text-[10px] font-black uppercase tracking-[0.5em]">Fim da Lista Elite</p>
                 </div>
             )}
+            {/* Espaço extra para evitar que o scroll trave no final no iOS */}
+            <div className="h-16" aria-hidden="true" />
         </div>
+    </PullToRefresh>
     );
 };
 

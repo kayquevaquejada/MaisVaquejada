@@ -4,6 +4,7 @@ import { App as CapApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
 import { Browser } from '@capacitor/browser';
+import { PrivacyScreen } from '@capacitor-community/privacy-screen';
 import { View, User } from './types';
 import Navbar from './components/Navbar';
 import LoginView from './views/LoginView';
@@ -35,98 +36,36 @@ import { PushOnboardingModal } from './components/PushOnboardingModal';
 import ErrorBoundary from './ErrorBoundary';
 import ResultDetailView from './views/ResultDetailView';
 import LoginRequiredModal from './components/LoginRequiredModal';
-import AuctionModule from './AuctionModule';
+import { persistence, PersistenceKey } from './lib/persistence';
+import { getNotifText } from './lib/notifications';
+
+// Usar Lazy para o Módulo de Leilão para evitar loops de inicialização e melhorar performance no Web
+const AuctionModule = React.lazy(() => import('./AuctionModule'));
 
 const MASTER_EMAILS = ["kayquegusmao@icloud.com", "kayquegusmao276@gmail.com", "Kayquegusmao1@gmail.com", "maisvaquejada1@gmail.com", "contato@maisvaquejada.com.br"];
 
-// ─── ViewRenderer definido FORA do App para evitar remontagem a cada render ───
-interface ViewRendererProps {
-  currentView: View;
-  selectedEvent: any;
-  selectedStore: any;
-  selectedResultId: string | null;
-  user: User | null;
-  profileUsername: string | null;
-  onFetchProfile: (userId: string, authUser?: any) => Promise<void>;
-  onSetCurrentView: (view: View) => void;
-  onLogout: () => void;
-  mediaCreationMode?: 'FEED' | 'STORY';
-}
+const GlobalToast: React.FC<{ message: string, onClose: () => void }> = ({ message, onClose }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 5000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
 
-const ViewRenderer: React.FC<ViewRendererProps> = ({
-  currentView,
-  selectedEvent,
-  selectedStore,
-  selectedResultId,
-  user,
-  profileUsername,
-  onFetchProfile,
-  onSetCurrentView,
-  onLogout,
-  mediaCreationMode,
-}) => {
-  switch (currentView) {
-    case View.LOGIN:
-      return <LoginView onLogin={(u) => onFetchProfile(u.id, u)} onSignUp={() => onSetCurrentView(View.SIGNUP)} onForgotPassword={() => onSetCurrentView(View.FORGOT_PASSWORD)} onRecoveryAssisted={() => onSetCurrentView(View.RECOVERY_ASSISTED)} onTerms={() => onSetCurrentView(View.TERMS)} />;
-    case View.SIGNUP:
-      return <SignUpView onBack={() => onSetCurrentView(View.LOGIN)} onSuccess={(u) => onFetchProfile(u.id, u)} />;
-    case View.COMPLETE_PROFILE:
-      return <CompleteProfileView user={user} onComplete={() => user && onFetchProfile(user.id)} onLogout={onLogout} />;
-    case View.SOCIAL:
-      return <SocialFeedView user={user} onMediaCreation={(mode) => {
-        if (!user) {
-            window.dispatchEvent(new CustomEvent('arena_show_login'));
-            return;
-        }
-        (onSetCurrentView as any)(View.MEDIA_CREATION, { mode });
-      }} />;
-    case View.EVENTS:
-      return <EventsView user={user} onLoginPrompt={() => onSetCurrentView(View.LOGIN)} />;
-    case View.NEWS:
-      return <NewsView user={user} />;
-    case View.MERCADO:
-      return <MarketplaceView user={user} onViewChange={onSetCurrentView} selectedStore={selectedStore} />;
-    case View.PROFILE:
-      return <ProfileView user={user} targetUsername={profileUsername} onLogout={onLogout} onAdminView={() => onSetCurrentView(View.ADMIN)} onSettingsView={() => onSetCurrentView(View.SETTINGS)} onProfileUpdate={() => user && onFetchProfile(user.id)} />;
-    case View.MEDIA_CREATION:
-      return <MediaCreationView user={user} onClose={() => onSetCurrentView(View.SOCIAL)} onSuccess={() => onSetCurrentView(View.SOCIAL)} initialMode={mediaCreationMode} />;
-    case View.SETTINGS:
-      return <SettingsView user={user} onBack={() => onSetCurrentView(View.PROFILE)} onLogout={onLogout} onAdminView={() => onSetCurrentView(View.ADMIN)} onProfileUpdate={() => user && onFetchProfile(user.id)} />;
-    case View.ADMIN:
-      return <AdminView user={user} />;
-    case View.ADMIN_USERS:
-      return <AdminUsersView user={user} />;
-    case View.INTERNAL_ADS:
-      return <InternalAdManager user={user} onBack={() => onSetCurrentView(View.ADMIN)} />;
-    case View.AD_CREATION:
-      return <MarketplaceView user={user} forceShowWizard={true} onWizardClose={() => onSetCurrentView(View.MERCADO)} onViewChange={onSetCurrentView} selectedStore={selectedStore} />;
-    case View.TERMS:
-      return <EULAView onBack={() => onSetCurrentView(View.LOGIN)} />;
-    case View.FORGOT_PASSWORD:
-      return <ForgotPasswordView onBack={() => onSetCurrentView(View.LOGIN)} />;
-    case View.BLOCKED_ACCOUNT:
-      return <BlockedAccountView onLogout={onLogout} />;
-    case View.RECOVERY_ASSISTED:
-      return <RecoveryAssistedView onBack={() => onSetCurrentView(View.LOGIN)} />;
-    case View.EVENT_DETAILS:
-      return <EventDetailView event={selectedEvent} user={user} onBack={() => onSetCurrentView(View.EVENTS)} />;
-    case View.LEGAL_CONSENT:
-      return <LegalConsentView user={user} onAccept={() => onFetchProfile(user?.id || '')} />;
-    case View.STORE_DETAILS:
-      return <StoreDetailView store={selectedStore} user={user} onBack={() => onSetCurrentView(View.MERCADO)} />;
-    case View.RESULT_DETAIL:
-      return <ResultDetailView resultId={selectedResultId || ''} onBack={() => onSetCurrentView(selectedEvent ? View.EVENT_DETAILS : View.NEWS)} />;
-    case View.LEILAO:
-      return <AuctionModule user={user} onBack={() => onSetCurrentView(View.EVENTS)} />;
-    case View.AUTH_CALLBACK:
-      return <AuthCallback onComplete={(userId, authUser) => onFetchProfile(userId, authUser)} onFail={() => onSetCurrentView(View.LOGIN)} />;
-    default:
-      if (user) {
-        if (!user.profile_completed) return <CompleteProfileView user={user} onComplete={() => onFetchProfile(user.id)} onLogout={onLogout} />;
-        return <EventsView />;
-      }
-      return <LoginView onLogin={(u) => onFetchProfile(u.id, u)} onSignUp={() => onSetCurrentView(View.SIGNUP)} onForgotPassword={() => onSetCurrentView(View.FORGOT_PASSWORD)} onRecoveryAssisted={() => onSetCurrentView(View.RECOVERY_ASSISTED)} onTerms={() => onSetCurrentView(View.TERMS)} />;
-  }
+  return (
+    <div className="fixed top-12 left-6 right-6 z-[2000] animate-in slide-in-from-top duration-500">
+      <div className="bg-[#1A1108]/95 backdrop-blur-xl border border-[#D4AF37]/30 p-4 rounded-2xl shadow-2xl flex items-center gap-4">
+        <div className="w-10 h-10 rounded-full bg-[#D4AF37]/20 flex items-center justify-center text-[#D4AF37]">
+          <span className="material-icons">notifications_active</span>
+        </div>
+        <div className="flex-1">
+          <p className="text-[9px] font-black text-[#D4AF37] uppercase tracking-widest mb-0.5">Nova Notificação</p>
+          <p className="text-white text-xs font-bold leading-tight">{message}</p>
+        </div>
+        <button onClick={onClose} className="text-white/20 hover:text-white p-2">
+          <span className="material-icons text-sm">close</span>
+        </button>
+      </div>
+    </div>
+  );
 };
 
 // Capturador de Erros Global para Web
@@ -150,7 +89,97 @@ const App: React.FC = () => {
   const [fatalError, setFatalError] = useState<string | null>(null);
   const [debugSplash, setDebugSplash] = useState<boolean>(false);
   const [appSettings, setAppSettings] = useState<Record<string, any>>({});
+  const [toast, setToast] = useState<string | null>(null);
   const isFetchingProfile = useRef(false);
+
+  const handleNav = (view: View, { username, eventData, resultId, mode, e }: { username?: string, eventData?: any, resultId?: string, mode?: 'FEED' | 'STORY', e?: any } = {}) => {
+    setCurrentView(view);
+    setProfileUsername(username || null);
+    setSelectedEvent(eventData || null);
+    setSelectedResultId(resultId || null);
+    setMediaCreationMode(mode || 'FEED');
+    setNavKey(Date.now());
+
+    // Persistir estado imediatamente para robustez em multitarefa
+    persistence.save(PersistenceKey.LAST_VIEW, view);
+    if (eventData) persistence.save(PersistenceKey.LAST_EVENT, eventData);
+    if (e?.detail?.store) persistence.save(PersistenceKey.LAST_STORE, e.detail.store);
+  };
+
+  // ─── ViewRenderer movido para dentro para garantir inicialização ───
+  const renderCurrentView = () => {
+    switch (currentView) {
+      case View.LOGIN:
+        return <LoginView onLogin={(u) => fetchProfile(u.id, u)} onSignUp={() => setCurrentView(View.SIGNUP)} onForgotPassword={() => setCurrentView(View.FORGOT_PASSWORD)} onRecoveryAssisted={() => setCurrentView(View.RECOVERY_ASSISTED)} onTerms={() => setCurrentView(View.TERMS)} />;
+      case View.SIGNUP:
+        return <SignUpView onBack={() => setCurrentView(View.LOGIN)} onSuccess={(u) => fetchProfile(u.id, u)} />;
+      case View.COMPLETE_PROFILE:
+        return <CompleteProfileView user={user} onComplete={() => user && fetchProfile(user.id)} onLogout={handleLogout} />;
+      case View.SOCIAL:
+        return <SocialFeedView user={user} onMediaCreation={(mode) => {
+          if (!user) {
+              window.dispatchEvent(new CustomEvent('arena_show_login'));
+              return;
+          }
+          setMediaCreationMode(mode);
+          setCurrentView(View.MEDIA_CREATION);
+        }} />;
+      case View.EVENTS:
+        return <EventsView user={user} onLoginPrompt={() => setCurrentView(View.LOGIN)} />;
+      case View.NEWS:
+        return <NewsView user={user} />;
+      case View.MERCADO:
+        return <MarketplaceView user={user} onViewChange={setCurrentView} selectedStore={selectedStore} />;
+      case View.PROFILE:
+        return <ProfileView user={user} targetUsername={profileUsername} onLogout={handleLogout} onAdminView={() => setCurrentView(View.ADMIN)} onSettingsView={() => setCurrentView(View.SETTINGS)} onProfileUpdate={() => user && fetchProfile(user.id)} />;
+      case View.MEDIA_CREATION:
+        return <MediaCreationView user={user} onClose={() => setCurrentView(View.SOCIAL)} onSuccess={() => setCurrentView(View.SOCIAL)} initialMode={mediaCreationMode} />;
+      case View.SETTINGS:
+        return <SettingsView user={user} onBack={() => setCurrentView(View.PROFILE)} onLogout={handleLogout} onAdminView={() => setCurrentView(View.ADMIN)} onProfileUpdate={() => user && fetchProfile(user.id)} />;
+      case View.ADMIN:
+        return <AdminView user={user} />;
+      case View.ADMIN_USERS:
+        return <AdminUsersView user={user} />;
+      case View.INTERNAL_ADS:
+        return <InternalAdManager user={user} onBack={() => setCurrentView(View.ADMIN)} />;
+      case View.AD_CREATION:
+        return <MarketplaceView user={user} forceShowWizard={true} onWizardClose={() => setCurrentView(View.MERCADO)} onViewChange={setCurrentView} selectedStore={selectedStore} />;
+      case View.TERMS:
+        return <EULAView onBack={() => setCurrentView(View.LOGIN)} />;
+      case View.FORGOT_PASSWORD:
+        return <ForgotPasswordView onBack={() => setCurrentView(View.LOGIN)} />;
+      case View.BLOCKED_ACCOUNT:
+        return <BlockedAccountView onLogout={handleLogout} />;
+      case View.RECOVERY_ASSISTED:
+        return <RecoveryAssistedView onBack={() => setCurrentView(View.LOGIN)} />;
+      case View.EVENT_DETAILS:
+        return <EventDetailView event={selectedEvent} user={user} onBack={() => setCurrentView(View.EVENTS)} />;
+      case View.LEGAL_CONSENT:
+        return <LegalConsentView user={user} onAccept={() => fetchProfile(user?.id || '')} />;
+      case View.STORE_DETAILS:
+        return <StoreDetailView store={selectedStore} user={user} onBack={() => setCurrentView(View.MERCADO)} />;
+      case View.RESULT_DETAIL:
+        return <ResultDetailView resultId={selectedResultId || ''} onBack={() => setCurrentView(selectedEvent ? View.EVENT_DETAILS : View.NEWS)} />;
+      case View.LEILAO:
+        return (
+          <React.Suspense fallback={
+            <div className="min-h-screen bg-[#0F0A05] flex items-center justify-center">
+              <div className="w-12 h-12 border-4 border-[#ECA413]/20 border-t-[#ECA413] rounded-full animate-spin" />
+            </div>
+          }>
+            <AuctionModule user={user} onBack={() => setCurrentView(View.EVENTS)} />
+          </React.Suspense>
+        );
+      case View.AUTH_CALLBACK:
+        return <AuthCallback onComplete={(userId, authUser) => fetchProfile(userId, authUser)} onFail={() => setCurrentView(View.LOGIN)} />;
+      default:
+        if (user) {
+          if (!user.profile_completed) return <CompleteProfileView user={user} onComplete={() => fetchProfile(user.id)} onLogout={handleLogout} />;
+          return <EventsView />;
+        }
+        return <LoginView onLogin={(u) => fetchProfile(u.id, u)} onSignUp={() => setCurrentView(View.SIGNUP)} onForgotPassword={() => setCurrentView(View.FORGOT_PASSWORD)} onRecoveryAssisted={() => setCurrentView(View.RECOVERY_ASSISTED)} onTerms={() => setCurrentView(View.TERMS)} />;
+    }
+  };
 
   useEffect(() => {
     fetchSettings();
@@ -432,14 +461,38 @@ const App: React.FC = () => {
       }
     });
 
-    const stateListener = CapApp.addListener('appStateChange', ({ isActive }) => {
+    const stateListener = CapApp.addListener('appStateChange', async ({ isActive }) => {
       if (isActive && isMountedRef.current) {
-        // Ao voltar do background, apenas verificamos a sessão silenciosamente se necessário.
-        // Removido o fetchProfile automático para evitar que o app volte para a Home 
-        // e limpe formulários que o usuário estava preenchendo.
         supabase.auth.getSession();
+      } else if (!isActive && isMountedRef.current) {
+        // Persistir view e dados de navegação ao sair para segundo plano
+        if (currentViewRef.current) {
+          persistence.save('arena_last_view', currentViewRef.current);
+        }
       }
     });
+
+    // Notificações em Tempo Real (Global)
+    let notifChannel: any = null;
+    if (user?.id) {
+       notifChannel = supabase
+        .channel(`app_global_notifications_${user.id}`)
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`
+        }, (payload) => {
+          const notif = payload.new as any;
+          // Buscar nome do ator para o texto
+          const text = getNotifText({
+            ...notif,
+            actor_username: 'Alguém'
+          });
+          setToast(text);
+        })
+        .subscribe();
+    }
 
     const handleDeepLink = async (url: string) => {
       console.log('[App] Processando Deep Link:', url);
@@ -514,7 +567,7 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const handleNav = (e: any) => {
+    const handleNavEvent = (e: any) => {
       const view = e.detail?.view || currentView;
       const username = e.detail?.username ?? null;
       const eventData = e.detail?.event ?? null;
@@ -547,21 +600,8 @@ const App: React.FC = () => {
         return;
       }
 
-      setCurrentView(view);
-      setNavKey(Date.now());
-      if (username !== undefined) setProfileUsername(username);
-      if (eventData !== undefined) setSelectedEvent(eventData);
-      if (e.detail?.store !== undefined) setSelectedStore(e.detail.store);
-      if (resultId !== undefined) setSelectedResultId(resultId);
-      if (mode !== undefined) setMediaCreationMode(mode);
-
-      // Persistir última view para restauração no próximo boot
-      if (user && ![View.LOGIN, View.SIGNUP, View.COMPLETE_PROFILE, View.LEGAL_CONSENT].includes(view)) {
-        Preferences.set({ key: 'arena_last_view', value: view });
-        if (e.detail?.store) Preferences.set({ key: 'arena_last_store', value: JSON.stringify(e.detail.store) });
-        if (eventData) Preferences.set({ key: 'arena_last_event', value: JSON.stringify(eventData) });
-      }
-
+      // Chama a função centralizada de navegação com persistência
+      handleNav(view, { username, eventData, resultId, mode, e });
       
       try {
         const stateObj = { view, username, event: eventData };
@@ -572,8 +612,10 @@ const App: React.FC = () => {
         else if (view === View.EVENTS) window.history.pushState(stateObj, '', `/`);
         else if (view === View.NEWS) window.history.pushState(stateObj, '', `/noticias`);
         else if (view === View.MERCADO) window.history.pushState(stateObj, '', `/mercado`);
-      } catch (e) {}
+      } catch (err) {}
     };
+
+    window.addEventListener('arena_navigate', handleNavEvent);
 
     const handlePopState = (e: PopStateEvent) => {
       if (e.state) {
@@ -583,10 +625,9 @@ const App: React.FC = () => {
       }
     };
 
-    window.addEventListener('arena_navigate', handleNav);
     window.addEventListener('popstate', handlePopState);
     return () => {
-      window.removeEventListener('arena_navigate', handleNav);
+      window.removeEventListener('arena_navigate', handleNavEvent);
       window.removeEventListener('popstate', handlePopState);
     };
   }, [user, currentView]);
@@ -663,22 +704,19 @@ if (initializing) {
         <div className="min-h-screen flex flex-col bg-background-dark overflow-hidden">
           <UpdateManager />
           <div className="flex-1 overflow-y-auto relative scroll-smooth hide-scrollbar">
-            <div key={`${currentView}-${navKey}`} className="max-w-7xl mx-auto w-full h-full">
-              <ViewRenderer
-                currentView={currentView}
-                selectedEvent={selectedEvent}
-                selectedStore={selectedStore}
-                selectedResultId={selectedResultId}
-                user={user}
-                profileUsername={profileUsername}
-                onFetchProfile={fetchProfile}
-                onSetCurrentView={setCurrentView}
-                onLogout={handleLogout}
-                mediaCreationMode={mediaCreationMode}
-              />
+            {/* Mobile-style Frame for Web */}
+            <div className="flex-1 w-full max-w-md mx-auto relative flex flex-col bg-[#0F0A05] shadow-2xl overflow-hidden min-h-screen lg:min-h-[90vh] lg:my-auto lg:rounded-[40px] lg:border lg:border-white/5">
+              <ErrorBoundary>
+                {renderCurrentView()}
+              </ErrorBoundary>
             </div>
+
+            {currentView !== View.LOGIN && currentView !== View.SIGNUP && currentView !== View.AUTH_CALLBACK && (
+              <div className="max-w-md mx-auto w-full">
+                <Navbar currentView={currentView} user={user} appSettings={appSettings} />
+              </div>
+            )}
           </div>
-          {showNavbar && <Navbar currentView={currentView} user={user} appSettings={appSettings} />}
           <CallBar />
           <CallScreen />
           {user && user.profile_completed && <PushOnboardingModal userId={user.id} />}
@@ -687,6 +725,7 @@ if (initializing) {
             isOpen={showLoginModal} 
             onClose={() => setShowLoginModal(false)} 
           />
+          {toast && <GlobalToast message={toast} onClose={() => setToast(null)} />}
         </div>
       </CallProvider>
     </ErrorBoundary>

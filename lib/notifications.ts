@@ -5,7 +5,7 @@
 
 import { supabase } from './supabase';
 
-export type NotifType = 'follow' | 'like' | 'comment' | 'message' | 'mention' | 'system';
+export type NotifType = 'follow' | 'like' | 'comment' | 'message' | 'mention' | 'system' | 'auction_bid' | 'outbid';
 
 
 export interface ArenaNotification {
@@ -56,7 +56,7 @@ export function sendPushNotification(title: string, body: string, icon?: string)
 // ─── Criar Notificação no Supabase ───────────────────────────────────────────
 export async function createNotification(params: {
   user_id: string;      // Quem recebe
-  actor_id: string;     // Quem gerou
+  actor_id: string | null; // Quem gerou (null para Sistema)
   type: NotifType;
   reference_id?: string;
   message?: string;
@@ -68,20 +68,14 @@ export async function createNotification(params: {
     actor_id: params.actor_id,
     type: params.type,
     reference_id: params.reference_id || null,
-    // Note: If the SQL schema doesn't have message/metadata, this might fail.
-    // We should ideally ensure the schema is updated.
+    message: params.message || null,
+    metadata: params.metadata || {}
   });
 
   if (error) {
     console.error('Erro ao criar notificação');
     return;
   }
-
-  // 2. Tentar disparar push local (apenas se o app estiver aberto no receptor, 
-  // mas aqui estamos no lado de quem ENVIA, então o receptor não vai receber via JS 
-  // a menos que esteja usando Realtime ou Service Workers).
-  // Para fins de demonstração imediata no navegador do próprio usuário (feedback):
-  // sendPushNotification('+Vaquejada', 'Sua ação foi registrada!');
 }
 
 // ─── Buscar Notificações do Usuário ─────────────────────────────────────────
@@ -112,9 +106,9 @@ export async function fetchUserNotifications(userId: string): Promise<ArenaNotif
       is_read: n.is_read,
       created_at: n.created_at,
       metadata: n.metadata,
-      actor_username: n.profiles?.username || 'vaqueiro',
-      actor_name: n.profiles?.name || 'Vaqueiro',
-      actor_avatar: n.profiles?.avatar_url
+      actor_username: n.actor_id ? (n.profiles?.username || 'vaqueiro') : '+Vaquejada',
+      actor_name: n.actor_id ? (n.profiles?.name || 'Vaqueiro') : '+Vaquejada Oficial',
+      actor_avatar: n.profiles?.avatar_url || (n.actor_id ? null : 'https://ui-avatars.com/api/?name=%2BV&background=ECA413&color=000')
     }));
 
     // 2. Fetch post thumbnails for 'like' and 'comment' notifications
@@ -160,7 +154,7 @@ export async function markNotificationsAsRead(userId: string): Promise<void> {
 
 // ─── Gerar Texto da Notificação ─────────────────────────────────────────────
 export function getNotifText(notif: ArenaNotification): string {
-  const actor = notif.actor_username || 'Alguém';
+  const actor = notif.actor_id ? (notif.actor_username || 'Alguém') : '+Vaquejada';
   switch (notif.type) {
     case 'follow':  return `${actor} começou a seguir você.`;
     case 'like':    return `${actor} curtiu sua publicação.`;
@@ -168,8 +162,9 @@ export function getNotifText(notif: ArenaNotification): string {
     case 'message': return notif.message ? `${actor}: ${notif.message}` : `${actor} te enviou uma mensagem.`;
     case 'mention': return `${actor} te mencionou em um comentário.`;
     case 'system':  return notif.message || 'O +Vaquejada enviou um alerta sobre sua conta.';
+    case 'auction_bid': return notif.message || `${actor} deu um lance em seu animal.`;
+    case 'outbid': return notif.message || `Você foi superado em um leilão!`;
     default:        return `${actor} interagiu com você.`;
-
   }
 }
 

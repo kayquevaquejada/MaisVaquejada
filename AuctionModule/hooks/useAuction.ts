@@ -6,8 +6,8 @@ export const useAuction = () => {
     const [auctions, setAuctions] = useState<Auction[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const fetchActiveAuctions = async () => {
-        setLoading(true);
+    const fetchActiveAuctions = async (showLoading = true) => {
+        if (showLoading) setLoading(true);
         try {
             const { data, error } = await supabase
                 .from('auctions')
@@ -20,7 +20,7 @@ export const useAuction = () => {
         } catch (err) {
             console.error('Error fetching auctions:', err);
         } finally {
-            setLoading(false);
+            if (showLoading) setLoading(false);
         }
     };
 

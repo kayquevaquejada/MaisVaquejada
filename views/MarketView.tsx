@@ -5,6 +5,7 @@ import AdsCarousel from '../components/AdsCarousel';
 import { compressImage } from '../lib/imageUtils';
 import GuestCTA from '../components/GuestCTA';
 import { PullToRefresh } from '../components/PullToRefresh';
+import { persistence, PersistenceKey } from '../lib/persistence';
 
 const STATES = [
     'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
@@ -33,6 +34,29 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
     const [showCreateWizard, setShowCreateWizard] = useState(forceShowWizard);
     
     useEffect(() => setShowCreateWizard(forceShowWizard), [forceShowWizard]);
+
+    const [isRestored, setIsRestored] = useState(false);
+
+    // Persistence: Load Draft
+    useEffect(() => {
+        const loadDraft = async () => {
+            if (!user?.id || isRestored) return;
+            const draft = await persistence.load<any>(`${PersistenceKey.MARKET_DRAFT}_${user.id}`);
+            if (draft) {
+                setAdData(draft.adData);
+                setStep(draft.step);
+                setShowCreateWizard(draft.showCreateWizard);
+            }
+            setIsRestored(true);
+        };
+        loadDraft();
+    }, [user?.id, isRestored]);
+
+    // Persistence: Save Draft
+    useEffect(() => {
+        if (!user?.id || !isRestored) return;
+        persistence.save(`${PersistenceKey.MARKET_DRAFT}_${user.id}`, { adData, step, showCreateWizard });
+    }, [adData, step, showCreateWizard, user?.id, isRestored]);
 
     const [step, setStep] = useState(1);
     const [showConfirm, setShowConfirm] = useState(false);
@@ -297,6 +321,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
             setShowSuccess(true);
             setStep(1);
             setAdData({ category: '', customCategory: '', subcategory: '', customSubcategory: '', title: '', description: '', priceType: 'fixed', price: '', uf: '', city: '', photos: [], metadata: {}, product_type: 'normal' });
+            if (user?.id) await persistence.remove(`${PersistenceKey.MARKET_DRAFT}_${user.id}`);
             fetchAds();
         } catch (err: any) {
             alert(`Erro ao publicar anúncio: ${err.message}`);
@@ -902,7 +927,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
 
     return (
         <PullToRefresh onRefresh={handleRefresh} className="bg-[#0F0A05]">
-            <div className="min-h-full pb-24 relative bg-[#0F0A05]">
+            <div className="min-h-full pb-40 relative bg-[#0F0A05]">
             {/* Header Sticky Premium */}
             <div className="sticky top-0 z-40 bg-[#0F0A05]/90 backdrop-blur-xl border-b border-white/5 pt-12 pb-4 shadow-2xl">
                 <div className="px-6 flex justify-between items-center mb-4">
@@ -1124,6 +1149,8 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                     </div>
                 )}
             </div>
+            {/* Espaço extra para evitar que o scroll trave no final no iOS */}
+            <div className="h-16" aria-hidden="true" />
         </div>
     </PullToRefresh>
     );

@@ -4,6 +4,7 @@ import { useSocialInteractions } from '../hooks/useSocialInteractions';
 import { useDMs } from '../hooks/useDMs';
 import { useNotifications } from '../hooks/useNotifications';
 import { useInternalAds } from '../hooks/useInternalAds';
+import { Preferences } from '@capacitor/preferences';
 import { PostCard } from '../components/PostCard';
 import { SponsoredFeedCard } from '../components/SponsoredFeedCard';
 import { StoryBar } from '../components/StoryBar';
@@ -61,6 +62,35 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
   const [editCaption, setEditCaption] = useState('');
   const [editLocation, setEditLocation] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
+
+  // Persistence: Load overlays state
+  useEffect(() => {
+    const loadOverlays = async () => {
+      if (!user?.id) return;
+      try {
+        const { value: state } = await Preferences.get({ key: `social_overlays_state_${user.id}` });
+        if (state) {
+          const parsed = JSON.parse(state);
+          if (parsed.isNotificationsOpen) setIsNotificationsOpen(true);
+          if (parsed.isDMScreenOpen) setIsDMScreenOpen(true);
+          if (parsed.activeChatPartnetId) {
+            setActiveChatPartnerId(parsed.activeChatPartnetId);
+            fetchMessages(parsed.activeChatPartnetId);
+          }
+        }
+      } catch (e) {}
+    };
+    loadOverlays();
+  }, [user?.id, fetchMessages]);
+
+  // Persistence: Save overlays state
+  useEffect(() => {
+    if (!user?.id) return;
+    Preferences.set({
+      key: `social_overlays_state_${user.id}`,
+      value: JSON.stringify({ isNotificationsOpen, isDMScreenOpen, activeChatPartnetId })
+    });
+  }, [isNotificationsOpen, isDMScreenOpen, activeChatPartnetId, user?.id]);
 
   // Derived stories to include active sponsored placements
   const mixedStories = React.useMemo(() => {

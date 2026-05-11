@@ -6,12 +6,15 @@ interface PullToRefreshProps {
   className?: string;
 }
 
+// Detecta se o dispositivo é touch (mobile/tablet nativo)
+const isTouchDevice = () =>
+  typeof window !== 'undefined' &&
+  ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+
 export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, children, className }) => {
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const startY = useRef(0);
-  const isPulling = useRef(false);
 
   const PULL_THRESHOLD = 80;
   const MAX_PULL = 120;
@@ -19,7 +22,11 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
   const pullDistanceRef = useRef(0);
   const isRefreshingRef = useRef(false);
 
+  // No web desktop, renderiza como wrapper transparente sem bloquear scroll
+  const isTouch = isTouchDevice();
+
   useEffect(() => {
+    if (!isTouch) return; // Desabilita lógica PTR no desktop web
     const el = containerRef.current;
     if (!el) return;
 
@@ -32,12 +39,7 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
       touchStartY = e.touches[0].pageY;
       touchStartX = e.touches[0].pageX;
       horizontalScroll = false;
-      
-      if (el.scrollTop <= 0) {
-        pulling = true;
-      } else {
-        pulling = false;
-      }
+      pulling = el.scrollTop <= 0;
     };
 
     const handleTouchMove = (e: TouchEvent) => {
@@ -48,7 +50,6 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
       const diffY = currentY - touchStartY;
       const diffX = currentX - touchStartX;
 
-      // Detect horizontal scroll attempt
       if (!horizontalScroll && Math.abs(diffX) > Math.abs(diffY)) {
         horizontalScroll = true;
         pulling = false;
@@ -58,14 +59,11 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
       }
 
       if (diffY > 5 && el.scrollTop <= 0) {
-        // We are at the top and pulling down with a small threshold
         if (e.cancelable) e.preventDefault();
-        
         const pull = Math.min((diffY - 5) * 0.4, MAX_PULL);
         setPullDistance(pull);
         pullDistanceRef.current = pull;
       } else if (diffY < 0) {
-        // Scrolling up, stop PTR logic
         pulling = false;
         if (pullDistanceRef.current > 0) {
           setPullDistance(0);
@@ -88,7 +86,6 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
         isRefreshingRef.current = true;
         setPullDistance(PULL_THRESHOLD);
         pullDistanceRef.current = PULL_THRESHOLD;
-        
         try {
           await onRefresh();
         } finally {
@@ -112,42 +109,53 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
       el.removeEventListener('touchmove', handleTouchMove);
       el.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [onRefresh]);
+  }, [onRefresh, isTouch]);
 
+  // ── Web Desktop: wrapper simples, sem overflow/altura bloqueante ──
+  if (!isTouch) {
+    return (
+      <div className={`w-full ${className ?? ''}`}>
+        {children}
+      </div>
+    );
+  }
+
+  // ── Mobile/Touch: comportamento PTR completo ──
   return (
-    <div 
-      ref={containerRef} 
-      className={`relative overflow-y-auto h-full w-full hide-scrollbar ${className}`}
-      style={{ 
+    <div
+      ref={containerRef}
+      className={`relative overflow-y-auto h-full w-full hide-scrollbar ${className ?? ''}`}
+      style={{
         overscrollBehaviorY: 'none',
-        WebkitOverflowScrolling: 'touch'
+        WebkitOverflowScrolling: 'touch',
       }}
     >
       {/* Pull Indicator */}
-      <div 
+      <div
         className="absolute left-0 right-0 flex justify-center pointer-events-none z-50 transition-transform duration-200"
-        style={{ 
+        style={{
           transform: `translateY(${pullDistance - 40}px)`,
           opacity: pullDistance > 10 ? 1 : 0,
-          willChange: 'transform'
+          willChange: 'transform',
         }}
       >
         <div className="bg-[#1A1108] border border-[#ECA413]/30 w-10 h-10 rounded-full flex items-center justify-center shadow-2xl">
-          <div className={`w-5 h-5 border-2 border-[#ECA413] border-t-transparent rounded-full ${isRefreshing ? 'animate-spin' : ''}`} 
-               style={{ 
-                 transform: !isRefreshing ? `rotate(${pullDistance * 3}deg)` : 'none',
-                 transition: isRefreshing ? 'none' : 'transform 0.1s'
-               }} 
+          <div
+            className={`w-5 h-5 border-2 border-[#ECA413] border-t-transparent rounded-full ${isRefreshing ? 'animate-spin' : ''}`}
+            style={{
+              transform: !isRefreshing ? `rotate(${pullDistance * 3}deg)` : 'none',
+              transition: isRefreshing ? 'none' : 'transform 0.1s',
+            }}
           />
         </div>
       </div>
 
       {/* Content */}
-      <div 
+      <div
         className="transition-transform duration-200"
-        style={{ 
+        style={{
           transform: `translateY(${pullDistance}px)`,
-          willChange: 'transform'
+          willChange: 'transform',
         }}
       >
         {children}

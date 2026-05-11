@@ -4,6 +4,7 @@ import { AuctionAnimal, Auction } from '../types';
 import { useAuction } from '../hooks/useAuction';
 import { compressImage } from '../../lib/imageUtils';
 import { supabase } from '../../lib/supabase';
+import { Preferences } from '@capacitor/preferences';
 
 interface CreateAuctionFlowProps {
     user: User;
@@ -27,17 +28,14 @@ const CreateAuctionFlow: React.FC<CreateAuctionFlowProps> = ({ user, onClose, on
     const [animalData, setAnimalData] = useState<Partial<AuctionAnimal>>({
         name: '',
         type: 'horse',
-        breed: '',
-        sex: 'male',
+        breed: 'Quarto de Milha',
+        sex: 'Macho',
         age: '',
         coat: '',
         city: '',
         state: '',
         description: '',
         registration_number: '',
-        pedigree: '',
-        height: '',
-        weight: '',
         gallery_image_urls: [],
     });
 
@@ -47,6 +45,39 @@ const CreateAuctionFlow: React.FC<CreateAuctionFlowProps> = ({ user, onClose, on
         start_at: '',
         end_at: '',
     });
+
+    // Persistence: Load draft
+    React.useEffect(() => {
+        const loadDraft = async () => {
+            try {
+                const { value: animalDraft } = await Preferences.get({ key: `auction_animal_draft_${user.id}` });
+                const { value: auctionDraft } = await Preferences.get({ key: `auction_data_draft_${user.id}` });
+                const { value: step } = await Preferences.get({ key: `auction_current_step_${user.id}` });
+
+                if (animalDraft) setAnimalData(JSON.parse(animalDraft));
+                if (auctionDraft) setAuctionData(JSON.parse(auctionDraft));
+                if (step) setCurrentStep(parseInt(step));
+            } catch (e) {
+                console.warn('Failed to load auction draft:', e);
+            }
+        };
+        loadDraft();
+    }, [user.id]);
+
+    // Persistence: Save draft
+    React.useEffect(() => {
+        if (!loading) {
+            Preferences.set({ key: `auction_animal_draft_${user.id}`, value: JSON.stringify(animalData) });
+            Preferences.set({ key: `auction_data_draft_${user.id}`, value: JSON.stringify(auctionData) });
+            Preferences.set({ key: `auction_current_step_${user.id}`, value: currentStep.toString() });
+        }
+    }, [animalData, auctionData, currentStep, user.id]);
+
+    const clearDraft = async () => {
+        await Preferences.remove({ key: `auction_animal_draft_${user.id}` });
+        await Preferences.remove({ key: `auction_data_draft_${user.id}` });
+        await Preferences.remove({ key: `auction_current_step_${user.id}` });
+    };
 
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [uploadProgress, setUploadProgress] = useState(0);
@@ -61,7 +92,30 @@ const CreateAuctionFlow: React.FC<CreateAuctionFlowProps> = ({ user, onClose, on
         setSelectedFiles(prev => prev.filter((_, i) => i !== index));
     };
 
-    const nextStep = () => setCurrentStep(prev => Math.min(steps.length, prev + 1));
+    const nextStep = () => {
+        // Validation
+        if (currentStep === 1) {
+            if (!animalData.name || !animalData.breed || !animalData.age || !animalData.city || !animalData.state) {
+                alert('Preencha os campos obrigatórios do animal.');
+                return;
+            }
+        }
+        if (currentStep === 2 && selectedFiles.length === 0 && (!animalData.gallery_image_urls || animalData.gallery_image_urls.length === 0)) {
+            alert('Selecione ao menos uma foto.');
+            return;
+        }
+        if (currentStep === 3) {
+            if (!auctionData.starting_bid || !auctionData.start_at || !auctionData.end_at) {
+                alert('Defina o lance inicial e as datas do leilão.');
+                return;
+            }
+            if (new Date(auctionData.start_at) >= new Date(auctionData.end_at)) {
+                alert('A data de término deve ser após a data de início.');
+                return;
+            }
+        }
+        setCurrentStep(prev => Math.min(steps.length, prev + 1));
+    };
     const prevStep = () => setCurrentStep(prev => Math.max(1, prev - 1));
 
     const handleSubmit = async () => {
@@ -112,6 +166,7 @@ const CreateAuctionFlow: React.FC<CreateAuctionFlowProps> = ({ user, onClose, on
             const auctionRes = await createAuction(finalAuctionData);
             if (!auctionRes.success) throw new Error(auctionRes.error);
 
+            await clearDraft();
             onSuccess();
         } catch (err: any) {
             alert('Erro ao criar leilão: ' + err.message);
@@ -209,8 +264,8 @@ const CreateAuctionFlow: React.FC<CreateAuctionFlowProps> = ({ user, onClose, on
                         <Input label="Incremento Mínimo (R$)" type="number" value={auctionData.minimum_increment?.toString()} onChange={v => setAuctionData({...auctionData, minimum_increment: parseFloat(v)})} placeholder="Ex: 100" />
                         
                         <div className="grid grid-cols-1 gap-6">
-                            <Input label="Início do Leilão" type="datetime-local" value={auctionData.start_at} onChange={v => setAuctionData({...auctionData, start_at: v})} />
-                            <Input label="Término do Leilão" type="datetime-local" value={auctionData.end_at} onChange={v => setAuctionData({...auctionData, end_at: v})} />
+                            <DateInput label="Início do Leilão" value={auctionData.start_at} onChange={v => setAuctionData({...auctionData, start_at: v})} />
+                            <DateInput label="Término do Leilão" value={auctionData.end_at} onChange={v => setAuctionData({...auctionData, end_at: v})} />
                         </div>
 
                         <div className="bg-[#ECA413]/5 border border-[#ECA413]/20 p-6 rounded-3xl">
@@ -351,6 +406,23 @@ const Textarea: React.FC<{ label: string; value?: string; onChange: (v: string) 
             placeholder={placeholder}
             className="w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-white text-sm font-bold focus:border-[#ECA413]/40 focus:bg-[#ECA413]/5 transition-all outline-none placeholder:text-white/10 resize-none"
         />
+    </div>
+);
+
+const DateInput: React.FC<{ label: string; value?: string; onChange: (v: string) => void }> = ({ label, value, onChange }) => (
+    <div className="flex flex-col gap-2">
+        <label className="text-white/20 text-[9px] font-black uppercase tracking-[0.2em] ml-1">{label}</label>
+        <div className="relative group">
+            <input 
+                type="datetime-local"
+                value={value}
+                onChange={e => onChange(e.target.value)}
+                onFocus={(e) => (e.target as any).showPicker?.()}
+                className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 text-white text-sm font-bold focus:border-[#ECA413]/40 focus:bg-[#ECA413]/5 transition-all outline-none appearance-none"
+                style={{ colorScheme: 'dark' }}
+            />
+            <span className="material-icons absolute right-5 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none group-focus-within:text-[#ECA413]">calendar_today</span>
+        </div>
     </div>
 );
 

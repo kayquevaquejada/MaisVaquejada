@@ -4,6 +4,7 @@ import { User } from '../../types';
 import { AuctionUser } from '../types';
 import { createNotification } from '../../lib/notifications';
 import { PrivacyScreen } from '@capacitor-community/privacy-screen';
+import { Capacitor } from '@capacitor/core';
 
 interface AdminPanelProps {
     user: User;
@@ -41,14 +42,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, auctionUser, onBack }) =>
 
     useEffect(() => {
         // Bloquear screenshot se houver um vendedor selecionado (visualizando docs)
-        if (selectedSeller) {
+        // Apenas em plataformas nativas para evitar erros no Web
+        if (selectedSeller && Capacitor.isNativePlatform()) {
             PrivacyScreen.enable();
-        } else {
+        } else if (Capacitor.isNativePlatform()) {
             PrivacyScreen.disable();
         }
 
         return () => {
-            PrivacyScreen.disable();
+            if (Capacitor.isNativePlatform()) {
+                PrivacyScreen.disable();
+            }
         };
     }, [selectedSeller]);
 
@@ -183,7 +187,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, auctionUser, onBack }) =>
 
             await createNotification({
                 user_id: applicantUserId,
-                actor_id: user.id,
+                actor_id: null,
                 type: 'system',
                 message: 'Sua verificação de identidade foi aprovada! Você já pode cadastrar animais e leilões.',
                 metadata: { action: 'seller_approved' }
@@ -221,7 +225,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, auctionUser, onBack }) =>
 
             await createNotification({
                 user_id: applicantUserId,
-                actor_id: user.id,
+                actor_id: null,
                 type: 'system',
                 message: `Sua solicitação de vendedor foi recusada. Motivo: ${reason}`,
                 metadata: { action: 'seller_rejected' }
@@ -252,7 +256,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, auctionUser, onBack }) =>
 
             await createNotification({
                 user_id: applicantUserId,
-                actor_id: user.id,
+                actor_id: null,
                 type: 'system',
                 message: `Precisamos de um ajuste na sua verificação: ${reason}`,
                 metadata: { action: 'seller_adjustment_requested' }
@@ -277,7 +281,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, auctionUser, onBack }) =>
             if (animal) {
                 await createNotification({
                     user_id: animal.seller_id,
-                    actor_id: user.id,
+                    actor_id: null,
                     type: 'system',
                     message: `Seu animal "${animal.name}" foi aprovado!`,
                     metadata: { action: 'animal_approved', animal_id: animalId }
@@ -306,7 +310,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, auctionUser, onBack }) =>
             if (auction) {
                 await createNotification({
                     user_id: auction.seller_id,
-                    actor_id: user.id,
+                    actor_id: null,
                     type: 'system',
                     message: `Seu leilão para "${auction.animal.name}" foi aprovado!`,
                     metadata: { action: 'auction_approved', auction_id: auctionId }
@@ -338,7 +342,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, auctionUser, onBack }) =>
                 
                 await createNotification({
                     user_id: auction.seller_id,
-                    actor_id: user.id,
+                    actor_id: null,
                     type: 'system',
                     message: `Seu leilão foi recusado. Motivo: ${reason}`,
                     metadata: { action: 'auction_rejected', auction_id: auctionId }

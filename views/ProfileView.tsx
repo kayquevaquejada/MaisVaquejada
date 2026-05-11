@@ -3,8 +3,11 @@ import { User } from '../types';
 import { supabase } from '../lib/supabase';
 import { createNotification } from '../lib/notifications';
 import { compressImage } from '../lib/imageUtils';
+import { Preferences } from '@capacitor/preferences';
 import { SocialService } from '../social/services/SocialService';
 import { PullToRefresh } from '../components/PullToRefresh';
+import { useNotifications } from '../social/hooks/useNotifications';
+import { NotificationsPanel } from '../social/components/NotificationsPanel';
 
 interface ProfileViewProps {
     user: User | null;
@@ -31,6 +34,9 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
     const [listModalType, setListModalType] = useState<'FOLLOWERS' | 'FOLLOWING' | null>(null);
     const [listModalData, setListModalData] = useState<any[]>([]);
     const [listModalLoading, setListModalLoading] = useState(false);
+    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
+    const { notifications, unreadCount, markAsRead } = useNotifications(user?.id);
 
     // Determines if the user is looking at their own profile
     const isMyProfile = !targetUsername || 
@@ -337,14 +343,29 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
             setLoading(false);
         }, 3000);
 
+        const loadTabDraft = async () => {
+            if (!user?.id) return;
+            try {
+                const { value: savedTab } = await Preferences.get({ key: `profile_tab_draft_${user.id}` });
+                if (savedTab) setActiveTab(savedTab as TabType);
+            } catch (e) {}
+        };
+
         if (user || targetUsername) {
             fetchData();
+            if (isMyProfile) loadTabDraft();
         } else {
             setLoading(false);
         }
 
         return () => clearTimeout(safetyTimer);
     }, [isMyProfile, targetUsername, user?.id]);
+
+    useEffect(() => {
+        if (isMyProfile && user?.id) {
+            Preferences.set({ key: `profile_tab_draft_${user.id}`, value: activeTab });
+        }
+    }, [activeTab, isMyProfile, user?.id]);
 
     const openListModal = async (type: 'FOLLOWERS' | 'FOLLOWING') => {
         if (!displayData?.id) return;
@@ -428,7 +449,15 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                 <div className="flex gap-4">
                     {isMyProfile && (
                         <>
-                            <button className="material-icons text-white/40 hover:text-white transition-colors">notifications_none</button>
+                            <button 
+                                onClick={() => { setIsNotificationsOpen(true); markAsRead(); }}
+                                className={`material-icons transition-colors relative ${isNotificationsOpen ? 'text-[#ECA413]' : 'text-white/40 hover:text-white'}`}
+                            >
+                                {unreadCount > 0 ? 'notifications_active' : 'notifications_none'}
+                                {unreadCount > 0 && (
+                                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-[#ECA413] rounded-full border border-black animate-pulse"></span>
+                                )}
+                            </button>
                             <button onClick={onSettingsView} className="material-icons text-white/40 hover:text-white transition-colors">settings</button>
                         </>
                     )}
@@ -920,6 +949,25 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                         </div>
                     </div>
                 </div>
+            )}
+            {/* Notifications Overlay */}
+            {isNotificationsOpen && (
+                <NotificationsPanel 
+                    notifications={notifications}
+                    onClose={() => setIsNotificationsOpen(false)}
+                    onNotificationPress={(notif) => {
+                        setIsNotificationsOpen(false);
+                        if (notif.actor_username) {
+                            window.dispatchEvent(new CustomEvent('arena_navigate', { 
+                                detail: { view: 'PROFILE', username: notif.actor_username } 
+                            }));
+                        }
+                    }}
+                    onPostPress={(postId) => {
+                        setIsNotificationsOpen(false);
+                        // For now just close, or we could navigate to a spotlight view
+                    }}
+                />
             )}
             </div>
         </PullToRefresh>

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { User } from '../types';
 import { useMediaUpload } from '../social/hooks/useMediaUpload';
+import { Preferences } from '@capacitor/preferences';
 
 interface MediaCreationViewProps {
     user: User | null;
@@ -47,6 +48,44 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
     // Premium FX States
     const [isFlashing, setIsFlashing] = useState(false);
     const [previewAnim, setPreviewAnim] = useState(false);
+
+    // Persistence: Load draft
+    useEffect(() => {
+        const loadDraft = async () => {
+            if (!user?.id) return;
+            try {
+                const { value: draft } = await Preferences.get({ key: `social_creation_draft_${user.id}` });
+                if (draft) {
+                    const parsed = JSON.parse(draft);
+                    if (parsed.caption) setCaption(parsed.caption);
+                    if (parsed.location) setLocation(parsed.location);
+                    if (parsed.step) setStep(parsed.step);
+                    if (parsed.mode) setMode(parsed.mode);
+                }
+            } catch (e) {
+                console.warn('Failed to load social draft:', e);
+            }
+        };
+        loadDraft();
+    }, [user?.id]);
+
+    // Persistence: Save draft
+    useEffect(() => {
+        if (!user?.id || isUploading) return;
+        const saveDraft = async () => {
+            await Preferences.set({
+                key: `social_creation_draft_${user.id}`,
+                value: JSON.stringify({ caption, location, step, mode })
+            });
+        };
+        saveDraft();
+    }, [caption, location, step, mode, user?.id, isUploading]);
+
+    const clearDraft = async () => {
+        if (user?.id) {
+            await Preferences.remove({ key: `social_creation_draft_${user.id}` });
+        }
+    };
 
     useEffect(() => {
         if (step === 'CAMERA') {
@@ -288,6 +327,7 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
                     });
                 if (dbError) throw dbError;
             }
+            await clearDraft();
             onSuccess();
         } catch (err: any) {
             console.error('Final publish error:', err);
