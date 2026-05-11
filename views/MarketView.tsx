@@ -32,10 +32,27 @@ interface MarketViewProps {
 
 const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, onWizardClose, onViewChange, selectedStore }) => {
     const [showCreateWizard, setShowCreateWizard] = useState(forceShowWizard);
-    
-    useEffect(() => setShowCreateWizard(forceShowWizard), [forceShowWizard]);
-
+    const [step, setStep] = useState(1);
     const [isRestored, setIsRestored] = useState(false);
+
+    // Form State
+    const [adData, setAdData] = useState({
+        category: '',
+        customCategory: '',
+        subcategory: '',
+        customSubcategory: '',
+        title: '',
+        description: '',
+        priceType: 'fixed' as 'fixed' | 'negotiable',
+        price: '',
+        uf: '',
+        city: '',
+        photos: [] as string[],
+        metadata: {} as any, // dynamic fields go here
+        product_type: 'normal' // normal, ingresso, senha
+    });
+
+    useEffect(() => setShowCreateWizard(forceShowWizard), [forceShowWizard]);
 
     // Persistence: Load Draft
     useEffect(() => {
@@ -57,8 +74,6 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
         if (!user?.id || !isRestored) return;
         persistence.save(`${PersistenceKey.MARKET_DRAFT}_${user.id}`, { adData, step, showCreateWizard });
     }, [adData, step, showCreateWizard, user?.id, isRestored]);
-
-    const [step, setStep] = useState(1);
     const [showConfirm, setShowConfirm] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [viewingAd, setViewingAd] = useState<any>(null);
@@ -77,22 +92,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
     const [activeFilterCat, setActiveFilterCat] = useState('all');
     const [sortOrder, setSortOrder] = useState<'recent' | 'lowest' | 'highest' | 'most_viewed'>('recent');
     
-    // Form State
-    const [adData, setAdData] = useState({
-        category: '',
-        customCategory: '',
-        subcategory: '',
-        customSubcategory: '',
-        title: '',
-        description: '',
-        priceType: 'fixed' as 'fixed' | 'negotiable',
-        price: '',
-        uf: '',
-        city: '',
-        photos: [] as string[],
-        metadata: {} as any, // dynamic fields go here
-        product_type: 'normal' // normal, ingresso, senha
-    });
+
 
     const [cities, setCities] = useState<any[]>([]);
     const [loadingCities, setLoadingCities] = useState(false);
