@@ -12,7 +12,8 @@ export enum PersistenceKey {
   SOCIAL_ACTIVE_TAB = 'social_active_tab',
   PROFILE_ACTIVE_TAB = 'profile_active_tab',
   LAST_EVENT = 'arena_last_event',
-  LAST_STORE = 'arena_last_store'
+  LAST_STORE = 'arena_last_store',
+  LAST_VIEW = 'arena_last_view'
 }
 
 export const persistence = {

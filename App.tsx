@@ -75,6 +75,216 @@ if (typeof window !== 'undefined') {
   };
 }
 
+// ─── Componente de Callback de Autenticação ───
+const AuthCallback: React.FC<{ onComplete: (userId: string, authUser: any) => void, onFail: () => void }> = ({ onComplete, onFail }) => {
+  const [logs, setLogs] = useState<string[]>(['[1] Iniciando processamento...']);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const addLog = (msg: string) => {
+    console.log(`[AuthCallback] ${msg}`);
+    setLogs(prev => [...prev.slice(-6), msg]);
+  };
+
+  const hasHandledAuth = React.useRef(false);
+
+  const handleAuth = async () => {
+    if (hasHandledAuth.current) return;
+    hasHandledAuth.current = true;
+
+    try {
+      addLog('Verificando URL de callback...');
+      const url = new URL(window.location.href);
+      
+      let code = url.searchParams.get('code');
+      if (!code && window.location.hash.includes('code=')) {
+        const hashParams = new URLSearchParams(window.location.hash.substring(1).replace('?', '&'));
+        code = hashParams.get('code');
+      }
+
+      const errorDescription = url.searchParams.get('error_description');
+
+      if (errorDescription) {
+        throw new Error(errorDescription);
+      }
+
+      if (code) {
+        addLog('Código detectado, iniciando troca (PKCE)...');
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+        
+        if (error) {
+          if (error.message.includes('already been used') || error.message.includes('flow_state_not_found')) {
+            addLog('Troca PKCE já processada anteriormente.');
+          } else {
+            addLog('Aviso na troca de código: ' + error.message);
+          }
+        } else if (data?.session?.user) {
+          addLog('Troca PKCE concluída com sucesso!');
+          onComplete(data.session.user.id, data.session.user);
+          return;
+        }
+      }
+
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (currentUser) {
+        addLog('Usuário detectado. Carregando dados...');
+        onComplete(currentUser.id, currentUser);
+        return;
+      }
+
+      addLog('Aguardando sessão do Supabase...');
+      for (let i = 0; i < 25; i++) {
+        await new Promise(r => setTimeout(r, 300));
+        const { data: sessionData } = await supabase.auth.getSession();
+        
+        if (sessionData?.session?.user) {
+          addLog('Sessão sincronizada!');
+          onComplete(sessionData.session.user.id, sessionData.session.user);
+          return;
+        }
+      }
+
+      addLog('Tentativa final de recuperação de sessão...');
+      const { data: lastCheck } = await supabase.auth.getSession();
+      
+      if (lastCheck?.session?.user) {
+        onComplete(lastCheck.session.user.id, lastCheck.session.user);
+      } else {
+        throw new Error('Não foi possível identificar sua sessão de login. Por favor, tente entrar novamente.');
+      }
+    } catch (err: any) {
+      console.error('Erro no processamento da autenticação');
+      addLog('Falha na sincronização final');
+      setErrorMsg(err.message || 'Erro ao processar login');
+      setTimeout(() => onFail(), 5000);
+    }
+  };
+
+  useEffect(() => {
+    handleAuth();
+  }, []);
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#0F0A05] px-8 text-center">
+      {!errorMsg ? (
+        <div className="w-full max-w-xs">
+          <div className="w-12 h-12 border-4 border-[#ECA413]/30 border-t-[#ECA413] rounded-full animate-spin mb-6 mx-auto" />
+          <h1 className="text-white font-black italic uppercase tracking-widest text-sm animate-pulse">Finalizando login...</h1>
+          <p className="text-white/20 text-[10px] uppercase mt-2">Autenticando com a Arena</p>
+        </div>
+      ) : (
+        <div className="animate-in fade-in zoom-in duration-500">
+          <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-6 mx-auto">
+            <span className="material-icons text-red-500 text-4xl">error_outline</span>
+          </div>
+          <h2 className="text-[#ECA413] text-xl font-black uppercase tracking-tighter mb-4">Ops! Algo deu errado</h2>
+          <p className="text-white/60 text-sm mb-8 leading-relaxed max-w-xs mx-auto">{errorMsg}</p>
+          <button onClick={onFail} className="bg-[#ECA413] text-black px-10 py-4 rounded-full font-black text-xs uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all">VOLTAR E TENTAR NOVAMENTE</button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+interface ViewRendererProps {
+  currentView: View;
+  user: User | null;
+  selectedEvent: any;
+  selectedStore: any;
+  selectedResultId: string | null;
+  profileUsername: string | null;
+  mediaCreationMode: 'FEED' | 'STORY';
+  fetchProfile: (userId: string, authUser?: any) => Promise<void>;
+  setCurrentView: (view: View) => void;
+  handleLogout: () => Promise<void>;
+  setMediaCreationMode: (mode: 'FEED' | 'STORY') => void;
+}
+
+const ViewRenderer: React.FC<ViewRendererProps> = ({
+  currentView,
+  user,
+  selectedEvent,
+  selectedStore,
+  selectedResultId,
+  profileUsername,
+  mediaCreationMode,
+  fetchProfile,
+  setCurrentView,
+  handleLogout,
+  setMediaCreationMode
+}) => {
+  switch (currentView) {
+    case View.LOGIN:
+      return <LoginView onLogin={(u) => fetchProfile(u.id, u)} onSignUp={() => setCurrentView(View.SIGNUP)} onForgotPassword={() => setCurrentView(View.FORGOT_PASSWORD)} onRecoveryAssisted={() => setCurrentView(View.RECOVERY_ASSISTED)} onTerms={() => setCurrentView(View.TERMS)} />;
+    case View.SIGNUP:
+      return <SignUpView onBack={() => setCurrentView(View.LOGIN)} onSuccess={(u) => fetchProfile(u.id, u)} />;
+    case View.COMPLETE_PROFILE:
+      return <CompleteProfileView user={user} onComplete={() => user && fetchProfile(user.id)} onLogout={handleLogout} />;
+    case View.SOCIAL:
+      return <SocialFeedView user={user} onMediaCreation={(mode) => {
+        if (!user) {
+          window.dispatchEvent(new CustomEvent('arena_show_login'));
+          return;
+        }
+        setMediaCreationMode(mode);
+        setCurrentView(View.MEDIA_CREATION);
+      }} />;
+    case View.EVENTS:
+      return <EventsView user={user} onLoginPrompt={() => setCurrentView(View.LOGIN)} />;
+    case View.NEWS:
+      return <NewsView user={user} />;
+    case View.MERCADO:
+      return <MarketplaceView user={user} onViewChange={setCurrentView} selectedStore={selectedStore} />;
+    case View.PROFILE:
+      return <ProfileView user={user} targetUsername={profileUsername} onLogout={handleLogout} onAdminView={() => setCurrentView(View.ADMIN)} onSettingsView={() => setCurrentView(View.SETTINGS)} onProfileUpdate={() => user && fetchProfile(user.id)} />;
+    case View.MEDIA_CREATION:
+      return <MediaCreationView user={user} onClose={() => setCurrentView(View.SOCIAL)} onSuccess={() => setCurrentView(View.SOCIAL)} initialMode={mediaCreationMode} />;
+    case View.SETTINGS:
+      return <SettingsView user={user} onBack={() => setCurrentView(View.PROFILE)} onLogout={handleLogout} onAdminView={() => setCurrentView(View.ADMIN)} onProfileUpdate={() => user && fetchProfile(user.id)} />;
+    case View.ADMIN:
+      return <AdminView user={user} />;
+    case View.ADMIN_USERS:
+      return <AdminUsersView user={user} />;
+    case View.INTERNAL_ADS:
+      return <InternalAdManager user={user} onBack={() => setCurrentView(View.ADMIN)} />;
+    case View.AD_CREATION:
+      return <MarketplaceView user={user} forceShowWizard={true} onWizardClose={() => setCurrentView(View.MERCADO)} onViewChange={setCurrentView} selectedStore={selectedStore} />;
+    case View.TERMS:
+      return <EULAView onBack={() => setCurrentView(View.LOGIN)} />;
+    case View.FORGOT_PASSWORD:
+      return <ForgotPasswordView onBack={() => setCurrentView(View.LOGIN)} />;
+    case View.BLOCKED_ACCOUNT:
+      return <BlockedAccountView onLogout={handleLogout} />;
+    case View.RECOVERY_ASSISTED:
+      return <RecoveryAssistedView onBack={() => setCurrentView(View.LOGIN)} />;
+    case View.EVENT_DETAILS:
+      return <EventDetailView event={selectedEvent} user={user} onBack={() => setCurrentView(View.EVENTS)} />;
+    case View.LEGAL_CONSENT:
+      return <LegalConsentView user={user} onAccept={() => fetchProfile(user?.id || '')} />;
+    case View.STORE_DETAILS:
+      return <StoreDetailView store={selectedStore} user={user} onBack={() => setCurrentView(View.MERCADO)} />;
+    case View.RESULT_DETAIL:
+      return <ResultDetailView resultId={selectedResultId || ''} onBack={() => setCurrentView(selectedEvent ? View.EVENT_DETAILS : View.NEWS)} />;
+    case View.LEILAO:
+      return (
+        <React.Suspense fallback={
+          <div className="min-h-screen bg-[#0F0A05] flex items-center justify-center">
+            <div className="w-12 h-12 border-4 border-[#ECA413]/20 border-t-[#ECA413] rounded-full animate-spin" />
+          </div>
+        }>
+          <AuctionModule user={user} onBack={() => setCurrentView(View.EVENTS)} />
+        </React.Suspense>
+      );
+    case View.AUTH_CALLBACK:
+      return <AuthCallback onComplete={(userId, authUser) => fetchProfile(userId, authUser)} onFail={() => setCurrentView(View.LOGIN)} />;
+    default:
+      if (user) {
+        if (!user.profile_completed) return <CompleteProfileView user={user} onComplete={() => fetchProfile(user.id)} onLogout={handleLogout} />;
+        return <EventsView user={user} onLoginPrompt={() => setCurrentView(View.LOGIN)} />;
+      }
+      return <LoginView onLogin={(u) => fetchProfile(u.id, u)} onSignUp={() => setCurrentView(View.SIGNUP)} onForgotPassword={() => setCurrentView(View.FORGOT_PASSWORD)} onRecoveryAssisted={() => setCurrentView(View.RECOVERY_ASSISTED)} onTerms={() => setCurrentView(View.TERMS)} />;
+  }
+};
+
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(View.LOGIN);
   const [navKey, setNavKey] = useState(Date.now());
@@ -106,80 +316,21 @@ const App: React.FC = () => {
     if (e?.detail?.store) persistence.save(PersistenceKey.LAST_STORE, e.detail.store);
   };
 
-  // ─── ViewRenderer movido para dentro para garantir inicialização ───
-  const renderCurrentView = () => {
-    switch (currentView) {
-      case View.LOGIN:
-        return <LoginView onLogin={(u) => fetchProfile(u.id, u)} onSignUp={() => setCurrentView(View.SIGNUP)} onForgotPassword={() => setCurrentView(View.FORGOT_PASSWORD)} onRecoveryAssisted={() => setCurrentView(View.RECOVERY_ASSISTED)} onTerms={() => setCurrentView(View.TERMS)} />;
-      case View.SIGNUP:
-        return <SignUpView onBack={() => setCurrentView(View.LOGIN)} onSuccess={(u) => fetchProfile(u.id, u)} />;
-      case View.COMPLETE_PROFILE:
-        return <CompleteProfileView user={user} onComplete={() => user && fetchProfile(user.id)} onLogout={handleLogout} />;
-      case View.SOCIAL:
-        return <SocialFeedView user={user} onMediaCreation={(mode) => {
-          if (!user) {
-              window.dispatchEvent(new CustomEvent('arena_show_login'));
-              return;
-          }
-          setMediaCreationMode(mode);
-          setCurrentView(View.MEDIA_CREATION);
-        }} />;
-      case View.EVENTS:
-        return <EventsView user={user} onLoginPrompt={() => setCurrentView(View.LOGIN)} />;
-      case View.NEWS:
-        return <NewsView user={user} />;
-      case View.MERCADO:
-        return <MarketplaceView user={user} onViewChange={setCurrentView} selectedStore={selectedStore} />;
-      case View.PROFILE:
-        return <ProfileView user={user} targetUsername={profileUsername} onLogout={handleLogout} onAdminView={() => setCurrentView(View.ADMIN)} onSettingsView={() => setCurrentView(View.SETTINGS)} onProfileUpdate={() => user && fetchProfile(user.id)} />;
-      case View.MEDIA_CREATION:
-        return <MediaCreationView user={user} onClose={() => setCurrentView(View.SOCIAL)} onSuccess={() => setCurrentView(View.SOCIAL)} initialMode={mediaCreationMode} />;
-      case View.SETTINGS:
-        return <SettingsView user={user} onBack={() => setCurrentView(View.PROFILE)} onLogout={handleLogout} onAdminView={() => setCurrentView(View.ADMIN)} onProfileUpdate={() => user && fetchProfile(user.id)} />;
-      case View.ADMIN:
-        return <AdminView user={user} />;
-      case View.ADMIN_USERS:
-        return <AdminUsersView user={user} />;
-      case View.INTERNAL_ADS:
-        return <InternalAdManager user={user} onBack={() => setCurrentView(View.ADMIN)} />;
-      case View.AD_CREATION:
-        return <MarketplaceView user={user} forceShowWizard={true} onWizardClose={() => setCurrentView(View.MERCADO)} onViewChange={setCurrentView} selectedStore={selectedStore} />;
-      case View.TERMS:
-        return <EULAView onBack={() => setCurrentView(View.LOGIN)} />;
-      case View.FORGOT_PASSWORD:
-        return <ForgotPasswordView onBack={() => setCurrentView(View.LOGIN)} />;
-      case View.BLOCKED_ACCOUNT:
-        return <BlockedAccountView onLogout={handleLogout} />;
-      case View.RECOVERY_ASSISTED:
-        return <RecoveryAssistedView onBack={() => setCurrentView(View.LOGIN)} />;
-      case View.EVENT_DETAILS:
-        return <EventDetailView event={selectedEvent} user={user} onBack={() => setCurrentView(View.EVENTS)} />;
-      case View.LEGAL_CONSENT:
-        return <LegalConsentView user={user} onAccept={() => fetchProfile(user?.id || '')} />;
-      case View.STORE_DETAILS:
-        return <StoreDetailView store={selectedStore} user={user} onBack={() => setCurrentView(View.MERCADO)} />;
-      case View.RESULT_DETAIL:
-        return <ResultDetailView resultId={selectedResultId || ''} onBack={() => setCurrentView(selectedEvent ? View.EVENT_DETAILS : View.NEWS)} />;
-      case View.LEILAO:
-        return (
-          <React.Suspense fallback={
-            <div className="min-h-screen bg-[#0F0A05] flex items-center justify-center">
-              <div className="w-12 h-12 border-4 border-[#ECA413]/20 border-t-[#ECA413] rounded-full animate-spin" />
-            </div>
-          }>
-            <AuctionModule user={user} onBack={() => setCurrentView(View.EVENTS)} />
-          </React.Suspense>
-        );
-      case View.AUTH_CALLBACK:
-        return <AuthCallback onComplete={(userId, authUser) => fetchProfile(userId, authUser)} onFail={() => setCurrentView(View.LOGIN)} />;
-      default:
-        if (user) {
-          if (!user.profile_completed) return <CompleteProfileView user={user} onComplete={() => fetchProfile(user.id)} onLogout={handleLogout} />;
-          return <EventsView />;
-        }
-        return <LoginView onLogin={(u) => fetchProfile(u.id, u)} onSignUp={() => setCurrentView(View.SIGNUP)} onForgotPassword={() => setCurrentView(View.FORGOT_PASSWORD)} onRecoveryAssisted={() => setCurrentView(View.RECOVERY_ASSISTED)} onTerms={() => setCurrentView(View.TERMS)} />;
-    }
-  };
+              <ErrorBoundary>
+                <ViewRenderer 
+                  currentView={currentView}
+                  user={user}
+                  selectedEvent={selectedEvent}
+                  selectedStore={selectedStore}
+                  selectedResultId={selectedResultId}
+                  profileUsername={profileUsername}
+                  mediaCreationMode={mediaCreationMode}
+                  fetchProfile={fetchProfile}
+                  setCurrentView={setCurrentView}
+                  handleLogout={handleLogout}
+                  setMediaCreationMode={setMediaCreationMode}
+                />
+              </ErrorBoundary>
 
   useEffect(() => {
     fetchSettings();
@@ -707,7 +858,19 @@ if (initializing) {
             {/* Mobile-style Frame for Web */}
             <div className="flex-1 w-full max-w-md mx-auto relative flex flex-col bg-[#0F0A05] shadow-2xl overflow-hidden min-h-screen lg:min-h-[90vh] lg:my-auto lg:rounded-[40px] lg:border lg:border-white/5">
               <ErrorBoundary>
-                {renderCurrentView()}
+                <ViewRenderer 
+                  currentView={currentView}
+                  user={user}
+                  selectedEvent={selectedEvent}
+                  selectedStore={selectedStore}
+                  selectedResultId={selectedResultId}
+                  profileUsername={profileUsername}
+                  mediaCreationMode={mediaCreationMode}
+                  fetchProfile={fetchProfile}
+                  setCurrentView={setCurrentView}
+                  handleLogout={handleLogout}
+                  setMediaCreationMode={setMediaCreationMode}
+                />
               </ErrorBoundary>
             </div>
 
@@ -732,130 +895,6 @@ if (initializing) {
   );
 };
 
-// ─── Componente de Callback de Autenticação ───
-const AuthCallback: React.FC<{ onComplete: (userId: string, authUser: any) => void, onFail: () => void }> = ({ onComplete, onFail }) => {
-  const [logs, setLogs] = useState<string[]>(['[1] Iniciando processamento...']);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const addLog = (msg: string) => {
-    console.log(`[AuthCallback] ${msg}`);
-    setLogs(prev => [...prev.slice(-6), msg]);
-  };
-
-  const hasHandledAuth = React.useRef(false);
-
-  const handleAuth = async () => {
-    if (hasHandledAuth.current) return;
-    hasHandledAuth.current = true;
-
-    try {
-      addLog('Verificando URL de callback...');
-      const url = new URL(window.location.href);
-      
-      // Tenta pegar 'code' tanto da query quanto do fragmento (alguns browsers/configs mudam isso)
-      let code = url.searchParams.get('code');
-      if (!code && window.location.hash.includes('code=')) {
-        const hashParams = new URLSearchParams(window.location.hash.substring(1).replace('?', '&'));
-        code = hashParams.get('code');
-      }
-
-      const errorDescription = url.searchParams.get('error_description');
-
-      if (errorDescription) {
-        throw new Error(errorDescription);
-      }
-
-      // Se houver um código (PKCE), tentamos trocar explicitamente
-      if (code) {
-        addLog('Código detectado, iniciando troca (PKCE)...');
-        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-        
-        if (error) {
-          // Ignora erro de "state already used" pois pode ter sido processado automaticamente pelo SDK
-          if (error.message.includes('already been used') || error.message.includes('flow_state_not_found')) {
-            addLog('Troca PKCE já processada anteriormente.');
-          } else {
-            addLog('Aviso na troca de código: ' + error.message);
-          }
-        } else if (data?.session?.user) {
-          addLog('Troca PKCE concluída com sucesso!');
-          onComplete(data.session.user.id, data.session.user);
-          return;
-        }
-      }
-
-      // Fallback 1: Verificar se já temos um usuário (o SDK pode ter processado em background)
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (currentUser) {
-        addLog('Usuário detectado. Carregando dados...');
-        onComplete(currentUser.id, currentUser);
-        return;
-      }
-
-      addLog('Aguardando sessão do Supabase...');
-      // Delay adaptativo: verifica a cada 300ms até 8 segundos (mais agressivo para iOS)
-      for (let i = 0; i < 25; i++) {
-        await new Promise(r => setTimeout(r, 300));
-        const { data: sessionData } = await supabase.auth.getSession();
-        
-        if (sessionData?.session?.user) {
-          addLog('Sessão sincronizada!');
-          onComplete(sessionData.session.user.id, sessionData.session.user);
-          return;
-        }
-      }
-
-      // Fallback Final
-      addLog('Tentativa final de recuperação de sessão...');
-      const { data: lastCheck } = await supabase.auth.getSession();
-      
-      if (lastCheck?.session?.user) {
-        onComplete(lastCheck.session.user.id, lastCheck.session.user);
-      } else {
-        throw new Error('Não foi possível identificar sua sessão de login. Por favor, tente entrar novamente.');
-      }
-    } catch (err: any) {
-      console.error('Erro no processamento da autenticação');
-      addLog('Falha na sincronização final');
-      setErrorMsg(err.message || 'Erro ao processar login');
-      // Aumentamos o tempo do erro para o usuário ler
-      setTimeout(() => onFail(), 5000);
-    }
-  };
-
-  useEffect(() => {
-    handleAuth();
-  }, []);
-
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#0F0A05] px-8 text-center">
-      {!errorMsg ? (
-        <div className="w-full max-w-xs">
-          <div className="w-12 h-12 border-4 border-[#ECA413]/30 border-t-[#ECA413] rounded-full animate-spin mb-6 mx-auto" />
-          <h1 className="text-white font-black italic uppercase tracking-widest text-sm animate-pulse">Finalizando login...</h1>
-          <p className="text-white/20 text-[10px] uppercase mt-2">Autenticando com a Arena</p>
-          
-          {/* Logs de depuração removidos para privacidade em produção */}
-        </div>
-      ) : (
-        <div className="animate-in fade-in zoom-in duration-500">
-          <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-6 mx-auto">
-            <span className="material-icons text-red-500 text-4xl">error_outline</span>
-          </div>
-          <h2 className="text-[#ECA413] text-xl font-black uppercase tracking-tighter mb-4">Ops! Algo deu errado</h2>
-          <p className="text-white/60 text-sm mb-8 leading-relaxed max-w-xs mx-auto">
-            {errorMsg}
-          </p>
-          <button 
-            onClick={onFail}
-            className="bg-[#ECA413] text-black px-10 py-4 rounded-full font-black text-xs uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all"
-          >
-            VOLTAR E TENTAR NOVAMENTE
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
 
 export default App;
