@@ -316,21 +316,7 @@ const App: React.FC = () => {
     if (e?.detail?.store) persistence.save(PersistenceKey.LAST_STORE, e.detail.store);
   };
 
-              <ErrorBoundary>
-                <ViewRenderer 
-                  currentView={currentView}
-                  user={user}
-                  selectedEvent={selectedEvent}
-                  selectedStore={selectedStore}
-                  selectedResultId={selectedResultId}
-                  profileUsername={profileUsername}
-                  mediaCreationMode={mediaCreationMode}
-                  fetchProfile={fetchProfile}
-                  setCurrentView={setCurrentView}
-                  handleLogout={handleLogout}
-                  setMediaCreationMode={setMediaCreationMode}
-                />
-              </ErrorBoundary>
+
 
   useEffect(() => {
     fetchSettings();
