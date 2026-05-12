@@ -120,11 +120,10 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
     );
   }
 
-  // ── Mobile/Touch: comportamento PTR completo ──
   return (
     <div
       ref={containerRef}
-      className={`relative overflow-y-auto h-full w-full hide-scrollbar ${className ?? ''}`}
+      className={`relative overflow-y-auto flex-1 w-full hide-scrollbar flex flex-col ${className ?? ''}`}
       style={{
         overscrollBehaviorY: 'none',
         WebkitOverflowScrolling: 'touch',

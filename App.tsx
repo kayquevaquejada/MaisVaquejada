@@ -838,11 +838,11 @@ if (initializing) {
   return (
     <ErrorBoundary>
       <CallProvider userId={user?.id}>
-        <div className="min-h-screen flex flex-col bg-background-dark overflow-hidden">
+        <div className="h-[100dvh] flex flex-col bg-background-dark overflow-hidden">
           <UpdateManager />
-          <div className="flex-1 overflow-y-auto relative scroll-smooth hide-scrollbar">
+          <div className="flex-1 overflow-hidden relative flex flex-col">
             {/* Mobile-style Frame for Web */}
-            <div className="flex-1 w-full max-w-md mx-auto relative flex flex-col bg-[#0F0A05] shadow-2xl overflow-hidden min-h-screen lg:min-h-[90vh] lg:my-auto lg:rounded-[40px] lg:border lg:border-white/5">
+            <div className="flex-1 w-full max-w-md mx-auto relative flex flex-col bg-[#0F0A05] shadow-2xl overflow-hidden lg:h-[90vh] lg:flex-none lg:my-auto lg:rounded-[40px] lg:border lg:border-white/5">
               <ErrorBoundary>
                 <ViewRenderer 
                   currentView={currentView}
