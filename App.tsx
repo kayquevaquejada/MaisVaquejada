@@ -350,12 +350,6 @@ const App: React.FC = () => {
   const isMountedRef = useRef(true);
   // Initialize the consent flag as null (unknown) to avoid premature blocking
 const hasValidConsentRef = useRef<boolean | null>(null);
-...
-// In navigation event handler (lines ~734-739), adjust guard
-if (user && hasValidConsentRef.current === false && ![View.LOGIN, View.SIGNUP, View.LEGAL_CONSENT].includes(view)) {
-  setCurrentView(View.LEGAL_CONSENT);
-  return;
-}
   const isInitializedRef = useRef(false);
 
   // Helper para persistir o perfil localmente (cache para boot rápido)
