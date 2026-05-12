@@ -270,7 +270,7 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
 
   // ---- LISTA PRINCIPAL ----
   return (
-    <PullToRefresh onRefresh={handleRefresh} className="bg-background-dark flex-1 h-full">
+    <PullToRefresh onRefresh={handleRefresh} className="bg-background-dark">
       <div className="pb-24">
 
       {/* ===== BOTÃO TV +VAQUEJADA — FIXO E EM DESTAQUE ===== */}

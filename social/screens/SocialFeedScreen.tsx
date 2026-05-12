@@ -262,7 +262,7 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
 
   return (
     <div className="bg-background-dark min-h-screen font-display relative">
-      <PullToRefresh onRefresh={refresh} className="bg-background-dark h-full">
+      <PullToRefresh onRefresh={refresh} className="bg-background-dark">
         <div className="bg-background-dark min-h-full font-display relative">
       {/* Header */}
       <header className="flex justify-between items-center px-4 py-3 sticky top-0 z-50 bg-background-dark/95 backdrop-blur-md border-b border-white/5">

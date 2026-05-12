@@ -348,8 +348,8 @@ const App: React.FC = () => {
   };
   const currentViewRef = useRef(currentView);
   const isMountedRef = useRef(true);
-  // Initialize the consent flag as null (unknown) to avoid premature blocking
-const hasValidConsentRef = useRef<boolean | null>(null);
+  // Initialize the consent flag as true by default to avoid blocking existing users
+  const hasValidConsentRef = useRef<boolean | null>(true);
   const isInitializedRef = useRef(false);
 
   // Helper para persistir o perfil localmente (cache para boot rápido)
@@ -635,7 +635,9 @@ const hasValidConsentRef = useRef<boolean | null>(null);
     const handleDeepLink = async (url: string) => {
       console.log('[App] Processando Deep Link:', url);
       
-      if (url.includes('auth/callback') || url.includes('access_token=') || url.includes('code=')) {
+      const processedUrl = url.replace('#', '?');
+      
+      if (processedUrl.includes('auth/callback') || processedUrl.includes('access_token=') || processedUrl.includes('code=')) {
         setCurrentView(View.AUTH_CALLBACK);
         setInitializing(false);
         
@@ -643,46 +645,32 @@ const hasValidConsentRef = useRef<boolean | null>(null);
         await new Promise(r => setTimeout(r, 800));
 
         let code = null;
+        let accessToken = null;
         try {
-          // Parsing robusto usando Regex para deep links
-          const codeMatch = url.match(/[?&]code=([^&#]+)/);
-          code = codeMatch ? codeMatch[1] : null;
-          
-          if (!code) {
-            const rawUrl = url.replace('#', '?');
-            const urlObj = new URL(rawUrl);
-            code = urlObj.searchParams.get('code');
-          }
+          const urlObj = new URL(processedUrl);
+          code = urlObj.searchParams.get('code');
+          accessToken = urlObj.searchParams.get('access_token');
         } catch (e) {
-          console.error('[App] Erro ao processar URL do Deep Link:', e);
+          const codeMatch = processedUrl.match(/[?&]code=([^&#]+)/);
+          code = codeMatch ? codeMatch[1] : null;
+          const tokenMatch = processedUrl.match(/[?&]access_token=([^&#]+)/);
+          accessToken = tokenMatch ? tokenMatch[1] : null;
         }
 
         if (code) {
           console.log('[App] Deep Link: Processando código PKCE...');
-          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) console.error('[App] Erro na troca de código:', error.message);
-          
-          const currentSession = (await supabase.auth.getSession()).data.session;
-          if (currentSession?.user) {
-            await fetchProfile(currentSession.user.id, currentSession.user);
-          } else {
-            setCurrentView(View.LOGIN);
-          }
+          await supabase.auth.exchangeCodeForSession(code);
+        }
+        
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          await fetchProfile(session.user.id, session.user);
         } else {
-          console.log('[App] Tentando recuperar sessão via getSession...');
-          const { data: sessionData } = await supabase.auth.getSession();
-          if (sessionData.session?.user) {
-            await fetchProfile(sessionData.session.user.id, sessionData.session.user);
-          } else {
-            setTimeout(async () => {
-                const { data: retryData } = await supabase.auth.getSession();
-                if (retryData.session?.user) {
-                    await fetchProfile(retryData.session.user.id, retryData.session.user);
-                } else {
-                    setCurrentView(View.LOGIN);
-                }
-            }, 2000);
-          }
+          setTimeout(async () => {
+            const { data: retry } = await supabase.auth.getSession();
+            if (retry.session?.user) await fetchProfile(retry.session.user.id, retry.session.user);
+            else setCurrentView(View.LOGIN);
+          }, 1500);
         }
       }
     };
@@ -839,11 +827,11 @@ if (initializing) {
   return (
     <ErrorBoundary>
       <CallProvider userId={user?.id}>
-        <div className="h-[100dvh] flex flex-col bg-background-dark overflow-hidden">
+        <div className="min-h-screen flex flex-col bg-background-dark">
           <UpdateManager />
-          <div className="flex-1 overflow-hidden relative flex flex-col">
+          <div className="flex-1 relative flex flex-col">
             {/* Mobile-style Frame for Web */}
-            <div className="flex-1 w-full max-w-md mx-auto relative flex flex-col bg-[#0F0A05] shadow-2xl overflow-hidden lg:h-[90vh] lg:flex-none lg:my-auto lg:rounded-[40px] lg:border lg:border-white/5">
+            <div className="flex-1 w-full max-w-md mx-auto relative flex flex-col bg-[#0F0A05] shadow-2xl lg:h-[90vh] lg:flex-none lg:my-auto lg:rounded-[40px] lg:border lg:border-white/5">
               <ErrorBoundary>
                 <ViewRenderer 
                   currentView={currentView}
