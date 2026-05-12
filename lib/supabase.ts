@@ -40,10 +40,21 @@ try {
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error('Configurações do Supabase ausentes (VITE_SUPABASE_URL/KEY)');
   }
+
+  supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      storage: CapacitorPreferencesStorage,
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
+      flowType: 'pkce'
+    }
+  });
   
-  // Attempt to restore persisted Supabase auth session
+  // Attempt to restore persisted Supabase auth session manually if needed
+  // Note: createClient with storage already does some persistence, but we added a second layer
   (async () => {
-    const saved = await persistence.load<string>(PersistenceKey.SUPABASE_SESSION);
+    const saved = await persistence.load<any>(PersistenceKey.SUPABASE_SESSION);
     if (saved) {
       try {
         await supabaseInstance.auth.setSession(saved);
@@ -68,7 +79,8 @@ try {
     auth: { 
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
       getSession: async () => ({ data: { session: null }, error: e }),
-      signOut: async () => ({ error: null })
+      signOut: async () => ({ error: null }),
+      setSession: async () => ({ error: null })
     },
     from: () => ({ 
       select: () => ({ 
@@ -78,6 +90,10 @@ try {
         }),
         order: () => ({ select: () => ({}) }) 
       }) 
+    }),
+    channel: () => ({
+      on: () => ({ subscribe: () => ({}) }),
+      subscribe: () => ({})
     })
   };
 }
