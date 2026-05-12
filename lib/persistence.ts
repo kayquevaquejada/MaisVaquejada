@@ -13,7 +13,11 @@ export enum PersistenceKey {
   PROFILE_ACTIVE_TAB = 'profile_active_tab',
   LAST_EVENT = 'arena_last_event',
   LAST_STORE = 'arena_last_store',
-  LAST_VIEW = 'arena_last_view'
+  LAST_VIEW = 'arena_last_view',
+  /**
+   * Chave usada para salvar a sessão do Supabase (auth.session)
+   */
+  SUPABASE_SESSION = 'supabase_session'
 }
 
 export const persistence = {

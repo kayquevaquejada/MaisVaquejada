@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { Preferences } from '@capacitor/preferences';
 import { Capacitor } from '@capacitor/core';
+import { persistence, PersistenceKey } from './persistence';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -40,14 +41,24 @@ try {
     throw new Error('Configurações do Supabase ausentes (VITE_SUPABASE_URL/KEY)');
   }
   
-  supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: !Capacitor.isNativePlatform(), 
-      storage: Capacitor.isNativePlatform() ? CapacitorPreferencesStorage : (typeof window !== 'undefined' ? window.localStorage : undefined),
-      storageKey: 'vaquejada_auth_session',
-      flowType: 'pkce',
+  // Attempt to restore persisted Supabase auth session
+  (async () => {
+    const saved = await persistence.load<string>(PersistenceKey.SUPABASE_SESSION);
+    if (saved) {
+      try {
+        await supabaseInstance.auth.setSession(saved);
+      } catch (e) {
+        console.warn('Failed to restore Supabase session', e);
+      }
+    }
+  })();
+
+  // Listen to auth state changes and persist the session
+  supabaseInstance.auth.onAuthStateChange((event, session) => {
+    if (session) {
+      persistence.save(PersistenceKey.SUPABASE_SESSION, session);
+    } else {
+      persistence.remove(PersistenceKey.SUPABASE_SESSION);
     }
   });
 } catch (e) {
