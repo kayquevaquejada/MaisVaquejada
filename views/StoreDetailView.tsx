@@ -480,7 +480,7 @@ const StoreDetailView: React.FC<StoreDetailViewProps> = ({ store, user, onBack }
             {/* Espaçador para o logo que transborda */}
             <div className="h-20" />
 
-            <GuestCTA />
+            <GuestCTA user={user} />
 
             {/* 3. MENU DE NAVEGAÇÃO (TABS) */}
             <div className="sticky top-0 z-30 bg-[#F5F1E9]/80 backdrop-blur-xl border-b border-[#1A1108]/5">

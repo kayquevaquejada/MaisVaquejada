@@ -344,7 +344,7 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
         <AdsCarousel key="news_top_ads" targetPosition="news_top_carousel" />
       </div>
 
-      <GuestCTA />
+      <GuestCTA user={user} />
 
       {/* Conteúdo das notícias */}
       <div className="px-6 pt-6 space-y-6">

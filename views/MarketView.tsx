@@ -969,7 +969,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                 <AdsCarousel targetPosition="market_top_carousel" />
             </div>
 
-            <GuestCTA />
+            <GuestCTA user={user} />
 
             {/* Categorias Circulares Premium */}
             <div className="py-6">

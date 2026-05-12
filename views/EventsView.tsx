@@ -345,7 +345,7 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt, u
           </div>
         )}
 
-        <GuestCTA />
+        <GuestCTA user={user} />
 
         <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2 pt-4">
           {STATES.map((uf, idx) => (

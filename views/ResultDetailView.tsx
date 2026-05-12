@@ -187,7 +187,7 @@ const ResultDetailView: React.FC<ResultDetailViewProps> = ({ resultId, onBack })
         </div>
       </div>
 
-      <GuestCTA />
+      <GuestCTA user={user} />
 
       {/* Indicadores / Métricas */}
       <div className="px-6 grid grid-cols-3 gap-3 mb-8">

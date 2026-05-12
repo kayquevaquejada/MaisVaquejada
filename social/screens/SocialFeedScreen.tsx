@@ -312,7 +312,7 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
         onProfilePress={navigateToProfile}
       />
 
-      <GuestCTA />
+      <GuestCTA user={user} />
 
       {/* Feed */}
       <main className="pb-20">

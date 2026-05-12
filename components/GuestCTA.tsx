@@ -2,10 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { View } from '../types';
 
-const GuestCTA: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+interface GuestCTAProps {
+  user?: any;
+}
+
+const GuestCTA: React.FC<GuestCTAProps> = ({ user }) => {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(user ? true : null);
 
   useEffect(() => {
+    if (user) {
+      setIsAuthenticated(true);
+      return;
+    }
+
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setIsAuthenticated(!!session);
@@ -18,10 +27,10 @@ const GuestCTA: React.FC = () => {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [user]);
 
   // Show nothing while checking auth or if authenticated
-  if (isAuthenticated === null || isAuthenticated) {
+  if (user || isAuthenticated === null || isAuthenticated) {
     return null;
   }
 
