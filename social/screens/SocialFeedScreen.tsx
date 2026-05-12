@@ -261,7 +261,7 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
   const activePartner = conversations.find(c => c.other_user_id === activeChatPartnetId) || searchResults.find(r => r.id === activeChatPartnetId);
 
   return (
-    <div className="bg-background-dark min-h-screen font-display relative overflow-hidden">
+    <div className="bg-background-dark min-h-screen font-display relative">
       <PullToRefresh onRefresh={refresh} className="bg-background-dark h-full">
         <div className="bg-background-dark min-h-full font-display relative">
       {/* Header */}

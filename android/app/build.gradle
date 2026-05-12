@@ -1,6 +1,19 @@
 apply plugin: 'com.android.application'
 
 android {
+    compileSdkVersion 34
+    defaultConfig {
+        applicationId "com.maisvaquejada.app"
+        minSdkVersion 21
+        targetSdkVersion 34
+        versionCode 1
+        versionName "1.0"
+        // Supabase configuration (injected from environment variables)
+        buildConfigField "String", "SUPABASE_URL", "\"${System.getenv('SUPABASE_URL')}\""
+        buildConfigField "String", "SUPABASE_ANON_KEY", "\"${System.getenv('SUPABASE_ANON_KEY')}\""
+    }
+    // ... (rest of the file unchanged)
+}
     namespace = "com.maisvaquejada.app"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {

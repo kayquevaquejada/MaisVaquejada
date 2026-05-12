@@ -10,17 +10,15 @@ export function useFeed(userId: string | undefined) {
   const [error, setError] = useState<string | null>(null);
 
   const loadData = useCallback(async (refresh = false) => {
-    if (!userId) return;
-    
     if (refresh) setIsRefreshing(true);
     else setLoading(true);
     
     setError(null);
     try {
-      const followingIds = await SocialService.fetchFollowing(userId);
+      const followingIds = userId ? await SocialService.fetchFollowing(userId) : [];
       const [feedPosts, feedStories] = await Promise.all([
-        SocialService.fetchFeed(userId, followingIds),
-        SocialService.fetchStories(userId, followingIds)
+        SocialService.fetchFeed(userId || '', followingIds),
+        SocialService.fetchStories(userId || '', followingIds)
       ]);
       
       setPosts(feedPosts);

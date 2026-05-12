@@ -125,8 +125,9 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
       ref={containerRef}
       className={`relative overflow-y-auto flex-1 w-full hide-scrollbar flex flex-col ${className ?? ''}`}
       style={{
-        overscrollBehaviorY: 'none',
+        overscrollBehaviorY: 'contain', // allow native pull-to-refresh while preserving scroll
         WebkitOverflowScrolling: 'touch',
+        touchAction: 'pan-y', // ensure vertical scroll works on touch devices
       }}
     >
       {/* Pull Indicator */}
