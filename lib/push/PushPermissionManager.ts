@@ -9,6 +9,19 @@ export class PushPermissionManager {
         if (!Capacitor.isNativePlatform()) return;
 
         try {
+            // Create default channel for Android
+            if (Capacitor.getPlatform() === 'android') {
+                await PushNotifications.createChannel({
+                    id: 'maisvaquejada_notifications',
+                    name: 'MaisVaquejada Alertas',
+                    description: 'Notificações de mensagens, lives e avisos importantes.',
+                    importance: 5, // High importance (heads-up notification)
+                    visibility: 1, // Public (show on lock screen)
+                    sound: 'default',
+                    vibration: true
+                });
+            }
+
             // Check current permission status
             let permStatus = await PushNotifications.checkPermissions();
 
