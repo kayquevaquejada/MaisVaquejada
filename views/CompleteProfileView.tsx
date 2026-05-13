@@ -122,7 +122,7 @@ const CompleteProfileView: React.FC<CompleteProfileViewProps> = ({ user, onCompl
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0F0A05] relative overflow-hidden">
+    <div className="min-h-screen flex flex-col bg-[#0F0A05] relative overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-t from-[#0F0A05] via-[#0F0A05]/80 to-transparent z-10" />
         <img

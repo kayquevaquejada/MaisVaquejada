@@ -184,7 +184,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
   };
 
   return (
-    <div className="min-h-full flex flex-col bg-[#0F0A05] relative overflow-hidden">
+    <div className="min-h-full flex flex-col bg-[#0F0A05] relative overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
       {/* Background Cinematográfico */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/40 to-[#0F0A05] z-10" />

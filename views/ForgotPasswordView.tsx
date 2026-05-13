@@ -69,7 +69,7 @@ const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({ onBack }) => {
   };
 
   return (
-    <div className="min-h-full flex flex-col bg-[#0F0A05] relative overflow-hidden">
+    <div className="min-h-full flex flex-col bg-[#0F0A05] relative overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
       <div className="absolute inset-0 z-0 opacity-20">
         <img
           src="https://images.unsplash.com/photo-1534067783941-51c9c23ecefd?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80"

@@ -78,7 +78,7 @@ const LegalConsentView: React.FC<LegalConsentViewProps> = ({ user, onAccept }) =
   );
 
   return (
-    <div className="min-h-screen bg-[#0F0A05] flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-[#0F0A05] flex flex-col relative overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
       {/* Background Decor */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#ECA413]/5 rounded-full blur-[120px] -mr-64 -mt-64 pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-[#ECA413]/5 rounded-full blur-[120px] -ml-64 -mb-64 pointer-events-none" />

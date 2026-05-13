@@ -838,9 +838,9 @@ if (initializing) {
   return (
     <ErrorBoundary>
       <CallProvider userId={user?.id}>
-        <div className="h-[100dvh] flex flex-col bg-background-dark overflow-hidden">
+        <div className="min-h-screen flex flex-col bg-background-dark overflow-y-auto overflow-x-hidden">
           <UpdateManager />
-          <div className="flex-1 relative flex flex-col overflow-hidden">
+          <div className="flex-1 relative flex flex-col min-h-full">
             {/* Mobile-style Frame for Web */}
             <div 
               className="flex-1 w-full max-w-md mx-auto relative flex flex-col bg-[#0F0A05] shadow-2xl lg:h-[90vh] lg:flex-none lg:my-auto lg:rounded-[40px] lg:border lg:border-white/5"
