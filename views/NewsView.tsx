@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import SponsorMarquee from '../components/SponsorMarquee';
 import AdsCarousel from '../components/AdsCarousel';
 import GuestCTA from '../components/GuestCTA';
-import { useFocusEffect } from '@react-navigation/native';
+
 
 
 const TABS = ['RESULTADOS', 'NOTÍCIAS'];
@@ -97,11 +97,9 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
     return () => clearInterval(interval);
   }, []);
 
-  useFocusEffect(
-    React.useCallback(() => {
-      handleRefresh();
-    }, [])
-  );
+  useEffect(() => {
+    handleRefresh();
+  }, []);
 
   React.useEffect(() => {
     fetchNewsAndResults();

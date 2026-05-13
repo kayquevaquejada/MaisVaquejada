@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import AdsCarousel from '../components/AdsCarousel';
 import { compressImage } from '../lib/imageUtils';
 import GuestCTA from '../components/GuestCTA';
-import { useFocusEffect } from '@react-navigation/native';
+
 import { persistence, PersistenceKey } from '../lib/persistence';
 
 const STATES = [
@@ -176,14 +176,27 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
         await Promise.all([fetchAds(), fetchStores()]);
     };
 
-    useFocusEffect(
-        React.useCallback(() => {
-            handleRefresh();
-        }, [])
-    );
-
     useEffect(() => {
-        handleRefresh();
+        fetchAds();
+        fetchStores();
+        if (user?.id) {
+             const fetchFavorites = async () => {
+                try {
+                    const { data, error } = await supabase
+                        .from('market_likes')
+                        .select('item_id')
+                        .eq('user_id', user.id);
+                    
+                    if (!error && data) {
+                        setFavorites(data.map(f => f.item_id));
+                    }
+                } catch (err) {
+                    console.error('Error fetching favorites:', err);
+                }
+            };
+            fetchFavorites();
+        }
+
         const channel = supabase.channel('market_items_rt')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'market_items' }, fetchAds)
             .subscribe();

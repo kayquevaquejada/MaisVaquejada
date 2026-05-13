@@ -5,7 +5,7 @@ import { createNotification } from '../lib/notifications';
 import { compressImage } from '../lib/imageUtils';
 import { Preferences } from '@capacitor/preferences';
 import { SocialService } from '../social/services/SocialService';
-import { useFocusEffect } from '@react-navigation/native';
+
 
 import { useNotifications } from '../social/hooks/useNotifications';
 import { NotificationsPanel } from '../social/components/NotificationsPanel';
@@ -337,12 +337,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
             setLoading(false);
         }
     };
-
-  useFocusEffect(
-    React.useCallback(() => {
-      fetchData();
-    }, [])
-  );
 
   useEffect(() => {
     // Safety timeout: Never stay loading more than 3 seconds

@@ -7,7 +7,7 @@ import AuctionFilterChips from '../components/AuctionFilterChips';
 import RealtimeCountdown from '../components/RealtimeCountdown';
 
 import { supabase } from '../../lib/supabase';
-import { useFocusEffect } from '@react-navigation/native';
+import { useEffect } from 'react';
 interface AuctionHomeProps {
     user: User | null;
     auctionUser: AuctionUser | null;
@@ -32,11 +32,9 @@ const AuctionHome: React.FC<AuctionHomeProps> = ({
     const { auctions, loading, fetchActiveAuctions } = useAuction();
     const [activeFilter, setActiveFilter] = useState('live');
 
-    useFocusEffect(
-        React.useCallback(() => {
-            handleRefresh();
-        }, [])
-    );
+    useEffect(() => {
+        handleRefresh();
+    }, []);
 
     React.useEffect(() => {
         // Force refresh user status on mount to ensure latest permissions

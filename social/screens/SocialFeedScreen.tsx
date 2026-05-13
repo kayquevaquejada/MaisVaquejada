@@ -19,7 +19,7 @@ import { supabase } from '../../lib/supabase';
 import { SocialService } from '../services/SocialService';
 import { useCall } from '../../context/CallContext';
 import GuestCTA from '../../components/GuestCTA';
-import { useFocusEffect } from '@react-navigation/native';
+
 
 interface SocialFeedScreenProps {
   user: any;
@@ -63,11 +63,9 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
   const [editLocation, setEditLocation] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
 
-  useFocusEffect(
-    React.useCallback(() => {
-      refresh();
-    }, [refresh])
-  );
+  useEffect(() => {
+    refresh();
+  }, []);
 
   // Persistence: Load overlays state
 

@@ -7,7 +7,7 @@ import CircuitPanel from '../components/CircuitPanel';
 import GuestCTA from '../components/GuestCTA';
 import { VaquejadaCalendar } from '../components/VaquejadaCalendar';
 import { CalendarEventsSheet } from '../components/CalendarEventsSheet';
-import { useFocusEffect } from '@react-navigation/native';
+
 const MOCK_CIRCUITS: Circuito[] = [
   { id: 'todos', nome: 'Todos os circuitos', slug: 'todos', ativo: true, destaque: true, ordem: 0 },
   { id: 'alqm', nome: 'ALQM', slug: 'alqm', ativo: true, destaque: true, ordem: 1 },
@@ -177,12 +177,6 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt, u
       setLoading(false);
     }
   };
-
-  useFocusEffect(
-    React.useCallback(() => {
-      fetchData();
-    }, [])
-  );
 
   useEffect(() => {
     fetchData();
