@@ -94,9 +94,10 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, user, appSettings }) => {
       />
 
       <div 
-        className={`fixed left-1/2 -translate-x-1/2 z-[100] flex items-center justify-center transition-all duration-500 ${
-          isVisible ? 'bottom-8' : 'bottom-[-100px]'
-        }`}
+        className={`fixed left-1/2 -translate-x-1/2 z-[100] flex items-center justify-center transition-all duration-500`}
+        style={{
+          bottom: isVisible ? 'calc(2rem + env(safe-area-inset-bottom))' : '-100px'
+        }}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={() => setIsMouseOver(false)}
       >

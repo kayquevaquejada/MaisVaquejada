@@ -842,7 +842,10 @@ if (initializing) {
           <UpdateManager />
           <div className="flex-1 relative flex flex-col">
             {/* Mobile-style Frame for Web */}
-            <div className="flex-1 w-full max-w-md mx-auto relative flex flex-col bg-[#0F0A05] shadow-2xl lg:h-[90vh] lg:flex-none lg:my-auto lg:rounded-[40px] lg:border lg:border-white/5">
+            <div 
+              className="flex-1 w-full max-w-md mx-auto relative flex flex-col bg-[#0F0A05] shadow-2xl lg:h-[90vh] lg:flex-none lg:my-auto lg:rounded-[40px] lg:border lg:border-white/5"
+              style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+            >
               <ErrorBoundary>
                 <ViewRenderer 
                   currentView={currentView}
