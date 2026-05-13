@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { NewsItem, User, View } from '../types';
 import { supabase } from '../lib/supabase';
 import SponsorMarquee from '../components/SponsorMarquee';
