@@ -104,13 +104,15 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
         return;
     }
 
+    const sanitizedEmail = email.trim().toLowerCase();
+
     setLoading(true);
     setError(null);
 
     try {
       // 1. Auth Sign Up
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
+        email: sanitizedEmail,
         password,
       });
 
@@ -123,7 +125,7 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
           full_name: name,
           display_name: name.split(' ')[0],
           username: username.toLowerCase().trim(),
-          email,
+          email: sanitizedEmail,
           phone: fullPhone,
           state_id: selectedState,
           city_id: selectedCity,
@@ -163,9 +165,7 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
       
       let redirectTo = window.location.origin + '/auth/callback';
       if (isNative) {
-        redirectTo = platform === 'android' 
-          ? 'com.maisvaquejada.app://auth/callback' 
-          : 'maisvaquejada://auth/callback';
+        redirectTo = 'maisvaquejada://auth/callback';
       }
 
       if (isNative) {
@@ -174,7 +174,8 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
           provider: 'google',
           options: {
             redirectTo: redirectTo,
-            skipBrowserRedirect: true
+            skipBrowserRedirect: true,
+            queryParams: { prompt: 'select_account' }
           }
         });
         if (error) throw error;
@@ -186,7 +187,8 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
-            redirectTo: redirectTo
+            redirectTo: redirectTo,
+            queryParams: { prompt: 'select_account' }
           }
         });
         if (error) throw error;
@@ -231,7 +233,7 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
               : 'maisvaquejada://auth/callback';
         }
 
-        const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
           provider: 'apple',
           options: {
             redirectTo: redirectTo,
@@ -240,12 +242,8 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
         });
         if (oauthError) throw oauthError;
 
-        if (isNative) {
-            const { data } = await supabase.auth.signInWithOAuth({
-               provider: 'apple',
-               options: { redirectTo, skipBrowserRedirect: true }
-            });
-            if (data?.url) await Browser.open({ url: data.url });
+        if (isNative && data?.url) {
+            await Browser.open({ url: data.url });
         }
       }
     } catch (err: any) {

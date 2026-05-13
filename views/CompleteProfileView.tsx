@@ -132,7 +132,7 @@ const CompleteProfileView: React.FC<CompleteProfileViewProps> = ({ user, onCompl
         />
       </div>
 
-      <div className="relative z-20 flex-1 flex flex-col px-8 py-12 overflow-y-auto hide-scrollbar">
+      <div className="relative z-20 flex-1 flex flex-col px-8 py-12 overflow-y-auto hide-scrollbar" style={{ touchAction: 'pan-y' }}>
         <div className="flex justify-between items-center mb-10">
             <div>
                 <h1 className="text-3xl font-black text-white italic tracking-tighter uppercase mb-1">Quase <span className="text-[#ECA413]">Lá!</span></h1>

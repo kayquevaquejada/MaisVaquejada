@@ -91,33 +91,25 @@ const AuthCallback: React.FC<{ onComplete: (userId: string, authUser: any) => vo
     if (hasHandledAuth.current) return;
     hasHandledAuth.current = true;
 
+    if (Capacitor.isNativePlatform()) {
+      addLog('Aguardando sincronização nativa (Deep Link)...');
+      return;
+    }
+
     try {
       addLog('Verificando URL de callback...');
-      const url = new URL(window.location.href);
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const queryParams = new URLSearchParams(window.location.search);
       
-      let code = url.searchParams.get('code');
-      if (!code && window.location.hash.includes('code=')) {
-        const hashParams = new URLSearchParams(window.location.hash.substring(1).replace('?', '&'));
-        code = hashParams.get('code');
-      }
-
-      const errorDescription = url.searchParams.get('error_description');
-
-      if (errorDescription) {
-        throw new Error(errorDescription);
-      }
+      const accessToken = hashParams.get('access_token') || queryParams.get('access_token');
+      const code = queryParams.get('code');
 
       if (code) {
-        addLog('Código detectado, iniciando troca (PKCE)...');
+        addLog('Código PKCE encontrado no Web. Trocando por sessão...');
         const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) throw error;
         
-        if (error) {
-          if (error.message.includes('already been used') || error.message.includes('flow_state_not_found')) {
-            addLog('Troca PKCE já processada anteriormente.');
-          } else {
-            addLog('Aviso na troca de código: ' + error.message);
-          }
-        } else if (data?.session?.user) {
+        if (data?.session?.user) {
           addLog('Troca PKCE concluída com sucesso!');
           onComplete(data.session.user.id, data.session.user);
           return;
@@ -159,9 +151,11 @@ const AuthCallback: React.FC<{ onComplete: (userId: string, authUser: any) => vo
     }
   };
 
-  useEffect(() => {
-    handleAuth();
-  }, []);
+    useEffect(() => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      handleAuth();
+    }, []);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#0F0A05] px-8 text-center">
@@ -601,7 +595,11 @@ const App: React.FC = () => {
 
     const stateListener = CapApp.addListener('appStateChange', async ({ isActive }) => {
       if (isActive && isMountedRef.current) {
-        supabase.auth.getSession();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user && user) {
+           console.log('[App] Sessão expirada em background. Deslogando...');
+           handleLogout();
+        }
       } else if (!isActive && isMountedRef.current) {
         // Persistir view e dados de navegação ao sair para segundo plano
         if (currentViewRef.current) {
@@ -641,7 +639,11 @@ const App: React.FC = () => {
         setCurrentView(View.AUTH_CALLBACK);
         setInitializing(false);
         
-        await Browser.close();
+        try {
+          await Browser.close();
+        } catch (e) {
+          console.warn('Erro ao fechar Browser:', e);
+        }
         await new Promise(r => setTimeout(r, 800));
 
         let code = null;
@@ -659,7 +661,16 @@ const App: React.FC = () => {
 
         if (code) {
           console.log('[App] Deep Link: Processando código PKCE...');
-          await supabase.auth.exchangeCodeForSession(code);
+          try {
+            const { error } = await supabase.auth.exchangeCodeForSession(code);
+            if (error) throw error;
+          } catch (err: any) {
+             console.error('[App] Erro na troca de código PKCE:', err);
+             setToast(`Erro de autenticação: ${err.message || 'Código inválido ou expirado'}`);
+             setCurrentView(View.LOGIN);
+             setInitializing(false);
+             return;
+          }
         }
         
         const { data: { session } } = await supabase.auth.getSession();

@@ -82,7 +82,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
               : 'maisvaquejada://auth/callback';
         }
 
-        const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
           provider: 'apple',
           options: {
             redirectTo: redirectTo,
@@ -92,12 +92,8 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
         
         if (oauthError) throw oauthError;
 
-        if (isNative) {
-           const { data } = await supabase.auth.signInWithOAuth({
-              provider: 'apple',
-              options: { redirectTo, skipBrowserRedirect: true }
-           });
-           if (data?.url) await Browser.open({ url: data.url });
+        if (isNative && data?.url) {
+           await Browser.open({ url: data.url });
         }
       }
     } catch (err: any) {
@@ -121,10 +117,8 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
       
       let redirectTo = window.location.origin + '/auth/callback';
       if (isNative) {
-        // No Android usamos o appId, no iOS usamos o esquema personalizado definido no Info.plist
-        redirectTo = platform === 'android' 
-          ? 'com.maisvaquejada.app://auth/callback' 
-          : 'maisvaquejada://auth/callback';
+        // Use the same scheme for both platforms as it's the one whitelisted in Supabase
+        redirectTo = 'maisvaquejada://auth/callback';
       }
 
       if (isNative) {
@@ -133,7 +127,8 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
           provider: 'google',
           options: {
             redirectTo: redirectTo,
-            skipBrowserRedirect: true
+            skipBrowserRedirect: true,
+            queryParams: { prompt: 'select_account' }
           }
         });
         if (error) throw error;
@@ -145,7 +140,8 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
-            redirectTo: redirectTo
+            redirectTo: redirectTo,
+            queryParams: { prompt: 'select_account' }
           }
         });
         if (error) throw error;
@@ -165,11 +161,12 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
       return;
     }
 
+    const sanitizedEmail = email.trim().toLowerCase();
     setEmailLoading(true);
     setError(null);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: sanitizedEmail,
         password,
       });
 

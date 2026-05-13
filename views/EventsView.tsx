@@ -453,9 +453,6 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt, u
                       onDragStart={() => handleDragStart(event.id)}
                       onDragOver={(e) => handleDragOver(e, event.id)}
                       onDragEnd={() => setDraggedId(null)}
-                      onTouchStart={() => handleTouchStart(event.id)}
-                      onTouchMove={handleTouchMove}
-                      onTouchEnd={handleTouchEnd}
                       className={`group relative bg-[#1A1108] rounded-[32px] overflow-hidden shadow-2xl border transition-all duration-300 ${isDragging ? 'opacity-40 scale-95 border-[#ECA413] z-50' : 'border-white/5 hover:-translate-y-1'}`}
                     >
                       {user?.isMaster && (

@@ -6,6 +6,8 @@ interface PullToRefreshProps {
   className?: string;
 }
 
+import { Capacitor } from '@capacitor/core';
+
 // Detecta se o dispositivo é touch (mobile/tablet nativo)
 const isTouchDevice = () =>
   typeof window !== 'undefined' &&
@@ -39,7 +41,9 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
       touchStartY = e.touches[0].pageY;
       touchStartX = e.touches[0].pageX;
       horizontalScroll = false;
-      pulling = el.scrollTop <= 0;
+      const isAndroid = Capacitor.getPlatform() === 'android';
+      const currentScrollTop = isAndroid ? (el.scrollTop || window.scrollY || document.documentElement.scrollTop) : el.scrollTop;
+      pulling = currentScrollTop <= 0;
     };
 
     const handleTouchMove = (e: TouchEvent) => {
@@ -58,8 +62,11 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
         return;
       }
 
-      if (diffY > 5 && el.scrollTop <= 0) {
-        if (e.cancelable) e.preventDefault();
+      const isAndroid = Capacitor.getPlatform() === 'android';
+      const currentScrollTop = isAndroid ? (el.scrollTop || window.scrollY || document.documentElement.scrollTop) : el.scrollTop;
+
+      if (diffY > 5 && currentScrollTop <= 0) {
+        if (!isAndroid && e.cancelable) e.preventDefault();
         const pull = Math.min((diffY - 5) * 0.4, MAX_PULL);
         setPullDistance(pull);
         pullDistanceRef.current = pull;
@@ -100,8 +107,9 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
       }
     };
 
+    const isAndroid = Capacitor.getPlatform() === 'android';
     el.addEventListener('touchstart', handleTouchStart, { passive: true });
-    el.addEventListener('touchmove', handleTouchMove, { passive: false });
+    el.addEventListener('touchmove', handleTouchMove, { passive: isAndroid });
     el.addEventListener('touchend', handleTouchEnd, { passive: true });
 
     return () => {
@@ -125,9 +133,9 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
       ref={containerRef}
       className={`relative overflow-y-auto flex-1 w-full hide-scrollbar flex flex-col ${className ?? ''}`}
       style={{
-        overscrollBehaviorY: 'contain', // allow native pull-to-refresh while preserving scroll
+        overscrollBehaviorY: Capacitor.getPlatform() === 'android' ? 'auto' : 'contain', 
         WebkitOverflowScrolling: 'touch',
-        touchAction: 'pan-y', // ensure vertical scroll works on touch devices
+        touchAction: Capacitor.getPlatform() === 'android' ? 'auto' : 'pan-y', 
       }}
     >
       {/* Pull Indicator */}
