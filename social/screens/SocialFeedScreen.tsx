@@ -315,7 +315,7 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
       <GuestCTA user={user} />
 
       {/* Feed */}
-      <main className="pb-20">
+      <main className="pb-40">
         {loading && !isRefreshing ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
             <div className="w-8 h-8 border-2 border-[#ECA413] border-t-transparent rounded-full animate-spin" />

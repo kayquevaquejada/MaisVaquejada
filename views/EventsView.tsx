@@ -310,7 +310,7 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt, u
 
   return (
     <PullToRefresh onRefresh={fetchData} className="bg-background-dark">
-      <div className="px-6 py-6 pb-24 min-h-full bg-background-dark">
+      <div className="px-6 py-6 pb-40 min-h-screen bg-background-dark">
       <header className="mb-6 -mx-6 px-6">
         <div className="flex justify-between items-center mb-6">
           {!isSearchOpen ? (

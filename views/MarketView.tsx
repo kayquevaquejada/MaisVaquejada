@@ -555,7 +555,6 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
                             </p>
                         </div>
 
-                        {/* 7. MINI GALERIA PREMIUM */}
                         {Array.isArray(viewingAd.photos) && viewingAd.photos.length > 1 && (
                             <div className="pt-2">
                                 <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mb-4">Galeria de Fotos</h3>
@@ -927,7 +926,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
 
     return (
         <PullToRefresh onRefresh={handleRefresh} className="bg-[#0F0A05]">
-            <div className="min-h-full pb-40 relative bg-[#0F0A05]">
+        <div className="min-h-screen pb-60 relative bg-[#0F0A05]">
             {/* Header Sticky Premium */}
             <div className="sticky top-0 z-40 bg-[#0F0A05]/90 backdrop-blur-xl border-b border-white/5 pt-12 pb-4 shadow-2xl">
                 <div className="px-6 flex justify-between items-center mb-4">

@@ -16,26 +16,34 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, user, appSettings }) => {
 
   useEffect(() => {
     const handleScroll = () => {
-      // If mouse is over, we don't auto-hide or collapse
       if (isMouseOver) return;
 
-      const currentScrollY = window.scrollY || 0;
+      // Detect current scroll position from multiple sources
       const mainContainer = document.querySelector('.overflow-y-auto');
       const containerScrollTop = mainContainer ? mainContainer.scrollTop : 0;
-      const containerScrollHeight = mainContainer ? mainContainer.scrollHeight : 0;
-      const containerClientHeight = mainContainer ? mainContainer.clientHeight : 0;
+      const windowScrollY = window.scrollY || document.documentElement.scrollTop;
       
-      const effectiveY = currentScrollY + containerScrollTop;
+      const effectiveY = windowScrollY + containerScrollTop;
       const diff = effectiveY - lastScrollY.current;
 
-      // Detect if we are at the bottom
-      const isAtBottom = mainContainer 
-        ? (containerScrollTop + containerClientHeight >= containerScrollHeight - 20)
-        : (window.innerHeight + currentScrollY >= document.documentElement.scrollHeight - 20);
+      // Robust bottom detection
+      const scrollHeight = Math.max(
+        document.documentElement.scrollHeight,
+        document.body.scrollHeight,
+        mainContainer?.scrollHeight || 0
+      );
+      const clientHeight = Math.max(
+        window.innerHeight,
+        document.documentElement.clientHeight,
+        mainContainer?.clientHeight || 0
+      );
+      
+      const isAtBottom = (effectiveY + clientHeight >= scrollHeight - 60);
 
+      // Only act if we scrolled more than threshold
       if (Math.abs(diff) > scrollThreshold) {
         if (diff > 0) {
-          // Scrolling DOWN - Hide only if NOT at bottom
+          // Scrolling DOWN
           if (isExpanded) {
             setIsExpanded(false);
           } else if (!isAtBottom) {
@@ -47,16 +55,19 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, user, appSettings }) => {
         }
         lastScrollY.current = effectiveY;
       }
+
+      // Force visible if at bottom
+      if (isAtBottom) {
+        setIsVisible(true);
+      }
     };
 
-    // Use capture phase to catch scroll events from nested divs
-    window.addEventListener('scroll', handleScroll, true);
-    // Also catch mouse wheel and touch moves for immediate feedback
+    window.addEventListener('scroll', handleScroll, { passive: true });
     window.addEventListener('wheel', handleScroll, { passive: true });
     window.addEventListener('touchmove', handleScroll, { passive: true });
 
     return () => {
-      window.removeEventListener('scroll', handleScroll, true);
+      window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('wheel', handleScroll);
       window.removeEventListener('touchmove', handleScroll);
     };
