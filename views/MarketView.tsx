@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import AdsCarousel from '../components/AdsCarousel';
 import { compressImage } from '../lib/imageUtils';
 import GuestCTA from '../components/GuestCTA';
-import { PullToRefresh } from '../components/PullToRefresh';
+import { useFocusEffect } from '@react-navigation/native';
 import { persistence, PersistenceKey } from '../lib/persistence';
 
 const STATES = [
@@ -175,6 +175,12 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
     const handleRefresh = async () => {
         await Promise.all([fetchAds(), fetchStores()]);
     };
+
+    useFocusEffect(
+        React.useCallback(() => {
+            handleRefresh();
+        }, [])
+    );
 
     useEffect(() => {
         handleRefresh();
@@ -397,7 +403,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
 
         return (
             <div className="absolute inset-0 z-[100] bg-[#0F0A05] flex flex-col animate-in slide-in-from-right duration-300">
-                <div className="flex-1 overflow-y-auto pb-32 hide-scrollbar">
+                <div className="flex-1 overflow-y-auto pb-32 hide-scrollbar" style={{ flex: 1 }}>
                     {/* 1. HERO IMAGE PREMIUM */}
                     <div className="relative">
                         {/* Action Buttons Top */}
@@ -925,7 +931,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
     const highlights = publishedAds.length > 0 ? [...publishedAds].sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 4) : [];
 
     return (
-        <PullToRefresh onRefresh={handleRefresh} className="bg-[#0F0A05]">
+        <div className="flex-1 bg-[#0F0A05] overflow-y-auto">
         <div className="min-h-screen pb-60 relative bg-[#0F0A05]">
             {/* Header Sticky Premium */}
             <div className="sticky top-0 z-40 bg-[#0F0A05]/90 backdrop-blur-xl border-b border-white/5 pt-12 pb-4 shadow-2xl">
@@ -1151,7 +1157,7 @@ const MarketView: React.FC<MarketViewProps> = ({ user, forceShowWizard = false, 
             {/* Espaço extra para evitar que o scroll trave no final no iOS */}
             <div className="h-16" aria-hidden="true" />
         </div>
-    </PullToRefresh>
+        </div>
     );
 };
 

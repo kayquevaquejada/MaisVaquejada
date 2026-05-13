@@ -15,6 +15,7 @@ interface LoginViewProps {
 
 const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPassword, onRecoveryAssisted, onTerms }) => {
   const [loading, setLoading] = useState(false);
+  const isLoggingIn = React.useRef(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,9 +78,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
         
         let redirectTo = window.location.origin + '/auth/callback';
         if (isNative) {
-            redirectTo = platform === 'android' 
-              ? 'com.maisvaquejada.app://auth/callback' 
-              : 'maisvaquejada://auth/callback';
+            redirectTo = 'com.maisvaquejada.app://login-callback';
         }
 
         const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
@@ -109,6 +108,8 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
   };
 
   const handleGoogleLogin = async () => {
+    if (googleLoading || loading || isLoggingIn.current) return;
+    isLoggingIn.current = true;
     setGoogleLoading(true);
     setError(null);
     try {
@@ -117,8 +118,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
       
       let redirectTo = window.location.origin + '/auth/callback';
       if (isNative) {
-        // Use the same scheme for both platforms as it's the one whitelisted in Supabase
-        redirectTo = 'maisvaquejada://auth/callback';
+        redirectTo = 'com.maisvaquejada.app://login-callback';
       }
 
       if (isNative) {
@@ -146,11 +146,13 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
         });
         if (error) throw error;
       }
+      console.log('Google Login: Redirecionando para:', redirectTo);
     } catch (err: any) {
       console.error('Erro na autenticação Google');
       setError(err.message || 'Erro ao entrar com Google');
     } finally {
       setGoogleLoading(false);
+      isLoggingIn.current = false;
     }
   };
 

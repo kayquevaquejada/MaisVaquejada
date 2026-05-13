@@ -4,7 +4,8 @@ import { supabase } from '../lib/supabase';
 import SponsorMarquee from '../components/SponsorMarquee';
 import AdsCarousel from '../components/AdsCarousel';
 import GuestCTA from '../components/GuestCTA';
-import { PullToRefresh } from '../components/PullToRefresh';
+import { useFocusEffect } from '@react-navigation/native';
+
 
 const TABS = ['RESULTADOS', 'NOTÍCIAS'];
 
@@ -95,6 +96,12 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
     const interval = setInterval(fetchTransmissions, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      handleRefresh();
+    }, [])
+  );
 
   React.useEffect(() => {
     fetchNewsAndResults();
@@ -270,7 +277,7 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
 
   // ---- LISTA PRINCIPAL ----
   return (
-    <PullToRefresh onRefresh={handleRefresh} className="bg-background-dark">
+    <div className="flex-1 bg-background-dark overflow-y-auto">
       <div className="pb-24">
 
       {/* ===== BOTÃO TV +VAQUEJADA — FIXO E EM DESTAQUE ===== */}
@@ -612,7 +619,7 @@ const NewsView: React.FC<NewsViewProps> = ({ user }) => {
         </div>
       )}
       </div>
-    </PullToRefresh>
+    </div>
   );
 };
 

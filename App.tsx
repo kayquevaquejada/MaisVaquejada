@@ -296,6 +296,8 @@ const App: React.FC = () => {
   const [toast, setToast] = useState<string | null>(null);
   const isFetchingProfile = useRef(false);
 
+  const isProcessingDeepLink = useRef(false);
+
   const handleNav = (view: View, { username, eventData, resultId, mode, e }: { username?: string, eventData?: any, resultId?: string, mode?: 'FEED' | 'STORY', e?: any } = {}) => {
     setCurrentView(view);
     setProfileUsername(username || null);
@@ -502,14 +504,6 @@ const App: React.FC = () => {
       
       try {
         
-        // Limpar sessão em nova instalação do app (evita restaurar login antigo)
-        const marker = await Preferences.get({ key: 'app_installed_marker' });
-        if (!marker.value) {
-          await supabase.auth.signOut();
-          localStorage.clear();
-          sessionStorage.clear();
-          await Preferences.set({ key: 'app_installed_marker', value: 'true' });
-        }
         
 
         // DETECÇÃO UNIVERSAL DE CALLBACK (Apple/Google)
@@ -631,6 +625,11 @@ const App: React.FC = () => {
     }
 
     const handleDeepLink = async (url: string) => {
+      if (isProcessingDeepLink.current) {
+        console.log('[App] Deep Link já está sendo processado, ignorando...');
+        return;
+      }
+      isProcessingDeepLink.current = true;
       console.log('[App] Processando Deep Link:', url);
       
       const processedUrl = url.replace('#', '?');
@@ -683,6 +682,8 @@ const App: React.FC = () => {
             else setCurrentView(View.LOGIN);
           }, 1500);
         }
+      } finally {
+        isProcessingDeepLink.current = false;
       }
     };
 

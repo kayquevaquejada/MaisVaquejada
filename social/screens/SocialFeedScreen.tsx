@@ -19,7 +19,7 @@ import { supabase } from '../../lib/supabase';
 import { SocialService } from '../services/SocialService';
 import { useCall } from '../../context/CallContext';
 import GuestCTA from '../../components/GuestCTA';
-import { PullToRefresh } from '../../components/PullToRefresh';
+import { useFocusEffect } from '@react-navigation/native';
 
 interface SocialFeedScreenProps {
   user: any;
@@ -63,7 +63,14 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
   const [editLocation, setEditLocation] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
 
+  useFocusEffect(
+    React.useCallback(() => {
+      refresh();
+    }, [refresh])
+  );
+
   // Persistence: Load overlays state
+
   useEffect(() => {
     const loadOverlays = async () => {
       if (!user?.id) return;
@@ -262,7 +269,7 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
 
   return (
     <div className="bg-background-dark min-h-screen font-display relative">
-      <PullToRefresh onRefresh={refresh} className="bg-background-dark">
+    <div className="flex-1 bg-background-dark overflow-y-auto">
         <div className="bg-background-dark min-h-full font-display relative">
       {/* Header */}
       <header className="flex justify-between items-center px-4 py-3 sticky top-0 z-50 bg-background-dark/95 backdrop-blur-md border-b border-white/5">
@@ -364,7 +371,7 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
         )}
       </main>
         </div>
-      </PullToRefresh>
+        </div>
 
       {/* Overlays */}
       {activeStoryIndex !== null && (

@@ -7,8 +7,7 @@ import CircuitPanel from '../components/CircuitPanel';
 import GuestCTA from '../components/GuestCTA';
 import { VaquejadaCalendar } from '../components/VaquejadaCalendar';
 import { CalendarEventsSheet } from '../components/CalendarEventsSheet';
-import { PullToRefresh } from '../components/PullToRefresh';
-
+import { useFocusEffect } from '@react-navigation/native';
 const MOCK_CIRCUITS: Circuito[] = [
   { id: 'todos', nome: 'Todos os circuitos', slug: 'todos', ativo: true, destaque: true, ordem: 0 },
   { id: 'alqm', nome: 'ALQM', slug: 'alqm', ativo: true, destaque: true, ordem: 1 },
@@ -179,6 +178,12 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt, u
     }
   };
 
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchData();
+    }, [])
+  );
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -309,7 +314,7 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt, u
   };
 
   return (
-    <PullToRefresh onRefresh={fetchData} className="bg-background-dark">
+    <div className="flex-1 bg-background-dark overflow-y-auto">
       <div className="px-6 py-6 pb-40 min-h-screen bg-background-dark">
       <header className="mb-6 -mx-6 px-6">
         <div className="flex justify-between items-center mb-6">
@@ -519,7 +524,7 @@ const EventsView: React.FC<EventsViewProps> = ({ publicEventId, onLoginPrompt, u
         />
       )}
       </div>
-    </PullToRefresh>
+    </div>
   );
 };
 

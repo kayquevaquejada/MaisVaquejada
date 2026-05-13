@@ -5,7 +5,8 @@ import { createNotification } from '../lib/notifications';
 import { compressImage } from '../lib/imageUtils';
 import { Preferences } from '@capacitor/preferences';
 import { SocialService } from '../social/services/SocialService';
-import { PullToRefresh } from '../components/PullToRefresh';
+import { useFocusEffect } from '@react-navigation/native';
+
 import { useNotifications } from '../social/hooks/useNotifications';
 import { NotificationsPanel } from '../social/components/NotificationsPanel';
 
@@ -337,29 +338,35 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
         }
     };
 
-    useEffect(() => {
-        // Safety timeout: Never stay loading more than 3 seconds
-        const safetyTimer = setTimeout(() => {
-            setLoading(false);
-        }, 3000);
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchData();
+    }, [])
+  );
 
-        const loadTabDraft = async () => {
-            if (!user?.id) return;
-            try {
-                const { value: savedTab } = await Preferences.get({ key: `profile_tab_draft_${user.id}` });
-                if (savedTab) setActiveTab(savedTab as TabType);
-            } catch (e) {}
-        };
+  useEffect(() => {
+    // Safety timeout: Never stay loading more than 3 seconds
+    const safetyTimer = setTimeout(() => {
+        setLoading(false);
+    }, 3000);
 
-        if (user || targetUsername) {
-            fetchData();
-            if (isMyProfile) loadTabDraft();
-        } else {
-            setLoading(false);
-        }
+    const loadTabDraft = async () => {
+        if (!user?.id) return;
+        try {
+            const { value: savedTab } = await Preferences.get({ key: `profile_tab_draft_${user.id}` });
+            if (savedTab) setActiveTab(savedTab as TabType);
+        } catch (e) {}
+    };
 
-        return () => clearTimeout(safetyTimer);
-    }, [isMyProfile, targetUsername, user?.id]);
+    if (user || targetUsername) {
+        fetchData();
+        if (isMyProfile) loadTabDraft();
+    } else {
+        setLoading(false);
+    }
+
+    return () => clearTimeout(safetyTimer);
+  }, [isMyProfile, targetUsername, user?.id]);
 
     useEffect(() => {
         if (isMyProfile && user?.id) {
@@ -435,7 +442,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
     };
 
     return (
-        <PullToRefresh onRefresh={fetchData} className="bg-background-dark">
+        <div className="flex-1 bg-background-dark overflow-y-auto">
+
             <div className="min-h-full bg-background-dark text-white font-sans pb-24 font-display">
             {/* Header / Actions */}
             <div className="px-6 pt-[env(safe-area-inset-top,12px)] pb-4 flex justify-between items-center sticky top-0 bg-background-dark/90 backdrop-blur-md z-10 border-b border-white/5" style={{paddingTop: 'max(env(safe-area-inset-top, 0px), 44px)'}}>
@@ -970,7 +978,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                 />
             )}
             </div>
-        </PullToRefresh>
+        </div>
     );
 };
 

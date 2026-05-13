@@ -5,9 +5,9 @@ import { useAuction } from '../hooks/useAuction';
 import AuctionBanner from '../components/AuctionBanner';
 import AuctionFilterChips from '../components/AuctionFilterChips';
 import RealtimeCountdown from '../components/RealtimeCountdown';
-import { PullToRefresh } from '../../components/PullToRefresh';
-import { supabase } from '../../lib/supabase';
 
+import { supabase } from '../../lib/supabase';
+import { useFocusEffect } from '@react-navigation/native';
 interface AuctionHomeProps {
     user: User | null;
     auctionUser: AuctionUser | null;
@@ -31,6 +31,12 @@ const AuctionHome: React.FC<AuctionHomeProps> = ({
 }) => {
     const { auctions, loading, fetchActiveAuctions } = useAuction();
     const [activeFilter, setActiveFilter] = useState('live');
+
+    useFocusEffect(
+        React.useCallback(() => {
+            handleRefresh();
+        }, [])
+    );
 
     React.useEffect(() => {
         // Force refresh user status on mount to ensure latest permissions
@@ -122,7 +128,7 @@ const AuctionHome: React.FC<AuctionHomeProps> = ({
     const featuredAuction = auctions.find(a => a.status === 'active');
 
     return (
-        <PullToRefresh onRefresh={handleRefresh} className="bg-[#0F0A05]">
+        <div className="flex-1 bg-[#0F0A05] overflow-y-auto">
             <div className="min-h-full pb-40 relative bg-[#0F0A05]">
             <header className="px-6 pt-12 pb-8 flex items-center justify-between sticky top-0 bg-[#0F0A05]/80 backdrop-blur-xl z-50">
                 <div>
@@ -277,7 +283,7 @@ const AuctionHome: React.FC<AuctionHomeProps> = ({
             {/* Espaço extra para evitar que o scroll trave no final no iOS */}
             <div className="h-16" aria-hidden="true" />
         </div>
-    </PullToRefresh>
+        </div>
     );
 };
 

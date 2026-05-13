@@ -10,6 +10,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>maisvaquejada</string>
+				<string>com.maisvaquejada.app</string>
 			</array>
 		</dict>
 	</array>
