@@ -632,55 +632,57 @@ const App: React.FC = () => {
       isProcessingDeepLink.current = true;
       console.log('[App] Processando Deep Link:', url);
       
-      const processedUrl = url.replace('#', '?');
-      
-      if (processedUrl.includes('auth/callback') || processedUrl.includes('access_token=') || processedUrl.includes('code=')) {
-        setCurrentView(View.AUTH_CALLBACK);
-        setInitializing(false);
+      try {
+        const processedUrl = url.replace('#', '?');
         
-        try {
-          await Browser.close();
-        } catch (e) {
-          console.warn('Erro ao fechar Browser:', e);
-        }
-        await new Promise(r => setTimeout(r, 800));
-
-        let code = null;
-        let accessToken = null;
-        try {
-          const urlObj = new URL(processedUrl);
-          code = urlObj.searchParams.get('code');
-          accessToken = urlObj.searchParams.get('access_token');
-        } catch (e) {
-          const codeMatch = processedUrl.match(/[?&]code=([^&#]+)/);
-          code = codeMatch ? codeMatch[1] : null;
-          const tokenMatch = processedUrl.match(/[?&]access_token=([^&#]+)/);
-          accessToken = tokenMatch ? tokenMatch[1] : null;
-        }
-
-        if (code) {
-          console.log('[App] Deep Link: Processando código PKCE...');
+        if (processedUrl.includes('auth/callback') || processedUrl.includes('access_token=') || processedUrl.includes('code=')) {
+          setCurrentView(View.AUTH_CALLBACK);
+          setInitializing(false);
+          
           try {
-            const { error } = await supabase.auth.exchangeCodeForSession(code);
-            if (error) throw error;
-          } catch (err: any) {
-             console.error('[App] Erro na troca de código PKCE:', err);
-             setToast(`Erro de autenticação: ${err.message || 'Código inválido ou expirado'}`);
-             setCurrentView(View.LOGIN);
-             setInitializing(false);
-             return;
+            await Browser.close();
+          } catch (e) {
+            console.warn('Erro ao fechar Browser:', e);
           }
-        }
-        
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          await fetchProfile(session.user.id, session.user);
-        } else {
-          setTimeout(async () => {
-            const { data: retry } = await supabase.auth.getSession();
-            if (retry.session?.user) await fetchProfile(retry.session.user.id, retry.session.user);
-            else setCurrentView(View.LOGIN);
-          }, 1500);
+          await new Promise(r => setTimeout(r, 800));
+
+          let code = null;
+          let accessToken = null;
+          try {
+            const urlObj = new URL(processedUrl);
+            code = urlObj.searchParams.get('code');
+            accessToken = urlObj.searchParams.get('access_token');
+          } catch (e) {
+            const codeMatch = processedUrl.match(/[?&]code=([^&#]+)/);
+            code = codeMatch ? codeMatch[1] : null;
+            const tokenMatch = processedUrl.match(/[?&]access_token=([^&#]+)/);
+            accessToken = tokenMatch ? tokenMatch[1] : null;
+          }
+
+          if (code) {
+            console.log('[App] Deep Link: Processando código PKCE...');
+            try {
+              const { error } = await supabase.auth.exchangeCodeForSession(code);
+              if (error) throw error;
+            } catch (err: any) {
+               console.error('[App] Erro na troca de código PKCE:', err);
+               setToast(`Erro de autenticação: ${err.message || 'Código inválido ou expirado'}`);
+               setCurrentView(View.LOGIN);
+               setInitializing(false);
+               return;
+            }
+          }
+          
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            await fetchProfile(session.user.id, session.user);
+          } else {
+            setTimeout(async () => {
+              const { data: retry } = await supabase.auth.getSession();
+              if (retry.session?.user) await fetchProfile(retry.session.user.id, retry.session.user);
+              else setCurrentView(View.LOGIN);
+            }, 1500);
+          }
         }
       } finally {
         isProcessingDeepLink.current = false;
