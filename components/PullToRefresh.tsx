@@ -131,11 +131,12 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({ onRefresh, childre
   return (
     <div
       ref={containerRef}
-      className={`relative overflow-y-auto flex-1 w-full hide-scrollbar flex flex-col ${className ?? ''}`}
+      className={`relative overflow-y-auto flex-1 w-full hide-scrollbar flex flex-col min-h-0 ${className ?? ''}`}
       style={{
         overscrollBehaviorY: 'auto', 
         WebkitOverflowScrolling: 'touch',
         touchAction: 'pan-y', 
+        height: '100%'
       }}
     >
       {/* Pull Indicator */}

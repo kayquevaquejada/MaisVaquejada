@@ -20,23 +20,29 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, user, appSettings }) => {
       if (isMouseOver) return;
 
       const currentScrollY = window.scrollY || 0;
-      // Also check nested scroll containers (like the one in App.tsx)
       const mainContainer = document.querySelector('.overflow-y-auto');
-      const containerScrollY = mainContainer ? mainContainer.scrollTop : 0;
-      const effectiveY = currentScrollY + containerScrollY;
-
+      const containerScrollTop = mainContainer ? mainContainer.scrollTop : 0;
+      const containerScrollHeight = mainContainer ? mainContainer.scrollHeight : 0;
+      const containerClientHeight = mainContainer ? mainContainer.clientHeight : 0;
+      
+      const effectiveY = currentScrollY + containerScrollTop;
       const diff = effectiveY - lastScrollY.current;
+
+      // Detect if we are at the bottom
+      const isAtBottom = mainContainer 
+        ? (containerScrollTop + containerClientHeight >= containerScrollHeight - 20)
+        : (window.innerHeight + currentScrollY >= document.documentElement.scrollHeight - 20);
 
       if (Math.abs(diff) > scrollThreshold) {
         if (diff > 0) {
-          // Scrolling DOWN
+          // Scrolling DOWN - Hide only if NOT at bottom
           if (isExpanded) {
             setIsExpanded(false);
-          } else {
+          } else if (!isAtBottom) {
             setIsVisible(false);
           }
         } else {
-          // Scrolling UP
+          // Scrolling UP - Always show
           setIsVisible(true);
         }
         lastScrollY.current = effectiveY;
