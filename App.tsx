@@ -507,12 +507,16 @@ const App: React.FC = () => {
         
 
         // DETECÇÃO UNIVERSAL DE CALLBACK (Apple/Google)
-        const launchUrl = await CapApp.getLaunchUrl();
+        const launchUrl = await Promise.race([
+          CapApp.getLaunchUrl(),
+          new Promise<null>(r => setTimeout(() => r(null), 1000))
+        ]);
         const currentUrl = window.location.href;
+        const currentPathname = window.location.pathname;
         
         const hasAuthParams = currentUrl.includes('access_token') || 
                             currentUrl.includes('code=') ||
-                            currentUrl.pathname?.startsWith('/auth/callback') ||
+                            currentPathname?.startsWith('/auth/callback') ||
                             launchUrl?.url.includes('auth/callback');
 
         if (hasAuthParams || launchUrl?.url) {
@@ -566,6 +570,13 @@ const App: React.FC = () => {
         isInitializedRef.current = true;
       }
     };
+
+    const urlOpenListener = CapApp.addListener('appUrlOpen', ({ url }) => handleDeepLink(url));
+    
+    const customLinkListener = (e: any) => {
+      if (e.detail?.url) handleDeepLink(e.detail.url);
+    };
+    window.addEventListener('arena_handle_deeplink', customLinkListener);
 
     startup();
 
@@ -689,12 +700,6 @@ const App: React.FC = () => {
       }
     };
 
-    const urlOpenListener = CapApp.addListener('appUrlOpen', ({ url }) => handleDeepLink(url));
-    
-    const customLinkListener = (e: any) => {
-      if (e.detail?.url) handleDeepLink(e.detail.url);
-    };
-    window.addEventListener('arena_handle_deeplink', customLinkListener);
 
     return () => {
       isMountedRef.current = false;
