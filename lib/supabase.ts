@@ -46,7 +46,7 @@ try {
       storage: CapacitorPreferencesStorage,
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: true,
+      detectSessionInUrl: !Capacitor.isNativePlatform(),
       flowType: 'pkce'
     }
   });

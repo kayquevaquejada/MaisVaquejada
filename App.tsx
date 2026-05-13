@@ -690,7 +690,17 @@ const App: React.FC = () => {
           } catch (e) {
             console.warn('[DeepLink] Erro ao fechar Browser:', e);
           }
-          await new Promise(r => setTimeout(r, 800));
+          
+          // No iOS, aguardamos um pouco mais para o storage sincronizar
+          await new Promise(r => setTimeout(r, Capacitor.getPlatform() === 'ios' ? 1500 : 800));
+
+          // Verificação imediata: Se já houver sessão, não precisamos trocar o código
+          const { data: { session: preCheckSession } } = await supabase.auth.getSession();
+          if (preCheckSession?.user) {
+            console.log('[DeepLink] Sessão já identificada antes da troca. Prosseguindo...');
+            await fetchProfile(preCheckSession.user.id, preCheckSession.user);
+            return;
+          }
 
           let code = null;
           let accessToken = null;
@@ -707,20 +717,39 @@ const App: React.FC = () => {
 
           if (code) {
             console.log('[App] Deep Link: Processando código PKCE...');
-            try {
-              const { error } = await supabase.auth.exchangeCodeForSession(code);
-              if (error) {
-                // Fallback: verificar se já existe sessão mesmo com erro (ex: duplo processamento)
-                const { data: { session: retrySession } } = await supabase.auth.getSession();
-                if (retrySession?.user) {
-                   console.log('[DeepLink] Erro na troca de código, mas sessão já ativa. Prosseguindo...');
-                } else {
-                   throw error;
+            
+            // Retry logic specifically for iOS / Native to handle storage sync issues
+            let exchangeSuccessful = false;
+            let lastError = null;
+            
+            for (let attempt = 0; attempt < 3; attempt++) {
+              try {
+                const { error } = await supabase.auth.exchangeCodeForSession(code);
+                if (!error) {
+                  exchangeSuccessful = true;
+                  break;
                 }
+                lastError = error;
+                
+                // If it's already active, we consider it a success
+                const { data: { session: checkSession } } = await supabase.auth.getSession();
+                if (checkSession?.user) {
+                  exchangeSuccessful = true;
+                  break;
+                }
+                
+                console.warn(`[DeepLink] Tentativa ${attempt + 1} de troca de código falhou:`, error.message);
+                await new Promise(r => setTimeout(r, 1000)); // Espera 1s antes de tentar novamente
+              } catch (err: any) {
+                lastError = err;
+                console.warn(`[DeepLink] Erro na tentativa ${attempt + 1}:`, err.message);
+                await new Promise(r => setTimeout(r, 1000));
               }
-            } catch (err: any) {
-               console.error('[DeepLink] Erro na troca de código PKCE:', err);
-               setToast(`Erro de autenticação: ${err.message || 'Código inválido ou expirado'}`);
+            }
+
+            if (!exchangeSuccessful) {
+               console.error('[DeepLink] Falha total na troca de código PKCE:', lastError);
+               setToast(`Erro de autenticação: ${lastError?.message || 'Código inválido ou expirado'}`);
                setCurrentView(View.LOGIN);
                setInitializing(false);
                return;

@@ -109,6 +109,14 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
 
   const handleGoogleLogin = async () => {
     if (googleLoading || loading || isLoggingIn.current) return;
+    
+    // Check if already logged in (robustness for iOS return)
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      onLogin(session.user);
+      return;
+    }
+
     isLoggingIn.current = true;
     setGoogleLoading(true);
     setError(null);
@@ -134,6 +142,9 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
         });
         if (error) throw error;
         if (data?.url) {
+          if (platform === 'ios') {
+            await new Promise(r => setTimeout(r, 500));
+          }
           await Browser.open({ url: data.url });
         }
       } else {
