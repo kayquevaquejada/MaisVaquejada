@@ -85,67 +85,85 @@ const AuthCallback: React.FC<{ onComplete: (userId: string, authUser: any) => vo
     setLogs(prev => [...prev.slice(-6), msg]);
   };
 
-  const hasHandledAuth = React.useRef(false);
+  const isProcessingCallback = React.useRef(false);
 
   const handleAuth = async () => {
-    if (hasHandledAuth.current) return;
-    hasHandledAuth.current = true;
+    if (isProcessingCallback.current) return;
+    isProcessingCallback.current = true;
 
-    if (Capacitor.isNativePlatform()) {
-      addLog('Aguardando sincronização nativa (Deep Link)...');
+    const isNative = Capacitor.isNativePlatform();
+    addLog(`Plataforma detectada: ${isNative ? 'Native' : 'Web'}`);
+
+    if (isNative) {
+      addLog('Aguardando sincronização nativa via Deep Link...');
+      // No Mobile, o App.tsx handleDeepLink cuida disso
       return;
     }
 
     try {
-      addLog('Verificando URL de callback...');
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      addLog('Processando callback WEB...');
+      const url = window.location.href;
+      addLog(`URL: ${url}`);
+
       const queryParams = new URLSearchParams(window.location.search);
-      
-      const accessToken = hashParams.get('access_token') || queryParams.get('access_token');
       const code = queryParams.get('code');
 
-      if (code) {
-        addLog('Código PKCE encontrado no Web. Trocando por sessão...');
-        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) throw error;
-        
-        if (data?.session?.user) {
-          addLog('Troca PKCE concluída com sucesso!');
-          onComplete(data.session.user.id, data.session.user);
-          return;
-        }
-      }
-
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (currentUser) {
-        addLog('Usuário detectado. Carregando dados...');
-        onComplete(currentUser.id, currentUser);
+      // 1. Verificar se já existe uma sessão ANTES de tentar trocar o código
+      const { data: { session: existingSession } } = await supabase.auth.getSession();
+      if (existingSession?.user) {
+        addLog('Sessão ativa detectada antes da troca de código.');
+        onComplete(existingSession.user.id, existingSession.user);
         return;
       }
 
-      addLog('Aguardando sessão do Supabase...');
-      for (let i = 0; i < 25; i++) {
-        await new Promise(r => setTimeout(r, 300));
-        const { data: sessionData } = await supabase.auth.getSession();
-        
-        if (sessionData?.session?.user) {
+      if (code) {
+        addLog('Código PKCE encontrado. Trocando por sessão...');
+        try {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) {
+            // Se falhar por PKCE verifier mas já tiver sessão, ignoramos o erro
+            const { data: { session: retrySession } } = await supabase.auth.getSession();
+            if (retrySession?.user) {
+              addLog('Erro na troca, mas sessão já está ativa. Prosseguindo...');
+              onComplete(retrySession.user.id, retrySession.user);
+              return;
+            }
+            throw error;
+          }
+          
+          if (data?.session?.user) {
+            addLog('Troca PKCE concluída com sucesso!');
+            onComplete(data.session.user.id, data.session.user);
+            return;
+          }
+        } catch (exchangeError: any) {
+          addLog(`Erro na troca de código: ${exchangeError.message}`);
+          // Fallback: Verificar se a sessão apareceu mesmo com erro
+          const { data: { session: finalSession } } = await supabase.auth.getSession();
+          if (finalSession?.user) {
+            addLog('Sessão recuperada após erro de troca.');
+            onComplete(finalSession.user.id, finalSession.user);
+            return;
+          }
+          throw exchangeError;
+        }
+      }
+
+      // Loop de aguardo de sessão (fallback)
+      addLog('Aguardando sincronização de sessão...');
+      for (let i = 0; i < 15; i++) {
+        await new Promise(r => setTimeout(r, 400));
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
           addLog('Sessão sincronizada!');
-          onComplete(sessionData.session.user.id, sessionData.session.user);
+          onComplete(session.user.id, session.user);
           return;
         }
       }
 
-      addLog('Tentativa final de recuperação de sessão...');
-      const { data: lastCheck } = await supabase.auth.getSession();
-      
-      if (lastCheck?.session?.user) {
-        onComplete(lastCheck.session.user.id, lastCheck.session.user);
-      } else {
-        throw new Error('Não foi possível identificar sua sessão de login. Por favor, tente entrar novamente.');
-      }
+      throw new Error('Não foi possível identificar sua sessão. Por favor, tente logar novamente.');
     } catch (err: any) {
-      console.error('Erro no processamento da autenticação');
-      addLog('Falha na sincronização final');
+      console.error('[AuthCallback] Erro fatal:', err);
       setErrorMsg(err.message || 'Erro ao processar login');
       setTimeout(() => onFail(), 5000);
     }
@@ -636,24 +654,41 @@ const App: React.FC = () => {
     }
 
     const handleDeepLink = async (url: string) => {
+      const isNative = Capacitor.isNativePlatform();
+      console.log(`[DeepLink] Recebido: ${url} (Native: ${isNative})`);
+
       if (isProcessingDeepLink.current) {
-        console.log('[App] Deep Link já está sendo processado, ignorando...');
+        console.log('[DeepLink] Já está sendo processado, ignorando...');
         return;
       }
+
+      // NO MOBILE, ignoramos URLs que começam com https:// se forem destinadas ao web callback
+      if (isNative && url.startsWith('https://')) {
+        console.log('[DeepLink] Ignorando URL HTTPS no ambiente nativo.');
+        return;
+      }
+
+      // NO MOBILE, processamos apenas o nosso esquema nativo
+      if (isNative && !url.includes('com.maisvaquejada.app://')) {
+        console.log('[DeepLink] URL não pertence ao esquema do app, ignorando.');
+        return;
+      }
+
       isProcessingDeepLink.current = true;
-      console.log('[App] Processando Deep Link:', url);
       
       try {
         const processedUrl = url.replace('#', '?');
+        console.log(`[DeepLink] Processando URL: ${processedUrl}`);
         
-        if (processedUrl.includes('auth/callback') || processedUrl.includes('access_token=') || processedUrl.includes('code=')) {
+        if (processedUrl.includes('login-callback') || processedUrl.includes('access_token=') || processedUrl.includes('code=')) {
+          console.log('[DeepLink] Match detectado. Mudando para AUTH_CALLBACK...');
           setCurrentView(View.AUTH_CALLBACK);
           setInitializing(false);
           
           try {
             await Browser.close();
           } catch (e) {
-            console.warn('Erro ao fechar Browser:', e);
+            console.warn('[DeepLink] Erro ao fechar Browser:', e);
           }
           await new Promise(r => setTimeout(r, 800));
 
@@ -674,9 +709,17 @@ const App: React.FC = () => {
             console.log('[App] Deep Link: Processando código PKCE...');
             try {
               const { error } = await supabase.auth.exchangeCodeForSession(code);
-              if (error) throw error;
+              if (error) {
+                // Fallback: verificar se já existe sessão mesmo com erro (ex: duplo processamento)
+                const { data: { session: retrySession } } = await supabase.auth.getSession();
+                if (retrySession?.user) {
+                   console.log('[DeepLink] Erro na troca de código, mas sessão já ativa. Prosseguindo...');
+                } else {
+                   throw error;
+                }
+              }
             } catch (err: any) {
-               console.error('[App] Erro na troca de código PKCE:', err);
+               console.error('[DeepLink] Erro na troca de código PKCE:', err);
                setToast(`Erro de autenticação: ${err.message || 'Código inválido ou expirado'}`);
                setCurrentView(View.LOGIN);
                setInitializing(false);

@@ -116,13 +116,14 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
       const isNative = Capacitor.isNativePlatform();
       const platform = Capacitor.getPlatform();
       
-      let redirectTo = window.location.origin + '/auth/callback';
-      if (isNative) {
-        redirectTo = 'com.maisvaquejada.app://login-callback';
-      }
+      const redirectTo = isNative
+        ? 'com.maisvaquejada.app://login-callback'
+        : `${window.location.origin}/auth/callback`;
+
+      console.log(`[GoogleLogin] Plataforma: ${isNative ? 'Native (' + platform + ')' : 'Web'}`);
+      console.log(`[GoogleLogin] RedirectURL: ${redirectTo}`);
 
       if (isNative) {
-        console.log('Google Login: Iniciando fluxo NATIVO', platform);
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
@@ -136,7 +137,6 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
           await Browser.open({ url: data.url });
         }
       } else {
-        console.log('Google Login: Iniciando fluxo WEB');
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
@@ -146,7 +146,6 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSignUp, onForgotPasswo
         });
         if (error) throw error;
       }
-      console.log('Google Login: Redirecionando para:', redirectTo);
     } catch (err: any) {
       console.error('Erro na autenticação Google');
       setError(err.message || 'Erro ao entrar com Google');
