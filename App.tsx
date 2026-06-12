@@ -704,21 +704,36 @@ const App: React.FC = () => {
 
           let code = null;
           let accessToken = null;
+          let refreshToken = null;
           try {
             const urlObj = new URL(processedUrl);
             code = urlObj.searchParams.get('code');
             accessToken = urlObj.searchParams.get('access_token');
+            refreshToken = urlObj.searchParams.get('refresh_token');
           } catch (e) {
             const codeMatch = processedUrl.match(/[?&]code=([^&#]+)/);
             code = codeMatch ? codeMatch[1] : null;
             const tokenMatch = processedUrl.match(/[?&]access_token=([^&#]+)/);
             accessToken = tokenMatch ? tokenMatch[1] : null;
+            const refreshMatch = processedUrl.match(/[?&]refresh_token=([^&#]+)/);
+            refreshToken = refreshMatch ? refreshMatch[1] : null;
           }
 
-          if (code) {
+          if (accessToken) {
+            console.log('[App] Deep Link: Processando tokens (Implicit Flow)...');
+            const { error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || ''
+            });
+            if (error) {
+              console.error('[DeepLink] Erro ao definir sessão via token:', error);
+              setToast(`Erro de sessão: ${error.message}`);
+              setCurrentView(View.LOGIN);
+              return;
+            }
+          } else if (code) {
             console.log('[App] Deep Link: Processando código PKCE...');
             
-            // Retry logic specifically for iOS / Native to handle storage sync issues
             let exchangeSuccessful = false;
             let lastError = null;
             
@@ -730,28 +745,22 @@ const App: React.FC = () => {
                   break;
                 }
                 lastError = error;
-                
-                // If it's already active, we consider it a success
                 const { data: { session: checkSession } } = await supabase.auth.getSession();
                 if (checkSession?.user) {
                   exchangeSuccessful = true;
                   break;
                 }
-                
-                console.warn(`[DeepLink] Tentativa ${attempt + 1} de troca de código falhou:`, error.message);
-                await new Promise(r => setTimeout(r, 1000)); // Espera 1s antes de tentar novamente
+                await new Promise(r => setTimeout(r, 800)); 
               } catch (err: any) {
                 lastError = err;
-                console.warn(`[DeepLink] Erro na tentativa ${attempt + 1}:`, err.message);
-                await new Promise(r => setTimeout(r, 1000));
+                await new Promise(r => setTimeout(r, 800));
               }
             }
 
             if (!exchangeSuccessful) {
-               console.error('[DeepLink] Falha total na troca de código PKCE:', lastError);
-               setToast(`Erro de autenticação: ${lastError?.message || 'Código inválido ou expirado'}`);
+               console.error('[DeepLink] Falha total na troca PKCE:', lastError);
+               setToast(`Erro de autenticação: ${lastError?.message || 'Falha no login'}`);
                setCurrentView(View.LOGIN);
-               setInitializing(false);
                return;
             }
           }
@@ -760,11 +769,7 @@ const App: React.FC = () => {
           if (session?.user) {
             await fetchProfile(session.user.id, session.user);
           } else {
-            setTimeout(async () => {
-              const { data: retry } = await supabase.auth.getSession();
-              if (retry.session?.user) await fetchProfile(retry.session.user.id, retry.session.user);
-              else setCurrentView(View.LOGIN);
-            }, 1500);
+            setCurrentView(View.LOGIN);
           }
         }
       } finally {
@@ -918,12 +923,12 @@ if (initializing) {
   return (
     <ErrorBoundary>
       <CallProvider userId={user?.id}>
-        <div className="min-h-screen flex flex-col bg-background-dark overflow-y-auto overflow-x-hidden">
+        <div className="h-screen w-screen flex flex-col bg-background-dark overflow-hidden">
           <UpdateManager />
-          <div className="flex-1 relative flex flex-col min-h-full">
+          <div className="flex-1 relative flex flex-col overflow-hidden">
             {/* Mobile-style Frame for Web */}
             <div 
-              className="flex-1 w-full max-w-md mx-auto relative flex flex-col bg-[#0F0A05] shadow-2xl lg:h-[90vh] lg:flex-none lg:my-auto lg:rounded-[40px] lg:border lg:border-white/5"
+              className="flex-1 w-full max-w-md mx-auto relative flex flex-col bg-[#0F0A05] shadow-2xl overflow-hidden lg:h-[90vh] lg:flex-none lg:my-auto lg:rounded-[40px] lg:border lg:border-white/5"
               style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
             >
               <ErrorBoundary>

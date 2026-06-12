@@ -33,6 +33,23 @@ const CapacitorPreferencesStorage = {
   },
 };
 
+// Adaptador ultra-rápido para iOS (híbrido localStorage + Preferences)
+const IOSHybridStorage = {
+  getItem: (key: string) => {
+    const local = localStorage.getItem(key);
+    if (local) return local;
+    return Preferences.get({ key }).then(r => r.value);
+  },
+  setItem: (key: string, value: string) => {
+    localStorage.setItem(key, value);
+    return Preferences.set({ key, value });
+  },
+  removeItem: (key: string) => {
+    localStorage.removeItem(key);
+    return Preferences.remove({ key });
+  }
+};
+
 // Inicialização segura
 let supabaseInstance: any;
 
@@ -41,13 +58,15 @@ try {
     throw new Error('Configurações do Supabase ausentes (VITE_SUPABASE_URL/KEY)');
   }
 
+  const isIOS = Capacitor.getPlatform() === 'ios';
+
   supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
-      storage: CapacitorPreferencesStorage,
+      storage: isIOS ? IOSHybridStorage as any : CapacitorPreferencesStorage,
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: !Capacitor.isNativePlatform(),
-      flowType: 'pkce'
+      flowType: isIOS ? 'implicit' : 'pkce'
     }
   });
   

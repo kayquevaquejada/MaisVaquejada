@@ -157,16 +157,24 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
   };
 
   const handleGoogleSignUp = async () => {
+    if (googleLoading || appleLoading || loading) return;
+
+    // Verifica se já logou (robustez para retorno do iOS)
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      onSuccess(session.user);
+      return;
+    }
+
     setGoogleLoading(true);
     setError(null);
     try {
       const isNative = Capacitor.isNativePlatform();
       const platform = Capacitor.getPlatform();
       
-      let redirectTo = window.location.origin + '/auth/callback';
-      if (isNative) {
-        redirectTo = 'maisvaquejada://auth/callback';
-      }
+      const redirectTo = isNative
+        ? 'com.maisvaquejada.app://login-callback'
+        : `${window.location.origin}/auth/callback`;
 
       if (isNative) {
         console.log('Google Sign-Up: Iniciando fluxo NATIVO', platform);
@@ -180,6 +188,9 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
         });
         if (error) throw error;
         if (data?.url) {
+          if (platform === 'ios') {
+            await new Promise(r => setTimeout(r, 500));
+          }
           await Browser.open({ url: data.url });
         }
       } else {
@@ -202,7 +213,15 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
   };
 
   const handleAppleSignUp = async () => {
-    if (appleLoading) return;
+    if (appleLoading || googleLoading || loading) return;
+
+    // Verifica se já logou
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      onSuccess(session.user);
+      return;
+    }
+
     setAppleLoading(true);
     setError(null);
     try {
@@ -226,12 +245,9 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
         if (authError) throw authError;
       } else {
         console.log('Apple Sign-Up: Iniciando fluxo WEB/Android');
-        let redirectTo = window.location.origin + '/auth/callback';
-        if (isNative) {
-            redirectTo = platform === 'android' 
-              ? 'com.maisvaquejada.app://auth/callback' 
-              : 'maisvaquejada://auth/callback';
-        }
+        const redirectTo = isNative
+          ? 'com.maisvaquejada.app://login-callback'
+          : `${window.location.origin}/auth/callback`;
 
         const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
           provider: 'apple',
@@ -243,6 +259,9 @@ const SignUpView: React.FC<SignUpViewProps> = ({ onBack, onSuccess }) => {
         if (oauthError) throw oauthError;
 
         if (isNative && data?.url) {
+            if (platform === 'ios') {
+              await new Promise(r => setTimeout(r, 500));
+            }
             await Browser.open({ url: data.url });
         }
       }

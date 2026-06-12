@@ -12,10 +12,24 @@
   --text-color: #ffffff;
 }
 
-html, body, #root {
-  min-height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: fixed;
+  top: 0;
+  left: 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.overflow-y-auto {
+  overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
 }
 

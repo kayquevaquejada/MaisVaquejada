@@ -16,11 +16,13 @@
 	},
 	"packageClassList": [
 		"SignInWithApple",
+		"PrivacyScreenPlugin",
 		"AppPlugin",
 		"CAPBrowserPlugin",
 		"CAPCameraPlugin",
 		"GeolocationPlugin",
 		"PreferencesPlugin",
-		"PushNotificationsPlugin"
+		"PushNotificationsPlugin",
+		"AppUpdatePlugin"
 	]
 }

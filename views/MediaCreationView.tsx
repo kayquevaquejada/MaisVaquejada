@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase';
 import { User } from '../types';
 import { useMediaUpload } from '../social/hooks/useMediaUpload';
 import { Preferences } from '@capacitor/preferences';
+import { Capacitor } from '@capacitor/core';
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 
 interface MediaCreationViewProps {
     user: User | null;
@@ -48,6 +50,56 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
     // Premium FX States
     const [isFlashing, setIsFlashing] = useState(false);
     const [previewAnim, setPreviewAnim] = useState(false);
+
+    const isNative = Capacitor.isNativePlatform();
+
+    const handleNativeCamera = async () => {
+        try {
+            const image = await Camera.getPhoto({
+                quality: 80,
+                allowEditing: false,
+                resultType: CameraResultType.Uri,
+                source: CameraSource.Camera
+            });
+            
+            if (image.webPath) {
+                const res = await fetch(image.webPath);
+                const blob = await res.blob();
+                setCapturedMedia({
+                    blob,
+                    url: image.webPath,
+                    type: 'image'
+                });
+                setStep('PREVIEW');
+            }
+        } catch (err) {
+            console.error('Error in native camera capture:', err);
+        }
+    };
+
+    const handleNativeGallery = async () => {
+        try {
+            const image = await Camera.getPhoto({
+                quality: 80,
+                allowEditing: false,
+                resultType: CameraResultType.Uri,
+                source: CameraSource.Photos
+            });
+            
+            if (image.webPath) {
+                const res = await fetch(image.webPath);
+                const blob = await res.blob();
+                setCapturedMedia({
+                    blob,
+                    url: image.webPath,
+                    type: 'image'
+                });
+                setStep('PREVIEW');
+            }
+        } catch (err) {
+            console.error('Error in native gallery select:', err);
+        }
+    };
 
     // Persistence: Load draft
     useEffect(() => {
@@ -120,6 +172,7 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
         } catch (e) { /* silent fallback */ }
     };
     const startCamera = async () => {
+        if (isNative) return;
         if (!hasRequestedPermission) return;
         try {
             setPermissionError(null);
@@ -336,111 +389,155 @@ const MediaCreationView: React.FC<MediaCreationViewProps> = ({ user, onClose, on
     };
 
     // Rendering methods (keeping the UI as is)
-    const renderCamera = () => (
-        <div className="fixed inset-0 h-[100dvh] bg-black z-[200] overflow-hidden flex flex-col">
-            {isFlashing && (
-                <div className="absolute inset-0 bg-white z-[300] transition-opacity duration-100 ease-out" style={{ opacity: isFlashing ? 0.8 : 0 }} />
-            )}
+    const renderCamera = () => {
+        if (isNative) {
+            return (
+                <div className="fixed inset-0 h-[100dvh] bg-[#0F0A05] z-[200] flex flex-col justify-between p-8 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-[calc(env(safe-area-inset-top)+1.5rem)]">
+                    <header className="flex justify-between items-center w-full">
+                        <button onClick={onClose} className="w-12 h-12 rounded-full bg-white/5 backdrop-blur-md flex items-center justify-center text-white border border-white/10 active:scale-90 transition-all">
+                            <span className="material-icons">close</span>
+                        </button>
+                        <h2 className="text-white font-black uppercase tracking-tighter text-sm italic">Criar Publicação</h2>
+                        <div className="w-12" />
+                    </header>
 
-            {!hasRequestedPermission && (
-                <div className="absolute inset-0 z-[400] bg-background-dark/95 backdrop-blur-xl flex flex-col items-center justify-center p-10 text-center animate-in fade-in duration-500">
-                    <div className="w-24 h-24 bg-[#ECA413]/10 rounded-full flex items-center justify-center mb-8">
-                        <span className="material-icons text-[#ECA413] text-5xl">videocam</span>
+                    <div className="flex-1 flex flex-col items-center justify-center my-8 text-center animate-in fade-in duration-500">
+                        <div className="w-24 h-24 bg-[#ECA413]/10 rounded-full flex items-center justify-center mb-8 border border-[#ECA413]/20 shadow-lg shadow-[#ECA413]/5">
+                            <span className="material-icons text-[#ECA413] text-5xl">photo_camera</span>
+                        </div>
+                        <h3 className="text-white text-2xl font-black uppercase tracking-tight mb-2">Compartilhe na Arena</h3>
+                        <p className="text-white/40 text-xs max-w-[280px] leading-relaxed">
+                            Tire uma foto agora ou escolha uma imagem/vídeo da sua galeria para publicar no seu feed.
+                        </p>
                     </div>
-                    <h2 className="text-white text-2xl font-black uppercase tracking-tight mb-4">+VAQUEJADA deseja acessar sua câmera</h2>
-                    <p className="text-white/40 text-sm mb-10 leading-relaxed">
-                        Para capturar seus melhores momentos na Arena e compartilhar com a galera, precisamos da sua permissão.
-                    </p>
-                    <button 
-                        onClick={() => {
-                            setHasRequestedPermission(true);
-                            // startCamera() will be called by useEffect
-                        }}
-                        className="w-full bg-[#ECA413] text-black font-black py-5 rounded-2xl uppercase tracking-widest text-xs shadow-xl shadow-[#ECA413]/20 active:scale-95 transition-all mb-4"
-                    >
-                        Permitir Acesso
-                    </button>
-                    <button 
-                        onClick={onClose}
-                        className="text-white/40 font-black uppercase tracking-widest text-[10px] hover:text-white transition-colors"
-                    >
-                        Agora Não
-                    </button>
-                </div>
-            )}
 
-            <div className="absolute inset-0 w-full h-full overflow-hidden">
-                {permissionError ? (
-                    <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-neutral-900">
-                        <span className="material-icons text-6xl text-white/20 mb-6">videocam_off</span>
-                        <p className="text-sm font-bold text-white/60 mb-8">{permissionError}</p>
+                    <div className="space-y-4 w-full">
+                        <button
+                            onClick={handleNativeCamera}
+                            className="w-full bg-[#ECA413] text-black font-black py-5 rounded-2xl uppercase tracking-widest text-xs shadow-xl shadow-[#ECA413]/10 active:scale-95 transition-all flex items-center justify-center gap-3"
+                        >
+                            <span className="material-icons text-lg">photo_camera</span>
+                            Tirar Foto
+                        </button>
                         <button
                             onClick={() => fileInputRef.current?.click()}
-                            className="bg-white text-black font-black py-4 px-8 rounded-full uppercase tracking-widest text-xs"
+                            className="w-full bg-white/5 text-white font-black py-5 rounded-2xl uppercase tracking-widest text-xs border border-white/10 active:scale-95 transition-all flex items-center justify-center gap-3"
                         >
-                            Selecionar da Galeria
+                            <span className="material-icons text-lg">photo_library</span>
+                            Escolher da Galeria
                         </button>
                         <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*,video/*" />
                     </div>
-                ) : (
-                    <video
-                        ref={videoRef}
-                        autoPlay
-                        playsInline
-                        muted
-                        className="absolute inset-0 w-full h-full object-cover"
-                    />
+                </div>
+            );
+        }
+
+        return (
+            <div className="fixed inset-0 h-[100dvh] bg-black z-[200] overflow-hidden flex flex-col">
+                {isFlashing && (
+                    <div className="absolute inset-0 bg-white z-[300] transition-opacity duration-100 ease-out" style={{ opacity: isFlashing ? 0.8 : 0 }} />
                 )}
-            </div>
 
-            <div className="absolute top-0 left-0 right-0 pt-[calc(env(safe-area-inset-top)+1.5rem)] px-6 pb-12 flex justify-between items-start z-50 pointer-events-none">
-                <button onClick={onClose} className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center text-white border border-white/20 pointer-events-auto active:scale-90 hover:bg-white/10 transition-all shadow-lg">
-                    <span className="material-icons">close</span>
-                </button>
-                <button 
-                    onClick={toggleFlash}
-                    className={`w-12 h-12 rounded-full backdrop-blur-md flex items-center justify-center border pointer-events-auto active:scale-90 transition-all shadow-lg ${isTorchOn ? 'bg-white text-black border-white' : 'bg-black/30 text-white border-white/20'}`}
-                >
-                    <span className="material-icons">{isTorchOn ? 'flash_on' : 'flash_off'}</span>
-                </button>
-            </div>
+                {!hasRequestedPermission && (
+                    <div className="absolute inset-0 z-[400] bg-background-dark/95 backdrop-blur-xl flex flex-col items-center justify-center p-10 text-center animate-in fade-in duration-500">
+                        <div className="w-24 h-24 bg-[#ECA413]/10 rounded-full flex items-center justify-center mb-8">
+                            <span className="material-icons text-[#ECA413] text-5xl">videocam</span>
+                        </div>
+                        <h2 className="text-white text-2xl font-black uppercase tracking-tight mb-4">+VAQUEJADA deseja acessar sua câmera</h2>
+                        <p className="text-white/40 text-sm mb-10 leading-relaxed">
+                            Para capturar seus melhores momentos na Arena e compartilhar com a galera, precisamos da sua permissão.
+                        </p>
+                        <button 
+                            onClick={() => {
+                                setHasRequestedPermission(true);
+                                // startCamera() will be called by useEffect
+                            }}
+                            className="w-full bg-[#ECA413] text-black font-black py-5 rounded-2xl uppercase tracking-widest text-xs shadow-xl shadow-[#ECA413]/20 active:scale-95 transition-all mb-4"
+                        >
+                            Permitir Acesso
+                        </button>
+                        <button 
+                            onClick={onClose}
+                            className="text-white/40 font-black uppercase tracking-widest text-[10px] hover:text-white transition-colors"
+                        >
+                            Agora Não
+                        </button>
+                    </div>
+                )}
 
-            <div className="absolute bottom-0 left-0 right-0 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-24 flex flex-col items-center z-50">
-                {/* Mode Selector Removed as per request */}
+                <div className="absolute inset-0 w-full h-full overflow-hidden">
+                    {permissionError ? (
+                        <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-neutral-900">
+                            <span className="material-icons text-6xl text-white/20 mb-6">videocam_off</span>
+                            <p className="text-sm font-bold text-white/60 mb-8">{permissionError}</p>
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                className="bg-white text-black font-black py-4 px-8 rounded-full uppercase tracking-widest text-xs"
+                            >
+                                Selecionar da Galeria
+                            </button>
+                            <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*,video/*" />
+                        </div>
+                    ) : (
+                        <video
+                            ref={videoRef}
+                            autoPlay
+                            playsInline
+                            muted
+                            className="absolute inset-0 w-full h-full object-cover"
+                        />
+                    )}
+                </div>
 
-                <div className="flex justify-center items-center gap-14 w-full px-8">
-                    <button
-                        onClick={() => {
-                            if (navigator.vibrate) navigator.vibrate(10);
-                            fileInputRef.current?.click();
-                        }}
-                        className="w-14 h-14 rounded-2xl border border-white/20 bg-black/30 backdrop-blur-md flex items-center justify-center text-white overflow-hidden active:scale-90 hover:bg-white/10 transition-all shadow-lg"
-                    >
-                        <span className="material-icons text-white/90">photo_library</span>
-                        <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*,video/*" />
+                <div className="absolute top-0 left-0 right-0 pt-[calc(env(safe-area-inset-top)+1.5rem)] px-6 pb-12 flex justify-between items-start z-50 pointer-events-none">
+                    <button onClick={onClose} className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center text-white border border-white/20 pointer-events-auto active:scale-90 hover:bg-white/10 transition-all shadow-lg">
+                        <span className="material-icons">close</span>
                     </button>
-
-                    <button
-                        onClick={capturePhoto}
-                        className="relative w-[88px] h-[88px] rounded-full border-[4px] border-white/40 p-1.5 flex items-center justify-center active:scale-[0.92] transition-all duration-200 shadow-[0_0_20px_rgba(0,0,0,0.4)] group overflow-visible"
-                    >
-                        <div className="absolute inset-[-6px] rounded-full border border-white/20 animate-ping opacity-20 pointer-events-none"></div>
-                        <div className={`w-full h-full rounded-full transition-colors duration-200 shadow-inner ${mode === 'STORY' ? 'bg-gradient-to-tr from-[#ECA413] to-[#FF4500] shadow-[#ECA413]/50' : 'bg-white shadow-white/40'}`}></div>
-                    </button>
-
                     <button 
-                        onClick={toggleCamera}
-                        className="w-14 h-14 rounded-full border border-white/20 bg-black/30 backdrop-blur-md flex items-center justify-center text-white active:scale-90 hover:bg-white/10 transition-all shadow-lg"
+                        onClick={toggleFlash}
+                        className={`w-12 h-12 rounded-full backdrop-blur-md flex items-center justify-center border pointer-events-auto active:scale-90 transition-all shadow-lg ${isTorchOn ? 'bg-white text-black border-white' : 'bg-black/30 text-white border-white/20'}`}
                     >
-                        <span className="material-icons text-white/90">flip_camera_ios</span>
+                        <span className="material-icons">{isTorchOn ? 'flash_on' : 'flash_off'}</span>
                     </button>
                 </div>
-                <p className="text-[9px] mt-8 font-bold text-white/30 uppercase tracking-widest animate-pulse opacity-50">
-                    {mode === 'STORY' ? 'Toque para story' : 'Toque para capturar'}
-                </p>
+
+                <div className="absolute bottom-0 left-0 right-0 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-24 flex flex-col items-center z-50">
+                    {/* Mode Selector Removed as per request */}
+
+                    <div className="flex justify-center items-center gap-14 w-full px-8">
+                        <button
+                            onClick={() => {
+                                if (navigator.vibrate) navigator.vibrate(10);
+                                fileInputRef.current?.click();
+                            }}
+                            className="w-14 h-14 rounded-2xl border border-white/20 bg-black/30 backdrop-blur-md flex items-center justify-center text-white overflow-hidden active:scale-90 hover:bg-white/10 transition-all shadow-lg"
+                        >
+                            <span className="material-icons text-white/90">photo_library</span>
+                            <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*,video/*" />
+                        </button>
+
+                        <button
+                            onClick={capturePhoto}
+                            className="relative w-[88px] h-[88px] rounded-full border-[4px] border-white/40 p-1.5 flex items-center justify-center active:scale-[0.92] transition-all duration-200 shadow-[0_0_20px_rgba(0,0,0,0.4)] group overflow-visible"
+                        >
+                            <div className="absolute inset-[-6px] rounded-full border border-white/20 animate-ping opacity-20 pointer-events-none"></div>
+                            <div className={`w-full h-full rounded-full transition-colors duration-200 shadow-inner ${mode === 'STORY' ? 'bg-gradient-to-tr from-[#ECA413] to-[#FF4500] shadow-[#ECA413]/50' : 'bg-white shadow-white/40'}`}></div>
+                        </button>
+
+                        <button 
+                            onClick={toggleCamera}
+                            className="w-14 h-14 rounded-full border border-white/20 bg-black/30 backdrop-blur-md flex items-center justify-center text-white active:scale-90 hover:bg-white/10 transition-all shadow-lg"
+                        >
+                            <span className="material-icons text-white/90">flip_camera_ios</span>
+                        </button>
+                    </div>
+                    <p className="text-[9px] mt-8 font-bold text-white/30 uppercase tracking-widest animate-pulse opacity-50">
+                        {mode === 'STORY' ? 'Toque para story' : 'Toque para capturar'}
+                    </p>
+                </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
         if (capturedMedia?.type !== 'image') return;
