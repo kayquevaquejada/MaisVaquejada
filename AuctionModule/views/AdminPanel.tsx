@@ -3,7 +3,6 @@ import { supabase } from '../../lib/supabase';
 import { User } from '../../types';
 import { AuctionUser } from '../types';
 import { createNotification } from '../../lib/notifications';
-import { PrivacyScreen } from '@capacitor-community/privacy-screen';
 import { Capacitor } from '@capacitor/core';
 
 interface AdminPanelProps {
@@ -39,22 +38,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, auctionUser, onBack }) =>
         if (subView === 'ANIMALS') fetchPendingAnimals();
         if (subView === 'AUCTIONS') fetchPendingAuctions();
     }, [subView]);
-
-    useEffect(() => {
-        // Bloquear screenshot se houver um vendedor selecionado (visualizando docs)
-        // Apenas em plataformas nativas para evitar erros no Web
-        if (selectedSeller && Capacitor.isNativePlatform()) {
-            PrivacyScreen.enable();
-        } else if (Capacitor.isNativePlatform()) {
-            PrivacyScreen.disable();
-        }
-
-        return () => {
-            if (Capacitor.isNativePlatform()) {
-                PrivacyScreen.disable();
-            }
-        };
-    }, [selectedSeller]);
 
     const fetchHiddenStatus = async () => {
         const { data } = await supabase.from('app_settings').select('value').eq('key', 'auction_module_hidden').single();

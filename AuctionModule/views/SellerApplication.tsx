@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { User } from '../../types';
-import { PrivacyScreen } from '@capacitor-community/privacy-screen';
-
 interface SellerApplicationProps {
     user: User;
     onBack: () => void;
@@ -20,20 +18,6 @@ const SellerApplication: React.FC<SellerApplicationProps> = ({ user, onBack, onS
     const [currentStep, setCurrentStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [uploadingStatus, setUploadingStatus] = useState<string | null>(null);
-
-    useEffect(() => {
-        // Bloquear screenshot se estiver na etapa de documentos (Step 3)
-        if (currentStep === 3) {
-            PrivacyScreen.enable();
-        } else {
-            PrivacyScreen.disable();
-        }
-
-        // Cleanup: desativar ao fechar o componente
-        return () => {
-            PrivacyScreen.disable();
-        };
-    }, [currentStep]);
 
     const [formData, setFormData] = useState({
         fullName: user.name || '',
