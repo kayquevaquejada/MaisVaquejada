@@ -922,7 +922,7 @@ if (initializing) {
   return (
     <ErrorBoundary>
       <CallProvider userId={user?.id}>
-        <div className="h-screen w-screen flex flex-col bg-background-dark overflow-hidden">
+        <div className="h-[100dvh] w-screen flex flex-col bg-background-dark overflow-hidden">
           <UpdateManager />
           <div className="flex-1 relative flex flex-col overflow-hidden">
             {/* Mobile-style Frame for Web */}
