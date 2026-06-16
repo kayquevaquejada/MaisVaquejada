@@ -5,7 +5,14 @@ const config: CapacitorConfig = {
   appName: '+Vaquejada',
   webDir: 'dist',
   bundledWebRuntime: false,
-  plugins: {},
+  plugins: {
+    CapacitorHttp: {
+      enabled: true,
+    },
+    PushNotifications: {
+      presentationOptions: ["badge", "sound", "alert"]
+    }
+  },
   android: {
     allowMixedContent: true,
     overrideUserAgent: 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Mobile Safari/537.36'

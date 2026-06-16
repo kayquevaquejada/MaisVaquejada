@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useI18n } from '../lib/i18n';
 import { PushPreferenceManager } from '../lib/push/PushPreferenceManager';
 import { PushPreferences } from '../lib/push/types';
+import { Capacitor } from '@capacitor/core';
 
 interface SettingsViewProps {
     user: User | null;
@@ -173,10 +174,20 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
     const togglePushPref = async (key: keyof PushPreferences) => {
         if (!user) return;
         setLoading(true);
-        const newPrefs = { ...pushPrefs, [key]: !pushPrefs[key] };
+        const nextValue = !pushPrefs[key];
+        const newPrefs = { ...pushPrefs, [key]: nextValue };
         setPushPrefs(newPrefs);
         try {
             await PushPreferenceManager.updatePreferences(user.id, newPrefs);
+            
+            // Se estiver ativando e for dispositivo nativo, verifica e pede permissão
+            if (nextValue && Capacitor.isNativePlatform()) {
+                const hasPermission = await PushPermissionManager.requestPermission(user.id);
+                if (!hasPermission) {
+                    alert('As notificações estão desativadas no seu celular. Para receber alertas do +Vaquejada, ative as notificações nas configurações do seu aparelho.');
+                }
+            }
+            
             setSuccess('Preferência atualizada!');
             setTimeout(() => setSuccess(null), 2000);
         } catch (e) {

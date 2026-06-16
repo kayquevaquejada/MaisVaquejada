@@ -4,7 +4,12 @@ import { supabase } from '../lib/supabase';
 import { createNotification } from '../lib/notifications';
 import { compressImage } from '../lib/imageUtils';
 import { Preferences } from '@capacitor/preferences';
+import { Capacitor } from '@capacitor/core';
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { SocialService } from '../social/services/SocialService';
+
+// Helper: verifica se uma string é um UUID válido
+const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 
 
 import { useNotifications } from '../social/hooks/useNotifications';
@@ -54,44 +59,50 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
     const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file || !user?.id) return;
+        await _uploadAvatarBlob(file);
+        // Limpa o input para permitir re-seleção do mesmo arquivo
+        e.target.value = '';
+    };
 
+    const _uploadAvatarBlob = async (blob: File | Blob) => {
+        if (!user?.id) return;
         setUploadingAvatar(true);
         try {
             // Comprimir imagem de perfil (avatar)
-            let fileToUpload: File | Blob = file;
-            if (file.type.startsWith('image/')) {
-                try {
-                    // Para o avatar, podemos ser ainda mais agressivos no tamanho
-                    fileToUpload = await compressImage(file, { maxWidth: 800, maxHeight: 800, quality: 0.7 });
-                } catch (e) {
-                    console.warn('Falha na compressão do avatar:', e);
-                }
+            let fileToUpload: File | Blob = blob;
+            try {
+                fileToUpload = await compressImage(blob, { maxWidth: 800, maxHeight: 800, quality: 0.7 });
+            } catch (e) {
+                console.warn('Falha na compressão do avatar:', e);
             }
 
-            // Padrão solicitado: userId/avatar.jpg
+            // Converter para ArrayBuffer (mais robusto no WebView Android)
+            const arrayBuffer = await fileToUpload.arrayBuffer();
+
             const filePath = `${user.id}/avatar.jpg`;
 
             // 1. Upload para o bucket 'vaquejadas'
             const { error: uploadError } = await supabase.storage
                 .from('vaquejadas')
-                .upload(filePath, fileToUpload, { 
+                .upload(filePath, arrayBuffer, { 
                     upsert: true,
-                    cacheControl: '0' // Desabilita cache no servidor
+                    contentType: 'image/jpeg',
+                    cacheControl: '0'
                 });
 
             if (uploadError) throw uploadError;
 
-            // 2. Obter URL pública com Cache Buster para forçar o navegador a atualizar
+            // 2. Obter URL pública com cache buster
             const { data: { publicUrl } } = supabase.storage
                 .from('vaquejadas')
                 .getPublicUrl(filePath);
             
             const timestampedUrl = `${publicUrl}?t=${Date.now()}`;
 
-            // 3. Atualizar estado local do formulário imediatamente
+            // 3. Atualizar estado local
             setProfileData((prev: any) => prev ? { ...prev, avatar_url: timestampedUrl } : null);
             
-            // 4. Salvamento imediato no banco de dados para evitar perda
+            // 4. Salvar no banco de dados
             const { error: updateError } = await supabase
                 .from('profiles')
                 .update({ avatar_url: timestampedUrl })
@@ -103,9 +114,36 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
             console.log('Foto atualizada com sucesso:', timestampedUrl);
         } catch (error: any) {
             console.error('Erro no upload da foto:', error);
-            alert(`Erro ao processar imagem: ${error.message || 'Erro de permissão'}`);
+            alert(`Erro ao enviar foto: ${error.message || 'Verifique sua conexão e tente novamente.'}`);
         } finally {
             setUploadingAvatar(false);
+        }
+    };
+
+    // Seletor de foto: usa câmera nativa no Android/iOS, file input na web
+    const handleSelectAvatar = async () => {
+        if (uploadingAvatar) return;
+        if (Capacitor.isNativePlatform()) {
+            try {
+                const photo = await Camera.getPhoto({
+                    resultType: CameraResultType.Uri,
+                    source: CameraSource.Prompt,
+                    quality: 80,
+                    correctOrientation: true,
+                });
+                // Converter webPath para Blob
+                const webPath = photo.webPath;
+                if (!webPath) throw new Error('Não foi possível obter o caminho da imagem.');
+                const response = await fetch(webPath);
+                const blob = await response.blob();
+                await _uploadAvatarBlob(blob);
+            } catch (err: any) {
+                if (err?.message && !err.message.includes('cancelled') && !err.message.includes('cancel')) {
+                    alert(`Erro ao abrir câmera/galeria: ${err.message}`);
+                }
+            }
+        } else {
+            fileInputRef.current?.click();
         }
     };
 
@@ -152,14 +190,18 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
     }, [isMyProfile, user, profileData]);
 
     const handleToggleFollow = async () => {
-        if (!user || isMyProfile || !profileData || user.id === profileData.id) {
-            console.warn("Self-follow blocked or missing user data");
+        // Visitante: redirecionar para login
+        if (!user) {
+            window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'LOGIN' } }));
+            return;
+        }
+        if (isMyProfile || !profileData || user.id === profileData.id) {
             return;
         }
 
         try {
             if (isFollowing) {
-                // Unfollow
+                // Deixar de seguir
                 const { error } = await supabase
                     .from('follows')
                     .delete()
@@ -168,9 +210,9 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                 
                 if (error) throw error;
                 setIsFollowing(false);
-                setStats(prev => ({ ...prev, followers: prev.followers - 1 }));
+                setStats(prev => ({ ...prev, followers: Math.max(0, prev.followers - 1) }));
             } else {
-                // Follow
+                // Seguir
                 const { error } = await supabase
                     .from('follows')
                     .insert({
@@ -182,15 +224,16 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                 setIsFollowing(true);
                 setStats(prev => ({ ...prev, followers: prev.followers + 1 }));
                 
-                // Create notification
+                // Criar notificação de seguir
                 await createNotification({
                     user_id: profileData.id,
                     actor_id: user.id,
                     type: 'follow'
                 });
             }
-        } catch (err) {
-            console.error("Error toggling follow:", err);
+        } catch (err: any) {
+            console.error('Erro ao seguir/deixar de seguir:', err);
+            alert(`Não foi possível realizar esta ação: ${err.message || 'Verifique sua conexão.'}`);
         }
     };
 
@@ -234,11 +277,14 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                 
                 if (data) currentProfile = data;
             } else if (targetUsername) {
-                const { data, error } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('username', targetUsername)
-                    .single();
+                // Suporta navegação por UUID (perfis sem username) ou por username normal
+                let query = supabase.from('profiles').select('*');
+                if (isUUID(targetUsername)) {
+                    query = query.eq('id', targetUsername);
+                } else {
+                    query = query.eq('username', targetUsername);
+                }
+                const { data, error } = await query.single();
                 if (data) {
                     currentProfile = data;
                     profileId = data.id;
@@ -843,7 +889,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
 
                     <div className="flex-1 overflow-y-auto p-8 flex flex-col items-center">
                         <div 
-                            onClick={() => !uploadingAvatar && fileInputRef.current?.click()}
+                            onClick={handleSelectAvatar}
                             className="relative w-32 h-32 rounded-full border-4 border-[#ECA413] p-1 mb-6 active:scale-95 transition-transform cursor-pointer overflow-hidden"
                         >
                             <img src={profileData.avatar_url || `https://ui-avatars.com/api/?name=${profileData.name}&background=random`} className="w-full h-full rounded-full object-cover" />
@@ -857,14 +903,14 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                         </div>
 
                         <button 
-                            onClick={() => !uploadingAvatar && fileInputRef.current?.click()}
+                            onClick={handleSelectAvatar}
                             className="text-[10px] font-black uppercase tracking-[0.2em] text-[#ECA413] mb-12 hover:underline disabled:opacity-50"
                             disabled={uploadingAvatar}
                         >
                             {uploadingAvatar ? 'Processando...' : 'Alterar foto do perfil'}
                         </button>
                         
-                        {/* Hidden File Input */}
+                        {/* Hidden File Input — usado apenas na web */}
                         <input 
                             type="file"
                             ref={fileInputRef}
@@ -931,7 +977,9 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                                             className="flex items-center gap-4 cursor-pointer hover:bg-white/5 p-3 rounded-2xl border border-transparent hover:border-white/5 transition-all"
                                             onClick={() => {
                                                 setListModalType(null);
-                                                window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'PROFILE', username: p.username } }));
+                                                // Usa o ID como fallback para perfis sem username
+                                                const target = p.username || p.id;
+                                                window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: 'PROFILE', username: target } }));
                                             }}
                                         >
                                             <div className="w-12 h-12 rounded-full border-2 border-[#ECA413]/20 overflow-hidden shrink-0">
@@ -959,9 +1007,11 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, targetUsername, onLogou
                     onClose={() => setIsNotificationsOpen(false)}
                     onNotificationPress={(notif) => {
                         setIsNotificationsOpen(false);
-                        if (notif.actor_username) {
+                        // Usa actor_id como fallback para perfis sem username
+                        const target = notif.actor_username || notif.actor_id;
+                        if (target) {
                             window.dispatchEvent(new CustomEvent('arena_navigate', { 
-                                detail: { view: 'PROFILE', username: notif.actor_username } 
+                                detail: { view: 'PROFILE', username: target } 
                             }));
                         }
                     }}

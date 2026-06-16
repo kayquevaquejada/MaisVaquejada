@@ -49,6 +49,7 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isDMScreenOpen, setIsDMScreenOpen] = useState(false);
   const [activeChatPartnetId, setActiveChatPartnerId] = useState<string | null>(null);
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(null);
   const [activeSharePost, setActiveSharePost] = useState<any | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -124,6 +125,7 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
 
   // Navigation Utilities
   const navigateToProfile = (username: string) => {
+    // Não altera UUIDs ou strings sem '@'
     const formatted = username.startsWith('@') ? username.substring(1) : username;
     const isMe = user && (formatted === user.username || username === 'meu-perfil');
     window.dispatchEvent(new CustomEvent('arena_navigate', { 
@@ -137,7 +139,9 @@ const SocialFeedScreen: React.FC<SocialFeedScreenProps> = ({ user, onMediaCreati
       setIsDMScreenOpen(true);
       setIsNotificationsOpen(false);
     } else {
-      navigateToProfile(notif.actor_username);
+      // Usa actor_id como fallback para usuários sem username
+      const target = notif.actor_username || notif.actor_id;
+      if (target) navigateToProfile(target);
       setIsNotificationsOpen(false);
     }
   };

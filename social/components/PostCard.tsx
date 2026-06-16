@@ -46,7 +46,7 @@ export const PostCard: React.FC<PostCardProps> = ({
       <div className="px-5 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div
-            onClick={() => onNavigateToProfile(post.username)}
+            onClick={() => onNavigateToProfile(post.username || post.userId)}
             className="w-10 h-10 rounded-full border border-[#ECA413]/30 p-0.5 cursor-pointer active:scale-95 transition-transform bg-neutral-800"
           >
             <img
@@ -59,7 +59,7 @@ export const PostCard: React.FC<PostCardProps> = ({
             />
           </div>
           <div>
-            <div className="flex items-center gap-1 cursor-pointer hover:underline" onClick={() => onNavigateToProfile(post.username)}>
+            <div className="flex items-center gap-1 cursor-pointer hover:underline" onClick={() => onNavigateToProfile(post.username || post.userId)}>
               <span className="font-black text-[13px] text-white tracking-tight">{post.username}</span>
               {post.isVerified && <span className="material-icons text-[#ECA413] text-[14px]">verified</span>}
             </div>
@@ -174,7 +174,7 @@ export const PostCard: React.FC<PostCardProps> = ({
         <p className="text-[13.5px] leading-snug">
           <span
             className="font-black mr-2 text-white cursor-pointer hover:underline"
-            onClick={() => onNavigateToProfile(post.username)}
+            onClick={() => onNavigateToProfile(post.username || post.userId)}
           >
             {post.username}
           </span>

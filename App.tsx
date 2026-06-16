@@ -4,7 +4,6 @@ import { App as CapApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
 import { Browser } from '@capacitor/browser';
-import { PrivacyScreen } from '@capacitor-community/privacy-screen';
 import { View, User } from './types';
 import Navbar from './components/Navbar';
 import LoginView from './views/LoginView';

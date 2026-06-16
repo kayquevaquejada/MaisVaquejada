@@ -323,24 +323,7 @@ const EventDetailView: React.FC<EventDetailViewProps> = ({ event, user, onBack }
           </div>
         </div>
 
-        {/* Ingressos e Valores */}
-        <div className="mb-8">
-          <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/30 ml-4 mb-4">Ingressos e Valores</h3>
-          <div className="bg-white/5 border border-white/10 rounded-[32px] p-6 space-y-4">
-            <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
-              <span className="text-white/40 text-[10px] font-black uppercase tracking-widest">Inscrição</span>
-              <span className="text-white font-black">{event.valor_inscricao || event.price}</span>
-            </div>
-            <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
-              <span className="text-white/40 text-[10px] font-black uppercase tracking-widest">Entrada/Ingresso</span>
-              <span className="text-[#ECA413] font-black">{event.valor_ingresso || 'Grátis'}</span>
-            </div>
-            <button className="hidden w-full h-14 bg-white/10 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] flex items-center justify-center gap-2 border border-white/10 active:scale-95 transition-all">
-              <span className="material-icons text-sm">confirmation_number</span>
-              Comprar antecipado
-            </button>
-          </div>
-        </div>
+
 
         {/* Descrição e Contato */}
         <div className="space-y-8">

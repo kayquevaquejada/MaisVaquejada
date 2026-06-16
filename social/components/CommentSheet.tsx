@@ -60,14 +60,14 @@ export const CommentSheet: React.FC<CommentSheetProps> = ({
               <div key={comment.id} className="flex gap-4">
                 <div 
                   className="w-8 h-8 rounded-full border border-white/10 shrink-0 overflow-hidden cursor-pointer" 
-                  onClick={() => { onClose(); onNavigateToProfile(comment.username) }}
+                  onClick={() => { onClose(); onNavigateToProfile(comment.username || comment.user_id) }}
                 >
                   <img src={comment.avatar_url || `https://ui-avatars.com/api/?name=${comment.username}&background=random`} />
                 </div>
                 <div className="flex-1">
                   <p className="text-[13px] text-white/90 leading-snug">
                     <span 
-                      onClick={() => { onClose(); onNavigateToProfile(comment.username) }} 
+                      onClick={() => { onClose(); onNavigateToProfile(comment.username || comment.user_id) }} 
                       className="font-black mr-2 text-white cursor-pointer"
                     >
                       {comment.username}
