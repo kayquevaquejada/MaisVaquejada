@@ -595,14 +595,27 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
                     icon="bug_report" 
                     label="Testar Erro Sentry" 
                     onClick={() => {
+                        const dsn = import.meta.env.VITE_SENTRY_DSN;
+                        console.log('[Sentry Teste] DSN presente?', dsn ? 'SIM ✅ — ' + dsn.substring(0, 30) + '...' : 'NÃO ❌');
+
+                        if (!dsn) {
+                            console.error('[Sentry Teste] ❌ VITE_SENTRY_DSN está vazio. Adicione na Vercel → Settings → Environment Variables.');
+                            setSuccess("❌ DSN ausente! Configure VITE_SENTRY_DSN na Vercel.");
+                            setTimeout(() => setSuccess(null), 6000);
+                            return;
+                        }
+
                         try {
-                            const testError = new Error("Teste de erro do +Vaquejada [manual]");
+                            const testError = new Error("Teste real +Vaquejada");
+                            console.log('[Sentry Teste] Chamando captureException com:', testError.message);
                             Sentry.captureException(testError);
-                            setSuccess("✅ Erro enviado para o Sentry!");
-                            setTimeout(() => setSuccess(null), 4000);
+                            console.log('[Sentry Teste] captureException chamado. Verifique o painel do Sentry.');
+                            setSuccess("✅ Erro enviado para o Sentry! Verifique o painel.");
+                            setTimeout(() => setSuccess(null), 5000);
                         } catch (e) {
-                            setSuccess("⚠️ Sentry não inicializado (DSN ausente).");
-                            setTimeout(() => setSuccess(null), 4000);
+                            console.error('[Sentry Teste] Erro ao chamar captureException:', e);
+                            setSuccess("⚠️ Falha ao enviar para o Sentry. Veja o console.");
+                            setTimeout(() => setSuccess(null), 5000);
                         }
                     }} 
                 />
