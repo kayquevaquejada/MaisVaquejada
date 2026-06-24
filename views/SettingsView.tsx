@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import * as Sentry from "@sentry/capacitor";
 import { User } from '../types';
 import { supabase } from '../lib/supabase';
 import { useI18n } from '../lib/i18n';
@@ -594,7 +595,15 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
                     icon="bug_report" 
                     label="Testar Erro Sentry" 
                     onClick={() => {
-                        throw new Error("Teste de erro do +Vaquejada");
+                        try {
+                            const testError = new Error("Teste de erro do +Vaquejada [manual]");
+                            Sentry.captureException(testError);
+                            setSuccess("✅ Erro enviado para o Sentry!");
+                            setTimeout(() => setSuccess(null), 4000);
+                        } catch (e) {
+                            setSuccess("⚠️ Sentry não inicializado (DSN ausente).");
+                            setTimeout(() => setSuccess(null), 4000);
+                        }
                     }} 
                 />
 
