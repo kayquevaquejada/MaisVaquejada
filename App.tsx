@@ -67,13 +67,6 @@ const GlobalToast: React.FC<{ message: string, onClose: () => void }> = ({ messa
   );
 };
 
-// Capturador de Erros Global para Web
-if (typeof window !== 'undefined') {
-  window.onerror = function(message, source, lineno, colno, error) {
-    alert('ERRO DETECTADO: ' + message + '\nLinha: ' + lineno);
-  };
-}
-
 // ─── Componente de Callback de Autenticação ───
 const AuthCallback: React.FC<{ onComplete: (userId: string, authUser: any) => void, onFail: () => void }> = ({ onComplete, onFail }) => {
   const [logs, setLogs] = useState<string[]>(['[1] Iniciando processamento...']);
