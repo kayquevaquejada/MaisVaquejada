@@ -20,6 +20,8 @@
     "@capacitor/preferences": "^8.0.1",
     "@capacitor/push-notifications": "^8.0.3",
     "@capawesome/capacitor-app-update": "^8.0.3",
+    "@sentry/capacitor": "^4.1.0",
+    "@sentry/react": "^10.52.0",
     "@supabase/supabase-js": "^2.48.0",
     "@vitejs/plugin-react": "^4.3.0",
     "clsx": "^2.1.1",

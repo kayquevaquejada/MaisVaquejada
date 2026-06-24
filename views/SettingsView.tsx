@@ -590,6 +590,13 @@ const SettingsView: React.FC<SettingsViewProps> = ({ user, onBack, onLogout, onP
                 <div className="px-6 py-6 bg-neutral-50 text-[10px] font-black text-black/30 uppercase tracking-[0.3em] border-b border-black/5">App</div>
                 <SettingItem icon="help_outline" label="Entrar em contato" onClick={() => setActiveTab('HELP')} />
                 <SettingItem icon="info_outline" label="Sobre o +Vaquejada" onClick={() => setActiveTab('ABOUT')} />
+                <SettingItem 
+                    icon="bug_report" 
+                    label="Testar Erro Sentry" 
+                    onClick={() => {
+                        throw new Error("Teste de erro do +Vaquejada");
+                    }} 
+                />
 
                 <div className="px-6 py-6 bg-neutral-50 text-[10px] font-black text-black/30 uppercase tracking-[0.3em] border-b border-black/5">Jurídico</div>
                 <SettingItem 
