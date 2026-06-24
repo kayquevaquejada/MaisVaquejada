@@ -2438,7 +2438,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
 
 
     return (
-        <div className="min-h-full bg-[#0F0A05] text-white font-sans pb-24 font-display animate-in slide-in-from-right duration-300 z-[150] relative">
+        <div className="absolute inset-0 bg-[#0F0A05] text-white font-sans font-display animate-in slide-in-from-right duration-300 z-[150] flex flex-col">
             <header className="px-6 py-6 border-b border-white/5 flex items-center gap-4 bg-[#0F0A05] sticky top-0 z-10 w-full shadow-sm">
                 <button onClick={() => window.dispatchEvent(new CustomEvent('arena_navigate', { detail: { view: View.SETTINGS } }))} className="material-icons text-white active:scale-90">arrow_back</button>
                 <div className="flex-1 text-center pr-8">
@@ -2447,7 +2447,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                 </div>
             </header>
 
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto pb-24">
                 <div className="p-6 pb-2 m-4 bg-[#D4AF37]/5 rounded-2xl border border-[#D4AF37]/20 flex items-center gap-4 mb-4">
                     <div className="w-12 h-12 bg-[#D4AF37]/20 rounded-full flex items-center justify-center shrink-0">
                         <span className="material-icons text-[#D4AF37]">shield</span>
